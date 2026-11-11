@@ -38,7 +38,7 @@ class WorkerPool(object):
     @staticmethod
     def _safe_run(func, message):
         """
-        Execute the user funcion for a given message without raising exceptions.
+        Execute the user function for a given message without raising exceptions.
 
         :param func: User defined function.
         :type func: callable

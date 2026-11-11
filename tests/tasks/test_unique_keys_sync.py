@@ -14,7 +14,7 @@ from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, Un
 
 
 class UniqueKeysSyncTests(object):
-    """Unique Keys Syncrhonization task test cases."""
+    """Unique Keys Synchronization task test cases."""
 
     def test_normal_operation(self, mocker):
         """Test that the task works properly under normal circumstances."""
@@ -38,7 +38,7 @@ class UniqueKeysSyncTests(object):
 
 
 class ClearFilterSyncTests(object):
-    """Clear Filter Syncrhonization task test cases."""
+    """Clear Filter Synchronization task test cases."""
 
     def test_normal_operation(self, mocker):
         """Test that the task works properly under normal circumstances."""
@@ -61,7 +61,7 @@ class ClearFilterSyncTests(object):
 
 
 class UniqueKeysSyncAsyncTests(object):
-    """Unique Keys Syncrhonization task test cases."""
+    """Unique Keys Synchronization task test cases."""
 
     @pytest.mark.asyncio
     async def test_normal_operation(self, mocker):
@@ -84,7 +84,7 @@ class UniqueKeysSyncAsyncTests(object):
 
 
 class ClearFilterSyncAsyncTests(object):
-    """Clear Filter Syncrhonization task test cases."""
+    """Clear Filter Synchronization task test cases."""
 
     @pytest.mark.asyncio
     async def test_normal_operation(self, mocker):

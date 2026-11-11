@@ -15,7 +15,7 @@ from splitio.optional.loaders import asyncio
 
 
 class ImpressionsSyncTaskTests(object):
-    """Impressions Syncrhonization task test cases."""
+    """Impressions Synchronization task test cases."""
 
     def test_normal_operation(self, mocker):
         """Test that the task works properly under normal circumstances."""
@@ -49,7 +49,7 @@ class ImpressionsSyncTaskTests(object):
 
 
 class ImpressionsSyncTaskAsyncTests(object):
-    """Impressions Syncrhonization task test cases."""
+    """Impressions Synchronization task test cases."""
 
     @pytest.mark.asyncio
     async def test_normal_operation(self, mocker):
@@ -96,7 +96,7 @@ class ImpressionsSyncTaskAsyncTests(object):
 
 
 class ImpressionsCountSyncTaskTests(object):
-    """Impressions Syncrhonization task test cases."""
+    """Impressions Synchronization task test cases."""
 
     def test_normal_operation(self, mocker):
         """Test that the task works properly under normal circumstances."""
@@ -131,7 +131,7 @@ class ImpressionsCountSyncTaskTests(object):
 
 
 class ImpressionsCountSyncTaskAsyncTests(object):
-    """Impressions Syncrhonization task test cases."""
+    """Impressions Synchronization task test cases."""
 
     @pytest.mark.asyncio
     async def test_normal_operation(self, mocker):

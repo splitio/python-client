@@ -51,7 +51,7 @@ class Prerequisites(object):
 
     @property
     def feature_flag_name(self):
-        """Return featur eflag name."""
+        """Return feature eflag name."""
         return self._feature_flag_name
 
     @property

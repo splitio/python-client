@@ -12,7 +12,7 @@ class EventGroup(object):
             """
             Construct an event.
 
-            :param shared_condition: shared condition varaible.
+            :param shared_condition: shared condition variable.
             :type shared_condition: threading.Condition
             """
             Event.__init__(self)

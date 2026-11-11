@@ -49,42 +49,42 @@ class SplitSynchronizers(object):
 
     @property
     def split_sync(self):
-        """Return split synchonizer."""
+        """Return split synchronizer."""
         return self._feature_flag_sync
 
     @property
     def segment_sync(self):
-        """Return segment synchonizer."""
+        """Return segment synchronizer."""
         return self._segment_sync
 
     @property
     def impressions_sync(self):
-        """Return impressions synchonizer."""
+        """Return impressions synchronizer."""
         return self._impressions_sync
 
     @property
     def events_sync(self):
-        """Return events synchonizer."""
+        """Return events synchronizer."""
         return self._events_sync
 
     @property
     def impressions_count_sync(self):
-        """Return impressions count synchonizer."""
+        """Return impressions count synchronizer."""
         return self._impressions_count_sync
 
     @property
     def unique_keys_sync(self):
-        """Return unique keys synchonizer."""
+        """Return unique keys synchronizer."""
         return self._unique_keys_sync
 
     @property
     def clear_filter_sync(self):
-        """Return clear filter synchonizer."""
+        """Return clear filter synchronizer."""
         return self._clear_filter_sync
 
     @property
     def telemetry_sync(self):
-        """Return clear filter synchonizer."""
+        """Return clear filter synchronizer."""
         return self._telemetry_sync
 
 
@@ -1081,7 +1081,7 @@ class LocalhostSynchronizerAsync(LocalhostSynchronizerBase):
 
 
 class PluggableSynchronizer(BaseSynchronizer):
-    """Plugable Synchronizer."""
+    """Pluggable Synchronizer."""
 
     def synchronize_segment(self, segment_name, till):
         """
@@ -1147,7 +1147,7 @@ class PluggableSynchronizer(BaseSynchronizer):
 
 
 class PluggableSynchronizerAsync(BaseSynchronizer):
-    """Plugable Synchronizer."""
+    """Pluggable Synchronizer."""
 
     async def synchronize_segment(self, segment_name, till):
         """

@@ -221,7 +221,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
                                                                                                                               till, rbs_till)
         final_segment_list.update(segment_list)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
-        if successful_sync:  # succedeed sync
+        if successful_sync:  # succeeded sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return final_segment_list
 
@@ -377,7 +377,7 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
                                                                                                                                     till, rbs_till)
         final_segment_list.update(segment_list)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
-        if successful_sync:  # succedeed sync
+        if successful_sync:  # succeeded sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return final_segment_list
 

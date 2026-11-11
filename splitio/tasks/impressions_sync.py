@@ -1,4 +1,4 @@
-"""Impressions syncrhonization task."""
+"""Impressions synchronization task."""
 import logging
 
 from splitio.tasks import BaseSynchronizationTask

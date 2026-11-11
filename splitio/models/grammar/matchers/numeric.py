@@ -100,7 +100,7 @@ class BetweenMatcher(Matcher, ZeroSecondDataMatcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_int(self._get_matcher_input(key, attributes))
@@ -149,7 +149,7 @@ class EqualToMatcher(Matcher, ZeroTimeDataMatcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_int(self._get_matcher_input(key, attributes))
@@ -193,7 +193,7 @@ class GreaterThanOrEqualMatcher(Matcher, ZeroSecondDataMatcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_int(self._get_matcher_input(key, attributes))
@@ -237,7 +237,7 @@ class LessThanOrEqualMatcher(Matcher, ZeroSecondDataMatcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_int(self._get_matcher_input(key, attributes))

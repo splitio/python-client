@@ -33,7 +33,7 @@ class EqualToSemverMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         if self._semver is None:
@@ -83,7 +83,7 @@ class GreaterThanOrEqualToSemverMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         if self._semver is None:
@@ -134,7 +134,7 @@ class LessThanOrEqualToSemverMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         if self._semver is None:
@@ -186,7 +186,7 @@ class BetweenSemverMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         if self._semver_start is None or self._semver_end is None:
@@ -237,7 +237,7 @@ class InListSemverMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         if self._semver_list is None:

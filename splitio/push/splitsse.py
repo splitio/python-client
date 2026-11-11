@@ -86,7 +86,7 @@ class SplitSSEClient(SplitSSEClientBase):
         """
         Construct a split sse client.
 
-        :param callback: fuction to call when an event is received.
+        :param callback: function to call when an event is received.
         :type callback: callable
 
         :param sdk_metadata: SDK version & machine name & IP.
@@ -95,7 +95,7 @@ class SplitSSEClient(SplitSSEClientBase):
         :param first_event_callback: function to call when the first event is received.
         :type first_event_callback: callable
 
-        :param connection_closed_callback: funciton to call when the connection ends.
+        :param connection_closed_callback: function to call when the connection ends.
         :type connection_closed_callback: callable
 
         :param base_url: scheme + :// + host

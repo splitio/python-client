@@ -23,7 +23,7 @@ class SplitsAPIBase(object):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: HttpClient
         :param sdk_key: User sdk_key token.
         :type sdk_key: string
@@ -62,7 +62,7 @@ class SplitsAPI(SplitsAPIBase):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: HttpClient
         :param sdk_key: User sdk_key token.
         :type sdk_key: string
@@ -144,7 +144,7 @@ class SplitsAPIAsync(SplitsAPIBase):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: HttpClient
         :param sdk_key: User sdk_key token.
         :type sdk_key: string

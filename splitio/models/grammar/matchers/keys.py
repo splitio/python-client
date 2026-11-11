@@ -25,7 +25,7 @@ class AllKeysMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         return key is not None
@@ -62,7 +62,7 @@ class UserDefinedSegmentMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = self._get_matcher_input(key, attributes)

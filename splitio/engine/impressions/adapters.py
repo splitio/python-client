@@ -30,7 +30,7 @@ class InMemorySenderAdapterBase(ImpressionsSenderAdapter):
         """
         post the unique keys to split back end.
 
-        :param uniques: unique keys disctionary
+        :param uniques: unique keys dictionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         pass
@@ -39,7 +39,7 @@ class InMemorySenderAdapterBase(ImpressionsSenderAdapter):
         """
         Format the unique keys dictionary array to a JSON body
 
-        :param uniques: unique keys disctionary
+        :param uniques: unique keys dictionary
         :type uniques: Dictionary {'feature1_flag': set(), 'feature2_flag': set(), .. }
 
         :return: unique keys JSON array
@@ -64,7 +64,7 @@ class InMemorySenderAdapter(InMemorySenderAdapterBase):
         """
         post the unique keys to split back end.
 
-        :param uniques: unique keys disctionary
+        :param uniques: unique keys dictionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         if len(uniques) == 0:
@@ -89,7 +89,7 @@ class InMemorySenderAdapterAsync(InMemorySenderAdapterBase):
         """
         post the unique keys to split back end.
 
-        :param uniques: unique keys disctionary
+        :param uniques: unique keys dictionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         if len(uniques) == 0:
@@ -114,7 +114,7 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         """
         post the unique keys to redis.
 
-        :param uniques: unique keys disctionary
+        :param uniques: unique keys dictionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         if len(uniques) == 0:
@@ -135,7 +135,7 @@ class RedisSenderAdapter(ImpressionsSenderAdapter):
         """
         post the impression counters to redis.
 
-        :param to_send: unique keys disctionary
+        :param to_send: unique keys dictionary
         :type to_send: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         if len(to_send) == 0:
@@ -188,7 +188,7 @@ class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
         """
         post the unique keys to redis.
 
-        :param uniques: unique keys disctionary
+        :param uniques: unique keys dictionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         if len(uniques) == 0:
@@ -209,7 +209,7 @@ class RedisSenderAdapterAsync(ImpressionsSenderAdapter):
         """
         post the impression counters to redis.
 
-        :param to_send: unique keys disctionary
+        :param to_send: unique keys dictionary
         :type to_send: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         if len(to_send) == 0:
@@ -265,7 +265,7 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         """
         post the unique keys to storage.
 
-        :param uniques: unique keys disctionary
+        :param uniques: unique keys dictionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         if len(uniques) == 0:
@@ -287,7 +287,7 @@ class PluggableSenderAdapter(ImpressionsSenderAdapter):
         """
         post the impression counters to storage.
 
-        :param to_send: unique keys disctionary
+        :param to_send: unique keys dictionary
         :type to_send: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         if len(to_send) == 0:
@@ -339,7 +339,7 @@ class PluggableSenderAdapterAsync(ImpressionsSenderAdapter):
         """
         post the unique keys to storage.
 
-        :param uniques: unique keys disctionary
+        :param uniques: unique keys dictionary
         :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         if len(uniques) == 0:
@@ -360,7 +360,7 @@ class PluggableSenderAdapterAsync(ImpressionsSenderAdapter):
         """
         post the impression counters to storage.
 
-        :param to_send: unique keys disctionary
+        :param to_send: unique keys dictionary
         :type to_send: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
         """
         if len(to_send) == 0:
@@ -397,7 +397,7 @@ def _uniques_formatter(uniques):
     """
     Format the unique keys dictionary array to a JSON body
 
-    :param uniques: unique keys disctionary
+    :param uniques: unique keys dictionary
     :type uniques: Dictionary {'feature_flag1': set(), 'feature_flag2': set(), .. }
 
     :return: unique keys JSON array

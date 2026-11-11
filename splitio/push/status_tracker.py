@@ -49,7 +49,7 @@ class PushStatusTrackerBase(object):
         """
         Reset the status to initial conditions.
 
-        This asssumes a healthy connection until proven wrong.
+        This assumes a healthy connection until proven wrong.
         """
         self._publishers.update({'control_pri': 2, 'control_sec': 2})
         self._last_control_message = ControlType.STREAMING_ENABLED

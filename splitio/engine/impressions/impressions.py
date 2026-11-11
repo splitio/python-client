@@ -15,7 +15,7 @@ class Manager(object):
 
     def __init__(self, strategy, none_strategy, telemetry_runtime_producer):
         """
-        Construct a manger to track and forward impressions to the queue.
+        Construct a manager to track and forward impressions to the queue.
 
         :param listener: Optional impressions listener that will capture all seen impressions.
         :type listener: splitio.client.listener.ImpressionListenerWrapper

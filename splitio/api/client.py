@@ -28,7 +28,7 @@ def _build_url(server, path, urls):
     """
     Build URL according to server specified.
 
-    :param server: Server for whith the request is being made.
+    :param server: Server for with the request is being made.
     :type server: str
     :param path: URL path to be appended to base host.
     :type path: str

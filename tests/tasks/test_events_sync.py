@@ -14,7 +14,7 @@ from splitio.optional.loaders import asyncio
 
 
 class EventsSyncTests(object):
-    """Impressions Syncrhonization task test cases."""
+    """Impressions Synchronization task test cases."""
 
     def test_normal_operation(self, mocker):
         """Test that the task works properly under normal circumstances."""
@@ -46,7 +46,7 @@ class EventsSyncTests(object):
 
 
 class EventsSyncAsyncTests(object):
-    """Impressions Syncrhonization task async test cases."""
+    """Impressions Synchronization task async test cases."""
 
     @pytest.mark.asyncio
     async def test_normal_operation(self, mocker):

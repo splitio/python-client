@@ -339,7 +339,7 @@ class PushManagerTests(object):
         ]
 
     def test_control_message(self, mocker):
-        """Test control mesage is forwarded to status tracker."""
+        """Test control message is forwarded to status tracker."""
         sse_event = SSEEvent('1', EventType.MESSAGE, '', '{}')
         control_message = ControlMessage('chan', 123, ControlType.STREAMING_ENABLED)
         parse_event_mock = mocker.Mock(spec=parse_incoming_event)
@@ -355,7 +355,7 @@ class PushManagerTests(object):
         assert status_tracker_mock.mock_calls[1] == mocker.call().handle_control_message(control_message)
 
     def test_occupancy_message(self, mocker):
-        """Test control mesage is forwarded to status tracker."""
+        """Test control message is forwarded to status tracker."""
         sse_event = SSEEvent('1', EventType.MESSAGE, '', '{}')
         occupancy_message = OccupancyMessage('[?occupancy=metrics.publishers]control_pri', 123, 2)
         parse_event_mock = mocker.Mock(spec=parse_incoming_event)
@@ -785,7 +785,7 @@ class PushManagerAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_control_message(self, mocker):
-        """Test control mesage is forwarded to status tracker."""
+        """Test control message is forwarded to status tracker."""
         sse_event = SSEEvent('1', EventType.MESSAGE, '', '{}')
         control_message = ControlMessage('chan', 123, ControlType.STREAMING_ENABLED)
         parse_event_mock = mocker.Mock(spec=parse_incoming_event)
@@ -802,7 +802,7 @@ class PushManagerAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_occupancy_message(self, mocker):
-        """Test control mesage is forwarded to status tracker."""
+        """Test control message is forwarded to status tracker."""
         sse_event = SSEEvent('1', EventType.MESSAGE, '', '{}')
         occupancy_message = OccupancyMessage('[?occupancy=metrics.publishers]control_pri', 123, 2)
         parse_event_mock = mocker.Mock(spec=parse_incoming_event)

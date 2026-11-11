@@ -43,7 +43,7 @@ class PushManagerBase(object, metaclass=abc.ABCMeta):
 
 
 class PushManager(PushManagerBase):
-    """Push notifications susbsytem manager."""
+    """Push notifications subsystem manager."""
 
     def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_url=None):
         """
@@ -325,7 +325,7 @@ class PushManager(PushManagerBase):
 
 
 class PushManagerAsync(PushManagerBase):
-    """Push notifications susbsytem manager."""
+    """Push notifications subsystem manager."""
 
     def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy=None):
         """

@@ -43,7 +43,7 @@ class EventsAPI(EventsAPIBase):
         """
         Class constructor.
 
-        :param http_client: HTTP Client responsble for issuing calls to the backend.
+        :param http_client: HTTP Client responsible for issuing calls to the backend.
         :type http_client: HttpClient
         :param sdk_key: sdk key.
         :type sdk_key: string
@@ -91,7 +91,7 @@ class EventsAPIAsync(EventsAPIBase):
         """
         Class constructor.
 
-        :param http_client: HTTP Client responsble for issuing calls to the backend.
+        :param http_client: HTTP Client responsible for issuing calls to the backend.
         :type http_client: HttpClient
         :param sdk_key: sdk key.
         :type sdk_key: string

@@ -4,7 +4,7 @@ import abc
 
 
 class BaseSynchronizationTask(object):
-    """Syncrhonization task interface."""
+    """Synchronization task interface."""
 
     __metadata__ = abc.ABCMeta
 

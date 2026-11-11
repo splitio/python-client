@@ -113,7 +113,7 @@ def _check_string_matches(value, operation, pattern, name, length):
 
 def _check_can_convert(value, name, operation):
     """
-    Check if is a valid convertion.
+    Check if is a valid conversion.
 
     :param key: value to be checked
     :type key: bool|number|array|

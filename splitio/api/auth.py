@@ -19,7 +19,7 @@ class AuthAPI(object):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: HttpClient
         :param sdk_key: User sdk key.
         :type sdk_key: string
@@ -68,7 +68,7 @@ class AuthAPIAsync(object):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: HttpClient
         :param sdk_key: User sdk key.
         :type sdk_key: string

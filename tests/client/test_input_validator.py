@@ -733,7 +733,7 @@ class ClientInputValidationTests(object):
             mocker.call("track: value must be a number.")
         ]
 
-        # Test traffic type existance
+        # Test traffic type existence
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
         type(factory).ready = ready_property
@@ -2427,7 +2427,7 @@ class ClientInputValidationAsyncTests(object):
             mocker.call("track: value must be a number.")
         ]
 
-        # Test traffic type existance
+        # Test traffic type existence
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
         type(factory).ready = ready_property

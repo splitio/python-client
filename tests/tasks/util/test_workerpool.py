@@ -11,7 +11,7 @@ class WorkerPoolTests(object):
     """Worker pool test cases."""
 
     def test_normal_operation(self, mocker):
-        """Test normal opeation works properly."""
+        """Test normal operation works properly."""
         worker_func = mocker.Mock()
         wpool = workerpool.WorkerPool(10, worker_func)
         wpool.start()
@@ -80,7 +80,7 @@ class WorkerPoolAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_normal_operation(self, mocker):
-        """Test normal opeation works properly."""
+        """Test normal operation works properly."""
         self.calls = 0
         calls = []
 

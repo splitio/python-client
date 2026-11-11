@@ -12,7 +12,7 @@ from splitio.optional.loaders import asyncio
 
 
 class TelemetrySyncTaskTests(object):
-    """Unique Keys Syncrhonization task test cases."""
+    """Unique Keys Synchronization task test cases."""
 
     def test_record_stats(self, mocker):
         """Test that the task works properly under normal circumstances."""
@@ -39,7 +39,7 @@ class TelemetrySyncTaskTests(object):
 
 
 class TelemetrySyncTaskAsyncTests(object):
-    """Unique Keys Syncrhonization task test cases."""
+    """Unique Keys Synchronization task test cases."""
 
     @pytest.mark.asyncio
     async def test_record_stats(self, mocker):

@@ -63,7 +63,7 @@ class WhitelistMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
@@ -110,7 +110,7 @@ class StartsWithMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
@@ -158,7 +158,7 @@ class EndsWithMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
@@ -206,7 +206,7 @@ class ContainsStringMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
@@ -255,7 +255,7 @@ class RegexMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))

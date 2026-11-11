@@ -1,4 +1,4 @@
-"""Segment syncrhonization module."""
+"""Segment synchronization module."""
 
 import logging
 from splitio.tasks import BaseSynchronizationTask
@@ -9,7 +9,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class SegmentSynchronizationTaskBase(BaseSynchronizationTask):
-    """Segment Syncrhonization base class."""
+    """Segment Synchronization base class."""
 
     def start(self):
         """Start segment synchronization."""
@@ -30,7 +30,7 @@ class SegmentSynchronizationTaskBase(BaseSynchronizationTask):
 
 
 class SegmentSynchronizationTask(SegmentSynchronizationTaskBase):
-    """Segment Syncrhonization class."""
+    """Segment Synchronization class."""
 
     def __init__(self, synchronize_segments, period):
         """
@@ -48,7 +48,7 @@ class SegmentSynchronizationTask(SegmentSynchronizationTaskBase):
 
 
 class SegmentSynchronizationTaskAsync(SegmentSynchronizationTaskBase):
-    """Segment Syncrhonization async class."""
+    """Segment Synchronization async class."""
 
     def __init__(self, synchronize_segments, period):
         """

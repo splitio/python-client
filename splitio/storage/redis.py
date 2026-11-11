@@ -1478,9 +1478,9 @@ class RedisTelemetryStorageBase(TelemetryStorage):
 
     def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
-        initilize telemetry objects
+        initialize telemetry objects
 
-        :param congif: factory configuration parameters
+        :param config: factory configuration parameters
         :type config: splitio.client.config
         """
         pass
@@ -1603,9 +1603,9 @@ class RedisTelemetryStorage(RedisTelemetryStorageBase):
 
     def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
-        initilize telemetry objects
+        initialize telemetry objects
 
-        :param congif: factory configuration parameters
+        :param config: factory configuration parameters
         :type config: splitio.client.config
         """
         self._tel_config.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)
@@ -1715,9 +1715,9 @@ class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
 
     async def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
-        initilize telemetry objects
+        initialize telemetry objects
 
-        :param congif: factory configuration parameters
+        :param config: factory configuration parameters
         :type config: splitio.client.config
         """
         await self._tel_config.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)

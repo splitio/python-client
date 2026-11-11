@@ -1,4 +1,4 @@
-"""Split syncrhonization task test module."""
+"""Split synchronization task test module."""
 
 import threading
 import time

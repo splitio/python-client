@@ -50,7 +50,7 @@ class EventParsingException(Exception):
 
 
 class BaseEvent(object, metaclass=abc.ABCMeta):
-    """Base event that reqiures subclasses tu have a type."""
+    """Base event that requires subclasses tu have a type."""
 
     @abstract_property
     def event_type(self):
@@ -442,7 +442,7 @@ class SegmentChangeUpdate(BaseUpdate):
     @property
     def segment_name(self):
         """
-        Return the semgent name associated with the data update.
+        Return the segment name associated with the data update.
 
         :returns: segment name
         :rtype: str

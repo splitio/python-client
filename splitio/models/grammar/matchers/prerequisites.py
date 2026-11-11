@@ -23,7 +23,7 @@ class PrerequisitesMatcher(object):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         if self._prerequisites is None:

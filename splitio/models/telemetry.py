@@ -252,7 +252,7 @@ class MethodLatencies(MethodLatenciesBase):
         """
         Pop all latencies
 
-        :return: Dictonary of latencies
+        :return: Dictionary of latencies
         :rtype: dict
         """
         with self._lock:
@@ -321,7 +321,7 @@ class MethodLatenciesAsync(MethodLatenciesBase):
         """
         Pop all latencies
 
-        :return: Dictonary of latencies
+        :return: Dictionary of latencies
         :rtype: dict
         """
         async with self._lock:
@@ -413,7 +413,7 @@ class HTTPLatencies(HTTPLatenciesBase):
         """
         Pop all latencies
 
-        :return: Dictonary of latencies
+        :return: Dictionary of latencies
         :rtype: dict
         """
         with self._lock:
@@ -471,7 +471,7 @@ class HTTPLatenciesAsync(HTTPLatenciesBase):
         """
         Pop all latencies
 
-        :return: Dictonary of latencies
+        :return: Dictionary of latencies
         :rtype: dict
         """
         async with self._lock:
@@ -559,7 +559,7 @@ class MethodExceptions(MethodExceptionsBase):
         """
         Pop all exceptions
 
-        :return: Dictonary of exceptions
+        :return: Dictionary of exceptions
         :rtype: dict
         """
         with self._lock:
@@ -626,7 +626,7 @@ class MethodExceptionsAsync(MethodExceptionsBase):
         """
         Pop all exceptions
 
-        :return: Dictonary of exceptions
+        :return: Dictionary of exceptions
         :rtype: dict
         """
         async with self._lock:
@@ -718,7 +718,7 @@ class LastSynchronization(LastSynchronizationBase):
         """
         get all exceptions
 
-        :return: Dictonary of latencies
+        :return: Dictionary of latencies
         :rtype: dict
         """
         with self._lock:
@@ -779,7 +779,7 @@ class LastSynchronizationAsync(LastSynchronizationBase):
         """
         get all exceptions
 
-        :return: Dictonary of latencies
+        :return: Dictionary of latencies
         :rtype: dict
         """
         async with self._lock:
@@ -882,7 +882,7 @@ class HTTPErrors(HTTPErrorsBase):
         """
         Pop all errors
 
-        :return: Dictonary of exceptions
+        :return: Dictionary of exceptions
         :rtype: dict
         """
         with self._lock:
@@ -959,7 +959,7 @@ class HTTPErrorsAsync(HTTPErrorsBase):
         """
         Pop all errors
 
-        :return: Dictonary of exceptions
+        :return: Dictionary of exceptions
         :rtype: dict
         """
         async with self._lock:
@@ -1009,13 +1009,13 @@ class TelemetryCountersBase(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def record_auth_rejections(self):
         """
-        Increament the auth rejection resource by one.
+        Increment the auth rejection resource by one.
         """
 
     @abc.abstractmethod
     def record_token_refreshes(self):
         """
-        Increament the token refreshes resource by one.
+        Increment the token refreshes resource by one.
         """
 
     @abc.abstractmethod

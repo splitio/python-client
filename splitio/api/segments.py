@@ -19,7 +19,7 @@ class SegmentsAPI(object):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: client.HttpClient
         :param sdk_key: User sdk_key token.
         :type sdk_key: string
@@ -79,7 +79,7 @@ class SegmentsAPIAsync(object):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: client.HttpClient
         :param sdk_key: User sdk_key token.
         :type sdk_key: string

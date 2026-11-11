@@ -352,7 +352,7 @@ class StreamingIntegrationTests(object):
         assert factory.client().get_treatment('maldo', 'split1') == 'off'
         assert task.running()
 
-        # We make another chagne in the BE and don't send the event.
+        # We make another change in the BE and don't send the event.
         # We restore occupancy, and it should be fetched by the
         # sync all after streaming is restored.
         split_changes[2] = {
@@ -720,7 +720,7 @@ class StreamingIntegrationTests(object):
         assert factory.client().get_treatment('maldo', 'split1') == 'off'
         assert task.running()
 
-        # We make another chagne in the BE and don't send the event.
+        # We make another change in the BE and don't send the event.
         # We restore occupancy, and it should be fetched by the
         # sync all after streaming is restored.
         split_changes[2] = {
@@ -1679,7 +1679,7 @@ class StreamingIntegrationAsyncTests(object):
         assert await factory.client().get_treatment('maldo', 'split1') == 'off'
         assert task.running()
 
-        # We make another chagne in the BE and don't send the event.
+        # We make another change in the BE and don't send the event.
         # We restore occupancy, and it should be fetched by the
         # sync all after streaming is restored.
         split_changes[2] = {'ff': {
@@ -2048,7 +2048,7 @@ class StreamingIntegrationAsyncTests(object):
         assert await factory.client().get_treatment('maldo', 'split1') == 'off'
         assert task.running()
 
-        # We make another chagne in the BE and don't send the event.
+        # We make another change in the BE and don't send the event.
         # We restore occupancy, and it should be fetched by the
         # sync all after streaming is restored.
         split_changes[2] = {'ff': {

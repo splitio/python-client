@@ -154,7 +154,7 @@ class SegmentSynchronizer(object):
         successful_sync, remaining_attempts, change_number = self._attempt_segment_sync(
             segment_name, fetch_options, till)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
-        if successful_sync:  # succedeed sync
+        if successful_sync:  # succeeded sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return True
         with_cdn_bypass = FetchOptions(True, change_number, spec=None)  # Set flag for bypassing CDN
@@ -342,7 +342,7 @@ class SegmentSynchronizerAsync(object):
         fetch_options = FetchOptions(True, spec=None)  # Set Cache-Control to no-cache
         successful_sync, remaining_attempts, change_number = await self._attempt_segment_sync(segment_name, fetch_options, till)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
-        if successful_sync:  # succedeed sync
+        if successful_sync:  # succeeded sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return True
 

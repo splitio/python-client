@@ -272,9 +272,9 @@ class TelemetryStorage(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def record_config(self, config):
         """
-        initilize telemetry objects
+        initialize telemetry objects
 
-        :param congif: factory configuration parameters
+        :param config: factory configuration parameters
         :type config: splitio.client.config
         """
         pass

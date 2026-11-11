@@ -19,7 +19,7 @@ try:
         return mmh3cffi.hash_str_128(key, seed)[0]
 
 except ImportError:
-    # Fallback to interpreted python hash algoritm (slower)
+    # Fallback to interpreted python hash algorithm (slower)
     from splitio.engine.hashfns import murmur3py
     _murmur_hash = murmur3py.murmur32_py
     def _murmur_hash128(k, s): return murmur3py.hash128_x64(k, s)[0]
@@ -37,7 +37,7 @@ def get_hash_fn(algo):
     """
     Return appropriate hash function for requested algorithm.
 
-    :param algo: Algoritm to use
+    :param algo: Algorithm to use
     :type algo: int
     :return: Hash function
     :rtype: function

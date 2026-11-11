@@ -21,7 +21,7 @@ class SSEMockServer(object):
 
     def __init__(self, req_queue=None, chunked=True):
         """
-        Consruct a mock server.
+        Construct a mock server.
 
         :param chunked: if False, the response body is delimited by the connection close
             (no Transfer-Encoding nor Content-Length headers), instead of chunked.
@@ -114,7 +114,7 @@ class SplitMockServer(object):
     def __init__(self, split_changes=None, segment_changes=None, req_queue=None,
                  auth_response=None, old_spec=False):
         """
-        Consruct a mock server.
+        Construct a mock server.
 
         :param changes: mapping of changeNumbers to splitChanges responses
         :type changes: dict

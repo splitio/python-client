@@ -1,4 +1,4 @@
-"""Telemetry syncrhonization task."""
+"""Telemetry synchronization task."""
 import logging
 
 from splitio.tasks import BaseSynchronizationTask

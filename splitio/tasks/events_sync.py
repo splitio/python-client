@@ -1,4 +1,4 @@
-"""Events syncrhonization task."""
+"""Events synchronization task."""
 import logging
 
 from splitio.tasks import BaseSynchronizationTask

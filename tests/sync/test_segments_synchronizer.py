@@ -642,7 +642,7 @@ class LocalSegmentsSynchronizerTests(object):
         segment2 = {"name": 'seg', "added": [], "since": -1, "till": 12}
         assert (segment_synchronizer._sanitize_segment(segment2) == segment1)
 
-        # should reset added and remved to array if values are None
+        # should reset added and removed to array if values are None
         segment2 = {"name": 'seg', "added": None, "removed": None, "since": -1, "till": 12}
         assert (segment_synchronizer._sanitize_segment(segment2) == segment1)
 

@@ -93,7 +93,7 @@ class ImpressionsAPI(ImpressionsAPIBase):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: HttpClient
         :param sdk_key: sdk key.
         :type sdk_key: string
@@ -167,7 +167,7 @@ class ImpressionsAPIAsync(ImpressionsAPIBase):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: HttpClient
         :param sdk_key: sdk key.
         :type sdk_key: string

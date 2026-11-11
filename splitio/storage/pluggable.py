@@ -377,7 +377,7 @@ class PluggableSplitStorageBase(SplitStorage):
 #        try:
 #            split = self.get(feature_flag_name)
 #            if not split:
-#                _LOGGER.warning("Tried to delete nonexistant split %s. Skipping", feature_flag_name)
+#                _LOGGER.warning("Tried to delete nonexistent split %s. Skipping", feature_flag_name)
 #                return False
 #            self._pluggable_adapter.delete(self._prefix.format(feature_flag_name=feature_flag_name))
 #            self._decrease_traffic_type_count(split.traffic_type_name)
@@ -1590,7 +1590,7 @@ class PluggableTelemetryStorageBase(TelemetryStorage):
 
     def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
-        initilize telemetry objects
+        initialize telemetry objects
 
         :param config: factory configuration parameters
         :type config: Dict
@@ -1730,7 +1730,7 @@ class PluggableTelemetryStorage(PluggableTelemetryStorageBase):
 
     def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
-        initilize telemetry objects
+        initialize telemetry objects
 
         :param config: factory configuration parameters
         :type config: Dict
@@ -1888,7 +1888,7 @@ class PluggableTelemetryStorageAsync(PluggableTelemetryStorageBase):
 
     async def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
-        initilize telemetry objects
+        initialize telemetry objects
 
         :param config: factory configuration parameters
         :type config: Dict

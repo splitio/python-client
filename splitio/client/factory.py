@@ -132,7 +132,7 @@ class SplitFactoryBase(object):
         """
         Return whether the factory is ready.
 
-        :return: True if the factory is ready. False otherwhise.
+        :return: True if the factory is ready. False otherwise.
         :rtype: bool
         """
         return self._status == Status.READY
