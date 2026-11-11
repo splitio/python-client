@@ -1,5 +1,4 @@
 """Segment module."""
-import json
 
 
 class FallbackTreatment(object):

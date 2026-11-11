@@ -294,10 +294,10 @@ class SplitWorker(WorkerBase):
                 if not sync_result.success:
                     _LOGGER.error("feature flags sync failed")
 
-            except SplitStorageException as e:  # pylint: disable=broad-except
+            except SplitStorageException:  # pylint: disable=broad-except
                 _LOGGER.error('Exception Updating Feature Flag')
                 _LOGGER.debug('Exception information: ', exc_info=True)
-            except Exception as e:  # pylint: disable=broad-except
+            except Exception:  # pylint: disable=broad-except
                 _LOGGER.error('Exception raised in feature flag synchronization')
                 _LOGGER.debug('Exception information: ', exc_info=True)
 
@@ -428,10 +428,10 @@ class SplitWorkerAsync(WorkerBase):
                 else:
                     rbs_till = event.change_number
                 await self._handler(till, rbs_till)
-            except SplitStorageException as e:  # pylint: disable=broad-except
+            except SplitStorageException:  # pylint: disable=broad-except
                 _LOGGER.error('Exception Updating Feature Flag')
                 _LOGGER.debug('Exception information: ', exc_info=True)
-            except Exception as e:  # pylint: disable=broad-except
+            except Exception:  # pylint: disable=broad-except
                 _LOGGER.error('Exception raised in split synchronization')
                 _LOGGER.debug('Exception information: ', exc_info=True)
 

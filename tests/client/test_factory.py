@@ -62,7 +62,7 @@ class SplitFactoryTests(object):
             if thread.name in ('SDKInitializer', 'SDKReadyFlagUpdater'):
                 thread.join(2)
 
-    def test_flag_sets_counts(self):      
+    def test_flag_sets_counts(self):
         factory = get_factory("none", config={
             'flagSetsFilter': ['set1', 'set2', 'set3']
         })
@@ -72,7 +72,7 @@ class SplitFactoryTests(object):
         event = threading.Event()
         factory.destroy(event)
         event.wait()
-        
+
         factory = get_factory("none", config={
             'flagSetsFilter': ['s#et1', 'set2', 'set3']
         })
@@ -265,7 +265,7 @@ class SplitFactoryTests(object):
 
         def _imppression_count_task_init_mock(self, synchronize_counters):
             self._task = imp_count_async_task_mock
-        mocker.patch('splitio.client.factory.ImpressionsCountSyncTask.__init__',
+        mocker.patch('splitio.tasks.impressions_sync.ImpressionsCountSyncTask.__init__',
                      new=_imppression_count_task_init_mock)
 
         telemetry_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
@@ -366,7 +366,7 @@ class SplitFactoryTests(object):
 
         def _imppression_count_task_init_mock(self, synchronize_counters):
             self._task = imp_count_async_task_mock
-        mocker.patch('splitio.client.factory.ImpressionsCountSyncTask.__init__',
+        mocker.patch('splitio.tasks.impressions_sync.ImpressionsCountSyncTask.__init__',
                      new=_imppression_count_task_init_mock)
 
         telemetry_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
@@ -727,7 +727,7 @@ class SplitFactoryTests(object):
         factory.destroy(None)
         time.sleep(0.1)
         assert factory.destroyed
-        
+
     def test_internal_ready_event_notification(self, mocker):
         """Test that a client with in-memory storage is sending internal events correctly."""
         # Setup synchronizer
@@ -742,7 +742,7 @@ class SplitFactoryTests(object):
         mocker.patch('splitio.sync.manager.Manager.__init__', new=_split_synchronizer)
 
         # Start factory and make assertions
-        
+
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
@@ -789,7 +789,7 @@ class SplitFactoryTests(object):
         assert event.internal_event == SdkInternalEvent.SDK_READY
         assert event.metadata == None
         factory.destroy()
-        
+
     def test_uwsgi_forked_client_creation(self, mocker):
         """Test client with preforked initialization."""
         # No real network: the initial sync is stubbed (it would retry against sdk.split.io with backoff).
@@ -861,14 +861,14 @@ class SplitFactoryAsyncTests(object):
             synchronizer.sync_all = sync_all
 
             def start_periodic_fetching():
-                pass        
+                pass
             synchronizer.start_periodic_fetching = start_periodic_fetching
 
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
             self._streaming_enabled = False
             self._telemetry_runtime_producer = telemetry_runtime_producer
-            
+
         mocker.patch('splitio.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
 
         async def synchronize_config(*_):
@@ -948,7 +948,7 @@ class SplitFactoryAsyncTests(object):
 
         def _imppression_count_task_init_mock(self, synchronize_counters):
             self._task = imp_count_async_task_mock
-        mocker.patch('splitio.client.factory.ImpressionsCountSyncTaskAsync.__init__',
+        mocker.patch('splitio.tasks.impressions_sync.ImpressionsCountSyncTaskAsync.__init__',
                      new=_imppression_count_task_init_mock)
 
         telemetry_async_task_mock = mocker.Mock(spec=asynctask.AsyncTaskAsync)
@@ -1079,7 +1079,7 @@ class SplitFactoryAsyncTests(object):
         await asyncio.sleep(0.5)
         assert factory.destroyed
         assert len(build_redis.mock_calls) == 2
-        
+
     @pytest.mark.asyncio
     async def test_internal_ready_event_notification(self, mocker):
         """Test that a client with in-memory storage is sending internal events correctly."""
@@ -1091,18 +1091,18 @@ class SplitFactoryAsyncTests(object):
             synchronizer.sync_all = sync_all
 
             def start_periodic_fetching():
-                pass        
+                pass
             synchronizer.start_periodic_fetching = start_periodic_fetching
 
             def start_periodic_data_recording():
-                pass        
+                pass
             synchronizer.start_periodic_data_recording = start_periodic_data_recording
 
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
             self._streaming_enabled = False
             self._telemetry_runtime_producer = telemetry_runtime_producer
-            
+
         mocker.patch('splitio.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
 
         async def synchronize_config(*_):

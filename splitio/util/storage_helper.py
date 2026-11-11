@@ -1,7 +1,6 @@
 """Storage Helper."""
 import logging
 from splitio.models import splits
-from splitio.models import rule_based_segments
 
 _LOGGER = logging.getLogger(__name__)
 

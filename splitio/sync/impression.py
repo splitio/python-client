@@ -86,7 +86,7 @@ class ImpressionsCountSynchronizer(object):
     def synchronize_counters(self):
         """Send impressions from both the failed and new queues."""
 
-        if self._impressions_counter == None:
+        if self._impressions_counter is None:
             return
 
         to_send = self._impressions_counter.pop_all()
@@ -179,7 +179,7 @@ class ImpressionsCountSynchronizerAsync(object):
     async def synchronize_counters(self):
         """Send impressions from both the failed and new queues."""
 
-        if self._impressions_counter == None:
+        if self._impressions_counter is None:
             return
 
         to_send = self._impressions_counter.pop_all()

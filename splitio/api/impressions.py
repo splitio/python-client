@@ -42,7 +42,7 @@ class ImpressionsAPIBase(object):  # pylint: disable=too-few-public-methods
 
     @staticmethod
     def _filter_out_null_prop(impression):
-        if impression.properties == None:
+        if impression.properties is None:
             return {
                 'k': impression.matching_key,
                 't': impression.treatment,

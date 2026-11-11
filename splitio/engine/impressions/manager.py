@@ -5,7 +5,6 @@ from splitio.util.time import utctime_ms
 from splitio.models.impressions import Impression
 from splitio.engine.hashfns import murmur_128
 from splitio.engine.cache.lru import SimpleLruCache
-from splitio.optional.loaders import asyncio
 
 _TIME_INTERVAL_MS = 3600 * 1000  # one hour
 

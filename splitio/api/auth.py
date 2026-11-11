@@ -4,9 +4,7 @@ import logging
 import json
 
 from splitio.api import APIException, headers_from_metadata
-from splitio.api.commons import headers_from_metadata, record_telemetry
 from splitio.spec import SPEC_VERSION
-from splitio.util.time import get_current_epoch_time_ms
 from splitio.api.client import HttpClientException
 from splitio.models.token import from_raw
 from splitio.models.telemetry import HTTPExceptionsAndLatencies

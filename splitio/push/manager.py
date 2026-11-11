@@ -9,7 +9,6 @@ from splitio.api import APIException
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.push import AuthException
 from splitio.push.splitsse import SplitSSEClient, SplitSSEClientAsync
-from splitio.push.sse import SSE_EVENT_ERROR
 from splitio.push.parser import parse_incoming_event, EventParsingException, EventType, \
     MessageType
 from splitio.push.processor import MessageProcessor, MessageProcessorAsync

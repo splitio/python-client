@@ -10,7 +10,7 @@ from splitio.storage import SplitStorage, SegmentStorage, ImpressionStorage, Eve
     ImpressionPipelinedStorage, TelemetryStorage, FlagSetsFilter, RuleBasedSegmentsStorage
 from splitio.storage.adapters.redis import RedisAdapterException
 from splitio.storage.adapters.cache_trait import decorate as add_cache, DEFAULT_MAX_AGE
-from splitio.storage.adapters.cache_trait import LocalMemoryCache, LocalMemoryCacheAsync
+from splitio.storage.adapters.cache_trait import LocalMemoryCacheAsync
 from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
 _LOGGER = logging.getLogger(__name__)
@@ -1646,11 +1646,6 @@ class RedisTelemetryStorage(RedisTelemetryStorageBase):
         result = pipe.execute()
         self.expire_keys(self._TELEMETRY_EXCEPTIONS_KEY,
                          self._TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])
-
-    def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
-        """Record active and redundant factories."""
-        self._tel_config.record_active_and_redundant_factories(
-            active_factory_count, redundant_factory_count)
 
     def expire_latency_keys(self, total_keys, inserted):
         """

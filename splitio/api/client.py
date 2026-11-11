@@ -461,7 +461,7 @@ class HttpClientKerberos(HttpClientBase):
             try:
                 return self._do_get(server, path, sdk_key, query, extra_headers, start)
 
-            except requests.exceptions.ProxyError as exc:
+            except requests.exceptions.ProxyError:
                 _LOGGER.debug("Proxy Exception caught, resetting the http session")
                 self._sessions[server].close()
                 self._sessions[server] = requests.Session()
@@ -526,7 +526,7 @@ class HttpClientKerberos(HttpClientBase):
             try:
                 return self._do_post(server, path, sdk_key, query, extra_headers, body, start)
 
-            except requests.exceptions.ProxyError as exc:
+            except requests.exceptions.ProxyError:
                 _LOGGER.debug("Proxy Exception caught, resetting the http session")
                 self._sessions[server].close()
                 self._sessions[server] = requests.Session()

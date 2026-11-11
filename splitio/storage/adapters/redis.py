@@ -796,7 +796,7 @@ async def _build_default_client_async(config):  # pylint: disable=too-many-local
     max_connections = config.get('redisMaxConnections', None)
     prefix = config.get('redisPrefix')
 
-    if connection_pool == None:
+    if connection_pool is None:
         connection_pool = aioredis.ConnectionPool.from_url(
             "redis://" + host + ":" + str(port),
             db=database,

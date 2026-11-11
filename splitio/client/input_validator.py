@@ -7,7 +7,6 @@ import inspect
 
 from splitio.client.key import Key
 from splitio.client import client
-from splitio.engine.evaluator import CONTROL
 from splitio.models.fallback_treatment import FallbackTreatment
 
 
@@ -557,7 +556,7 @@ def validate_attributes(attributes, method_name):
 
 
 def validate_evaluation_options(evaluation_options, method_name):
-    if evaluation_options == None:
+    if evaluation_options is None:
         return None
 
     if not isinstance(evaluation_options, client.EvaluationOptions):
@@ -764,7 +763,7 @@ def validate_fallback_treatment(fallback_treatment):
 
 
 def validate_regex_name(name):
-    if re.match(_FALLBACK_TREATMENT_REGEX, name) == None:
+    if re.match(_FALLBACK_TREATMENT_REGEX, name) is None:
         return False
 
     return True

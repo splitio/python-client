@@ -208,7 +208,7 @@ def _sanitize_proxy(config, processed):
             return processed
 
         if parsed.port is not None:
-            p = int(parsed.port)
+            int(parsed.port)
     except Exception:
         _LOGGER.warning(
             'Config: proxy hostname should be a valid hostname and proxy port should be of int type.')

@@ -640,7 +640,7 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         :rtype: bool
         """
         try:
-            return self._pluggable_adapter.get(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name)) != None
+            return self._pluggable_adapter.get(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name)) is not None
 
         except Exception:
             _LOGGER.error('Error getting feature flag info from storage')
@@ -807,7 +807,7 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
         :rtype: bool
         """
         try:
-            return await self._pluggable_adapter.get(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name)) != None
+            return await self._pluggable_adapter.get(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name)) is not None
 
         except Exception:
             _LOGGER.error('Error getting traffic type info from storage')

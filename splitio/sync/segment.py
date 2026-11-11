@@ -11,7 +11,6 @@ from splitio.util.backoff import Backoff
 from splitio.optional.loaders import asyncio, aiofiles
 from splitio.sync import util
 from splitio.util.storage_helper import get_standard_segment_names_in_rbs_storage, get_standard_segment_names_in_rbs_storage_async
-from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -208,7 +207,7 @@ class SegmentSynchronizer(object):
         :return: True if segment exist. False otherwise.
         :rtype: bool
         """
-        return self._segment_storage.get(segment_name) != None
+        return self._segment_storage.get(segment_name) is not None
 
 
 class SegmentSynchronizerAsync(object):
@@ -392,7 +391,7 @@ class SegmentSynchronizerAsync(object):
         :return: True if segment exist. False otherwise.
         :rtype: bool
         """
-        return await self._segment_storage.get(segment_name) != None
+        return await self._segment_storage.get(segment_name) is not None
 
 
 class LocalSegmentSynchronizerBase(object):
@@ -538,7 +537,7 @@ class LocalSegmentSynchronizer(LocalSegmentSynchronizerBase):
         :return: True if segment exist. False otherwise.
         :rtype: bool
         """
-        return self._segment_storage.get(segment_name) != None
+        return self._segment_storage.get(segment_name) is not None
 
 
 class LocalSegmentSynchronizerAsync(LocalSegmentSynchronizerBase):
@@ -649,4 +648,4 @@ class LocalSegmentSynchronizerAsync(LocalSegmentSynchronizerBase):
         :return: True if segment exist. False otherwise.
         :rtype: bool
         """
-        return await self._segment_storage.get(segment_name) != None
+        return await self._segment_storage.get(segment_name) is not None

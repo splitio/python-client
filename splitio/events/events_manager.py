@@ -42,13 +42,13 @@ class EventsManagerBase(EventsManagerInterface):
         pass
 
     def _event_already_triggered(self, sdk_event):
-        if self._active_subscriptions.get(sdk_event) != None:
+        if self._active_subscriptions.get(sdk_event) is not None:
             return self._active_subscriptions.get(sdk_event).triggered
 
         return False
 
     def _get_internal_event_status(self, sdk_internal_event):
-        if self._internal_events_status.get(sdk_internal_event) != None:
+        if self._internal_events_status.get(sdk_internal_event) is not None:
             return self._internal_events_status[sdk_internal_event]
 
         return False
@@ -57,17 +57,17 @@ class EventsManagerBase(EventsManagerInterface):
         self._internal_events_status[sdk_internal_event] = status
 
     def _set_sdk_event_triggered(self, sdk_event):
-        if self._active_subscriptions.get(sdk_event) == None:
+        if self._active_subscriptions.get(sdk_event) is None:
             return
 
-        if self._active_subscriptions.get(sdk_event).triggered == True:
+        if self._active_subscriptions.get(sdk_event).triggered:
             return
 
         self._active_subscriptions[sdk_event] = self._active_subscriptions[sdk_event]._replace(
             triggered=True)
 
     def _get_event_handler(self, sdk_event):
-        if self._active_subscriptions.get(sdk_event) == None:
+        if self._active_subscriptions.get(sdk_event) is None:
             return None
 
         return self._active_subscriptions.get(sdk_event).handler
@@ -128,7 +128,7 @@ class EventsManagerBase(EventsManagerInterface):
 
     def _execution_limit(self, sdk_event):
         limit = self._manager_config.execution_limits.get(sdk_event)
-        if limit == None:
+        if limit is None:
             return -1
 
         return limit
@@ -154,7 +154,7 @@ class EventsManager(EventsManagerBase):
         self._lock = threading.RLock()
 
     def register(self, sdk_event, event_handler):
-        if self._active_subscriptions.get(sdk_event) != None and self._get_event_handler(sdk_event) != None:
+        if self._active_subscriptions.get(sdk_event) is not None and self._get_event_handler(sdk_event) is not None:
             return
 
         with self._lock:
@@ -168,7 +168,7 @@ class EventsManager(EventsManagerBase):
             self._active_subscriptions[sdk_event] = ActiveSubscriptions(False, event_handler)
 
     def unregister(self, sdk_event):
-        if self._active_subscriptions.get(sdk_event) == None:
+        if self._active_subscriptions.get(sdk_event) is None:
             return
 
         with self._lock:
@@ -179,11 +179,11 @@ class EventsManager(EventsManagerBase):
             self._update_internal_event_status(sdk_internal_event, True)
             for sorted_event in self._manager_config.evaluation_order:
                 if sorted_event in self._get_sdk_event_if_applicable(sdk_internal_event):
-                    if self._get_event_handler(sorted_event) != None:
+                    if self._get_event_handler(sorted_event) is not None:
                         self._fire_sdk_event(sorted_event, event_metadata)
 
                     # if client is not subscribed to SDK_READY
-                    if sorted_event == SdkEvent.SDK_READY and self._get_event_handler(sorted_event) == None:
+                    if sorted_event == SdkEvent.SDK_READY and self._get_event_handler(sorted_event) is None:
                         _LOGGER.debug("EventsManager: Registering SDK_READY event as fired")
                         self._active_subscriptions[SdkEvent.SDK_READY] = ActiveSubscriptions(
                             True, None)
@@ -212,7 +212,7 @@ class EventsManagerAsync(EventsManagerBase):
         self._lock = asyncio.Lock()
 
     async def register(self, sdk_event, event_handler):
-        if self._active_subscriptions.get(sdk_event) != None and self._get_event_handler(sdk_event) != None:
+        if self._active_subscriptions.get(sdk_event) is not None and self._get_event_handler(sdk_event) is not None:
             return
 
         async with self._lock:
@@ -226,7 +226,7 @@ class EventsManagerAsync(EventsManagerBase):
             self._active_subscriptions[sdk_event] = ActiveSubscriptions(False, event_handler)
 
     async def unregister(self, sdk_event):
-        if self._active_subscriptions.get(sdk_event) == None:
+        if self._active_subscriptions.get(sdk_event) is None:
             return
 
         async with self._lock:
@@ -237,11 +237,11 @@ class EventsManagerAsync(EventsManagerBase):
             self._update_internal_event_status(sdk_internal_event, True)
             for sorted_event in self._manager_config.evaluation_order:
                 if sorted_event in self._get_sdk_event_if_applicable(sdk_internal_event):
-                    if self._get_event_handler(sorted_event) != None:
+                    if self._get_event_handler(sorted_event) is not None:
                         self._fire_sdk_event(sorted_event, event_metadata)
 
                     # if client is not subscribed to SDK_READY
-                    if sorted_event == SdkEvent.SDK_READY and self._get_event_handler(sorted_event) == None:
+                    if sorted_event == SdkEvent.SDK_READY and self._get_event_handler(sorted_event) is None:
                         _LOGGER.debug("EventsManager: Registering SDK_READY event as fired")
                         self._active_subscriptions[SdkEvent.SDK_READY] = ActiveSubscriptions(
                             True, None)

@@ -104,6 +104,6 @@ class StrategyOptimizedMode(BaseStrategy):
 
             imps.append((self._observer.test_and_set(imp), attrs))
 
-        counter_imps = [imp for imp, _ in imps if imp.previous_time != None]
+        counter_imps = [imp for imp, _ in imps if imp.previous_time is not None]
         this_hour = truncate_time(utctime_ms())
         return [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour], imps, counter_imps, []

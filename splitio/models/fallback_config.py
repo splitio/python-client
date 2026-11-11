@@ -78,20 +78,20 @@ class FallbackTreatmentCalculator(object):
         return self._fallback_treatments_configuration
 
     def resolve(self, flag_name, label):
-        if self._fallback_treatments_configuration != None:
-            if self._fallback_treatments_configuration.by_flag_fallback_treatment != None \
-                    and self._fallback_treatments_configuration.by_flag_fallback_treatment.get(flag_name) != None:
+        if self._fallback_treatments_configuration is not None:
+            if self._fallback_treatments_configuration.by_flag_fallback_treatment is not None \
+                    and self._fallback_treatments_configuration.by_flag_fallback_treatment.get(flag_name) is not None:
                 return self._copy_with_label(self._fallback_treatments_configuration.by_flag_fallback_treatment.get(flag_name),
                                              self._resolve_label(label))
 
-            if self._fallback_treatments_configuration.global_fallback_treatment != None:
+            if self._fallback_treatments_configuration.global_fallback_treatment is not None:
                 return self._copy_with_label(self._fallback_treatments_configuration.global_fallback_treatment,
                                              self._resolve_label(label))
 
         return FallbackTreatment(CONTROL, None, label)
 
     def _resolve_label(self, label):
-        if label == None:
+        if label is None:
             return None
 
         return self._label_prefix + label

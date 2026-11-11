@@ -28,7 +28,7 @@ class RuleBasedSegmentMatcher(Matcher):
         :returns: Wheter the match is successful.
         :rtype: bool
         """
-        if self._rbs_segment_name == None:
+        if self._rbs_segment_name is None:
             return False
 
         rb_segment = context['ec'].rbs_segments.get(self._rbs_segment_name)

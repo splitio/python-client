@@ -26,7 +26,7 @@ class PrerequisitesMatcher(object):
         :returns: Wheter the match is successful.
         :rtype: bool
         """
-        if self._prerequisites == None:
+        if self._prerequisites is None:
             return True
 
         evaluator = context.get('evaluator')

@@ -68,7 +68,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             )
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
-        except HttpClientException as exc:
+        except HttpClientException:
             _LOGGER.debug(
                 'Error posting init config because an exception was raised by the HTTPClient'
             )
@@ -159,7 +159,7 @@ class TelemetryAPIAsync(object):  # pylint: disable=too-few-public-methods
             )
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
-        except HttpClientException as exc:
+        except HttpClientException:
             _LOGGER.debug(
                 'Error posting init config because an exception was raised by the HTTPClient'
             )

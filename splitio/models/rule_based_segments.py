@@ -91,8 +91,8 @@ class RuleBasedSegment(object):
 
     def get_condition_segment_names(self):
         segments = set()
-        for condition in self._conditions:
-            for matcher in condition.matchers:
+        for cond in self._conditions:
+            for matcher in cond.matchers:
                 if matcher._matcher_type == 'IN_SEGMENT':
                     segments.add(matcher.to_json()['userDefinedSegmentMatcherData']['segmentName'])
         return segments
@@ -116,13 +116,13 @@ def from_raw(raw_rule_based_segment):
                       raw_rule_based_segment['name'])
         conditions = [condition.from_raw(_DEFAULT_CONDITIONS_TEMPLATE)]
 
-    if raw_rule_based_segment.get('excluded') == None:
+    if raw_rule_based_segment.get('excluded') is None:
         raw_rule_based_segment['excluded'] = {'keys': [], 'segments': []}
 
-    if raw_rule_based_segment['excluded'].get('keys') == None:
+    if raw_rule_based_segment['excluded'].get('keys') is None:
         raw_rule_based_segment['excluded']['keys'] = []
 
-    if raw_rule_based_segment['excluded'].get('segments') == None:
+    if raw_rule_based_segment['excluded'].get('segments') is None:
         raw_rule_based_segment['excluded']['segments'] = []
 
     return RuleBasedSegment(
@@ -182,7 +182,7 @@ class ExcludedSegment(object):
 
         :param name: rule based segment name
         :type name: str
-        :param type: segment type 
+        :param type: segment type
         :type type: str
         """
         self._name = name

@@ -2,7 +2,6 @@
 
 from enum import Enum
 
-from splitio.models import MatcherNotFoundException
 from splitio.models.grammar import matchers
 from splitio.models.grammar import partitions
 

@@ -3,7 +3,6 @@ import logging
 import threading
 from collections import Counter
 from enum import Enum
-from urllib.parse import urlparse
 import queue
 
 from splitio.optional.loaders import asyncio
@@ -57,22 +56,20 @@ from splitio.util.time import get_current_epoch_time_ms
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync
 from splitio.tasks.segment_sync import SegmentSynchronizationTask, SegmentSynchronizationTaskAsync
-from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask, \
-    ImpressionsCountSyncTaskAsync, ImpressionsSyncTaskAsync
+from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsSyncTaskAsync
 from splitio.tasks.events_sync import EventsSyncTask, EventsSyncTaskAsync
 from splitio.tasks.telemetry_sync import TelemetrySyncTask, TelemetrySyncTaskAsync
 
 # Synchronizer
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
-    LocalhostSynchronizer, RedisSynchronizer, PluggableSynchronizer, \
+    LocalhostSynchronizer, RedisSynchronizer, \
     SynchronizerAsync, RedisSynchronizerAsync, LocalhostSynchronizerAsync
 from splitio.sync.manager import Manager, RedisManager, ManagerAsync, RedisManagerAsync
 from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode, \
     SplitSynchronizerAsync, LocalSplitSynchronizerAsync
 from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer, SegmentSynchronizerAsync, \
     LocalSegmentSynchronizerAsync
-from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer, \
-    ImpressionsCountSynchronizerAsync, ImpressionSynchronizerAsync
+from splitio.sync.impression import ImpressionSynchronizer, ImpressionSynchronizerAsync
 from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync
 from splitio.sync.telemetry import TelemetrySynchronizer, InMemoryTelemetrySubmitter, \
     LocalhostTelemetrySubmitter, RedisTelemetrySubmitter, LocalhostTelemetrySubmitterAsync, \

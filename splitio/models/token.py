@@ -68,7 +68,7 @@ def from_raw(raw_token):
     :return: New token model object
     :rtype: splitio.models.token.Token
     """
-    if not 'pushEnabled' in raw_token or not 'token' in raw_token:
+    if 'pushEnabled' not in raw_token or 'token' not in raw_token:
         return Token(False, None, None, None, None)
 
     token = raw_token['token']
