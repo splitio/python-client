@@ -16,7 +16,7 @@ Split SDK is an open source project and we welcome feedback and contribution. Th
 1. Fork the repository and create a topic branch from `development` branch (we follow GitFlow: `main` holds the stable release history and `development` is the integration branch). Please use a descriptive name for your branch.
 2. While developing, use descriptive messages in your commits. Avoid short or meaningless sentences like "fix bug".
 3. Make sure to add tests for both positive and negative cases.
-4. <if applicable> Run the linter script of the project and fix any issues you find.
+4. Run the linter (`flake8`) and fix any issues you find.
 5. Run the build script and make sure it runs with no errors.
 6. Run all tests and make sure there are no failures.
 7. `git push` your changes to GitHub within your topic branch.
@@ -35,7 +35,7 @@ To run the tests, from the repository root:
 
 ### Linting and other useful checks
 
-To lint, run `flake8 splitio/`.
+To lint, run `flake8` from the repository root. `setup.cfg` limits it to `splitio/` and `tests/`.
 
 # Contact
 
