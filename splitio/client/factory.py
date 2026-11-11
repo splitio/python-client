@@ -23,7 +23,7 @@ from splitio_commons.models.events import SdkInternalEvent
 from splitio.events.events_emitter import EventsEmitter
 
 # push
-from splitio_commons.push.manager import PushManager, PushManagerAsync
+from splitio.push.manager import PushManagerWithAuthRefresh, PushManagerAsyncWithAuthRefresh
 from splitio_commons.push.processor import MessageProcessor, MessageProcessorAsync
 from splitio.push.workers import SplitWorker, SplitWorkerAsync
 from splitio_commons.push.update_event_type_util import UpdateEventTypeUtil, UpdateEventTypeUtilAsync
@@ -315,6 +315,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
 
             if not ready:
                 self._telemetry_init_producer.record_bur_time_out()
+                self._events_emitter.emit(SdkInternalEvent.SDK_READY_TIMED_OUT, None)
                 raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
 
     def destroy(self, destroyed_event=None):
@@ -469,6 +470,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
             _LOGGER.error("Exception initializing SDK")
             _LOGGER.debug(str(e))
             await self._telemetry_init_producer.record_bur_time_out()
+            await self._events_emitter.emit_async(SdkInternalEvent.SDK_READY_TIMED_OUT, None)
             raise TimeoutException('SDK Initialization: time of %d exceeded' % timeout)
 
     async def destroy(self, destroyed_event=None):
@@ -830,9 +832,10 @@ async def _build_push_classes_async(synchronizer, cfg, telemetry_runtime_produce
         segment_worker = SegmentWorkerAsync(synchronizer._harness_synchronizers.segment_sync.synchronize_segment, segment_worker_queue)
         await update_event_util.add_update_event(EventUpdateType.SEGMENT_UPDATE, SegmentChangeUpdate, segment_worker.handle_segment_change, segment_worker, segment_worker_queue)
 
-        auth_synchronizer = AuthSynchronizerAsync(apis['auth'], telemetry_runtime_producer, push_queue)
+        # The push manager is created after the auth synchronizer, which reconnects SSE on every token refresh
+        auth_synchronizer = AuthSynchronizerAsync(apis['auth'], telemetry_runtime_producer, push_queue, refresh_callback=lambda: push_manager.reconnect())
         processor = MessageProcessorAsync(update_event_util, EventUpdateType)
-        push_manager = PushManagerAsync(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, auth_synchronizer, update_event_util, EventUpdateType, streaming_api_base_url, api_key[-4:])
+        push_manager = PushManagerAsyncWithAuthRefresh(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, auth_synchronizer, update_event_util, EventUpdateType, streaming_api_base_url, api_key[-4:])
 
     return push_manager, push_queue
 
@@ -855,9 +858,10 @@ def _build_push_classes(synchronizer, cfg, telemetry_runtime_producer, apis, sdk
         segment_worker = SegmentWorker(synchronizer._harness_synchronizers.segment_sync.synchronize_segment, segment_worker_queue)
         update_event_util.add_update_event(EventUpdateType.SEGMENT_UPDATE, SegmentChangeUpdate, segment_worker.handle_segment_change, segment_worker, segment_worker_queue)
     
-        auth_synchronizer = AuthSynchronizer(apis['auth'], telemetry_runtime_producer, push_queue)
+        # The push manager is created after the auth synchronizer, which reconnects SSE on every token refresh
+        auth_synchronizer = AuthSynchronizer(apis['auth'], telemetry_runtime_producer, push_queue, refresh_callback=lambda: push_manager.reconnect())
         processor = MessageProcessor(update_event_util, EventUpdateType)
-        push_manager = PushManager(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, auth_synchronizer, update_event_util, EventUpdateType, streaming_api_base_url, api_key[-4:])
+        push_manager = PushManagerWithAuthRefresh(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, auth_synchronizer, update_event_util, EventUpdateType, streaming_api_base_url, api_key[-4:])
     
     return push_manager, push_queue
 
@@ -1016,6 +1020,7 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     synchronizers = _build_synchronizer_classes(ThreadingMode.ASYNC, storages, apis, cfg, telemetry_submitter, unique_keys_tracker, imp_counter, sender_adapter, events_emitter)
     tasks = _build_sync_tasks(ThreadingMode.ASYNC, synchronizers, cfg, internal_events_task)
     synchronizer = SynchronizerAsync(synchronizers, tasks, events_emitter)
+    synchronizer._harness_tasks._definition_task._task._main = synchronizer.synchronize_definitions
 
     push_manager, push_queue = await _build_push_classes_async(synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key, events_emitter)
     manager = ManagerAsync(synchronizer, apis['auth'], cfg['streamingEnabled'],
