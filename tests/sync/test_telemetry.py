@@ -164,7 +164,6 @@ class TelemetrySubmitterTests(object):
             "eQ": 20,
             "eD": 10,
             "lS": {"sp": 5, "se": 3, "im": 10, "ic": 0, "ev": 4, "te": 0, "to": 3},
-            "t": ["tag1"],  # noqa: F601
             "hE": {"sp": {"500": 3, "501": 2}, "se": {"401": 1}, "im": {"500": 1}, "ic": {"401": 5}, "ev": {"404": 10}, "te": {"501": 3}, "to": {"505": 11}},
             "hL": {"sp": [1] + [0] * 22, "se": [0] * 23, "im": [0] * 23, "ic": [0] * 23, "ev": [0] * 23, "te": [0] * 23, "to": [0] * 23},
             "aR": 1,
@@ -177,7 +176,7 @@ class TelemetrySubmitterTests(object):
             "seC": 1,
             "skC": 0,
             "ufs": {"rbs": 0, "sp": 3},
-            "t": ['tag1']  # noqa: F601
+            "t": ['tag1']
         })
 
 
@@ -290,7 +289,6 @@ class TelemetrySubmitterAsyncTests(object):
             "eQ": 20,
             "eD": 10,
             "lS": {"sp": 5, "se": 3, "im": 10, "ic": 0, "ev": 4, "te": 0, "to": 3},
-            "t": ["tag1"],  # noqa: F601
             "hE": {"sp": {"500": 3, "501": 2}, "se": {"401": 1}, "im": {"500": 1}, "ic": {"401": 5}, "ev": {"404": 10}, "te": {"501": 3}, "to": {"505": 11}},
             "hL": {"sp": [1] + [0] * 22, "se": [0] * 23, "im": [0] * 23, "ic": [0] * 23, "ev": [0] * 23, "te": [0] * 23, "to": [0] * 23},
             "aR": 1,
@@ -303,5 +301,5 @@ class TelemetrySubmitterAsyncTests(object):
             "seC": 1,
             "skC": 0,
             "ufs": {"rbs": 0, "sp": 3},
-            "t": ['tag1']  # noqa: F601
+            "t": ['tag1']
         })
