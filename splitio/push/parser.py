@@ -7,6 +7,7 @@ from splitio.util.decorators import abstract_property
 from splitio.util.time import utctime_ms
 from splitio.push.sse import SSE_EVENT_ERROR, SSE_EVENT_MESSAGE
 
+
 class EventType(Enum):
     """Event type enumeration."""
 
@@ -378,7 +379,7 @@ class SplitChangeUpdate(BaseUpdate):
 class SplitKillUpdate(BaseUpdate):
     """Feature flag Kill notification."""
 
-    def __init__(self, channel, timestamp, change_number, feature_flag_name, default_treatment):  # pylint:disable=too-many-arguments
+    def __init__(self, channel, timestamp, change_number, feature_flag_name, default_treatment):
         """Class constructor."""
         BaseUpdate.__init__(self, channel, timestamp, change_number)
         self._feature_flag_name = feature_flag_name
@@ -452,6 +453,7 @@ class SegmentChangeUpdate(BaseUpdate):
         """Return string representation."""
         return "SegmentChange - changeNumber=%d, name=%s" % (self.change_number, self.segment_name)
 
+
 class RBSChangeUpdate(BaseUpdate):
     """rbs Change notification."""
 
@@ -502,6 +504,7 @@ class RBSChangeUpdate(BaseUpdate):
     def __str__(self):
         """Return string representation."""
         return "RBSChange - changeNumber=%d" % (self.change_number)
+
 
 class ControlMessage(BaseMessage):
     """Control notification."""

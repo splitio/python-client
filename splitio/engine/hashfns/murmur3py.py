@@ -37,9 +37,9 @@ def murmur32_py(key, seed=0x0):
     for block_start in range(0, nblocks * 4, 4):
         # ??? big endian?
         key1 = key[block_start + 3] << 24 | \
-             key[block_start + 2] << 16 | \
-             key[block_start + 1] << 8 | \
-             key[block_start + 0]
+            key[block_start + 2] << 16 | \
+            key[block_start + 1] << 8 | \
+            key[block_start + 0]
 
         key1 = (calc1 * key1) & 0xFFFFFFFF
         key1 = (key1 << 15 | key1 >> 17) & 0xFFFFFFFF  # inlined ROTL32
@@ -100,13 +100,13 @@ def hash128_x64(key, seed):
     for block_start in range(0, nblocks * 8, 8):
         # ??? big endian?
         k1 = key[2 * block_start + 7] << 56 | \
-             key[2 * block_start + 6] << 48 | \
-             key[2 * block_start + 5] << 40 | \
-             key[2 * block_start + 4] << 32 | \
-             key[2 * block_start + 3] << 24 | \
-             key[2 * block_start + 2] << 16 | \
-             key[2 * block_start + 1] << 8 | \
-             key[2 * block_start + 0]
+            key[2 * block_start + 6] << 48 | \
+            key[2 * block_start + 5] << 40 | \
+            key[2 * block_start + 4] << 32 | \
+            key[2 * block_start + 3] << 24 | \
+            key[2 * block_start + 2] << 16 | \
+            key[2 * block_start + 1] << 8 | \
+            key[2 * block_start + 0]
 
         k2 = key[2 * block_start + 15] << 56 | \
             key[2 * block_start + 14] << 48 | \

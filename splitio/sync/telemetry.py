@@ -1,6 +1,7 @@
 """Telemetry Sync Class."""
 import abc
 
+
 class TelemetrySynchronizer(object):
     """Telemetry synchronizer class."""
 
@@ -118,6 +119,7 @@ class InMemoryTelemetrySubmitterAsync(TelemetrySubmitter):
         merged_dict.update(await self._telemetry_evaluation_consumer.pop_formatted_stats())
         return merged_dict
 
+
 class RedisTelemetrySubmitter(object):
     """Telemetry sumbitter class."""
 
@@ -149,6 +151,7 @@ class RedisTelemetrySubmitterAsync(object):
         """No implementation."""
         pass
 
+
 class LocalhostTelemetrySubmitter(object):
     """Telemetry sumbitter class."""
 
@@ -159,6 +162,7 @@ class LocalhostTelemetrySubmitter(object):
     def synchronize_stats(self):
         """No implementation."""
         pass
+
 
 class LocalhostTelemetrySubmitterAsync(object):
     """Telemetry sumbitter class."""

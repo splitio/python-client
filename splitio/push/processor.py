@@ -7,6 +7,7 @@ from splitio.push.parser import UpdateType
 from splitio.push.workers import SplitWorker, SplitWorkerAsync, SegmentWorker, SegmentWorkerAsync
 from splitio.optional.loaders import asyncio
 
+
 class MessageProcessorBase(object, metaclass=abc.ABCMeta):
     """Message processor template."""
 
@@ -22,6 +23,7 @@ class MessageProcessorBase(object, metaclass=abc.ABCMeta):
     def shutdown(self):
         """Stop splits & segments workers."""
 
+
 class MessageProcessor(MessageProcessorBase):
     """Message processor class."""
 
@@ -35,8 +37,10 @@ class MessageProcessor(MessageProcessorBase):
         self._feature_flag_queue = Queue()
         self._segments_queue = Queue()
         self._synchronizer = synchronizer
-        self._feature_flag_worker = SplitWorker(synchronizer.synchronize_splits, synchronizer.synchronize_segment, self._feature_flag_queue, synchronizer.split_sync.feature_flag_storage, synchronizer.segment_storage, telemetry_runtime_producer, synchronizer.split_sync.rule_based_segment_storage)
-        self._segments_worker = SegmentWorker(synchronizer.synchronize_segment, self._segments_queue)
+        self._feature_flag_worker = SplitWorker(synchronizer.synchronize_splits, synchronizer.synchronize_segment, self._feature_flag_queue,
+                                                synchronizer.split_sync.feature_flag_storage, synchronizer.segment_storage, telemetry_runtime_producer, synchronizer.split_sync.rule_based_segment_storage)
+        self._segments_worker = SegmentWorker(
+            synchronizer.synchronize_segment, self._segments_queue)
         self._handlers = {
             UpdateType.SPLIT_UPDATE: self._handle_feature_flag_update,
             UpdateType.SPLIT_KILL: self._handle_feature_flag_kill,
@@ -120,13 +124,15 @@ class MessageProcessorAsync(MessageProcessorBase):
         self._feature_flag_queue = asyncio.Queue()
         self._segments_queue = asyncio.Queue()
         self._synchronizer = synchronizer
-        self._feature_flag_worker = SplitWorkerAsync(synchronizer.synchronize_splits, synchronizer.synchronize_segment, self._feature_flag_queue, synchronizer.split_sync.feature_flag_storage, synchronizer.segment_storage, telemetry_runtime_producer, synchronizer.split_sync.rule_based_segment_storage)
-        self._segments_worker = SegmentWorkerAsync(synchronizer.synchronize_segment, self._segments_queue)
+        self._feature_flag_worker = SplitWorkerAsync(synchronizer.synchronize_splits, synchronizer.synchronize_segment, self._feature_flag_queue,
+                                                     synchronizer.split_sync.feature_flag_storage, synchronizer.segment_storage, telemetry_runtime_producer, synchronizer.split_sync.rule_based_segment_storage)
+        self._segments_worker = SegmentWorkerAsync(
+            synchronizer.synchronize_segment, self._segments_queue)
         self._handlers = {
             UpdateType.SPLIT_UPDATE: self._handle_feature_flag_update,
             UpdateType.SPLIT_KILL: self._handle_feature_flag_kill,
             UpdateType.SEGMENT_UPDATE: self._handle_segment_change,
-            UpdateType.RB_SEGMENT_UPDATE: self._handle_feature_flag_update            
+            UpdateType.RB_SEGMENT_UPDATE: self._handle_feature_flag_update
         }
 
     async def _handle_feature_flag_update(self, event):
@@ -146,7 +152,7 @@ class MessageProcessorAsync(MessageProcessorBase):
         :type event: splitio.push.parser.SplitKillUpdate
         """
         await self._synchronizer.kill_split(event.feature_flag_name, event.default_treatment,
-                                      event.change_number)
+                                            event.change_number)
         await self._feature_flag_queue.put(event)
 
     async def _handle_segment_change(self, event):

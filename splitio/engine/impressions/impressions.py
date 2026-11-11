@@ -1,12 +1,14 @@
 """Split evaluator module."""
 from enum import Enum
 
+
 class ImpressionsMode(Enum):
     """Impressions tracking mode."""
 
     OPTIMIZED = "OPTIMIZED"
     DEBUG = "DEBUG"
     NONE = "NONE"
+
 
 class Manager(object):  # pylint:disable=too-few-public-methods
     """Impression manager."""
@@ -44,9 +46,11 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         for_unique_keys_tracker_all = []
         for impression_decorated, att in impressions_decorated:
             if impression_decorated.disabled:
-                for_log, for_listener, for_counter, for_unique_keys_tracker = self._none_strategy.process_impressions([(impression_decorated.Impression, att)])
+                for_log, for_listener, for_counter, for_unique_keys_tracker = self._none_strategy.process_impressions(
+                    [(impression_decorated.Impression, att)])
             else:
-                for_log, for_listener, for_counter, for_unique_keys_tracker = self._strategy.process_impressions([(impression_decorated.Impression, att)])
+                for_log, for_listener, for_counter, for_unique_keys_tracker = self._strategy.process_impressions(
+                    [(impression_decorated.Impression, att)])
             for_listener_all.extend(for_listener)
             for_log_all.extend(for_log)
             for_counter_all.extend(for_counter)

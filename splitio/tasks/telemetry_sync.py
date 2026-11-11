@@ -6,6 +6,7 @@ from splitio.tasks.util.asynctask import AsyncTask, AsyncTaskAsync
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class TelemetrySyncTaskBase(BaseSynchronizationTask):
     """Telemetry synchronization task uses an asynctask.AsyncTask to send MTKs."""
 
@@ -67,7 +68,7 @@ class TelemetrySyncTaskAsync(TelemetrySyncTaskBase):
         """
 
         self._task = AsyncTaskAsync(synchronize_telemetry, period,
-                               on_stop=synchronize_telemetry)
+                                    on_stop=synchronize_telemetry)
 
     async def stop(self):
         """Stop executing the unique telemetry synchronization task."""

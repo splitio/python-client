@@ -11,9 +11,10 @@ from splitio.api import headers_from_metadata
 from splitio.optional.loaders import asyncio
 
 if sys.version_info.major == 3 and sys.version_info.minor < 10:
-  from splitio.optional.loaders import _anext as anext
+    from splitio.optional.loaders import _anext as anext
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class SplitSSEClientBase(object, metaclass=abc.ABCMeta):
     """Split streaming endpoint SSE base client."""
@@ -179,6 +180,7 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
         if blocking:
             self._sse_connection_closed.wait(timeout)
 
+
 class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-instance-attributes
     """Split streaming endpoint SSE client."""
 
@@ -221,7 +223,8 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         url = self._build_url(token)
         try:
             self._event_source_ended.clear()
-            self._event_source = self._client.start(url, extra_headers=self._metadata, proxy_url=self._proxy)
+            self._event_source = self._client.start(
+                url, extra_headers=self._metadata, proxy_url=self._proxy)
             first_event = await anext(self._event_source)
             yield first_event
             self.status = SplitSSEClient._Status.CONNECTED

@@ -19,6 +19,7 @@ _FLAG_SETS_REGEX = '^[a-z0-9][_a-z0-9]{0,49}$'
 _FALLBACK_TREATMENT_REGEX = '^[0-9]+[.a-zA-Z0-9_-]*$|^[a-zA-Z]+[a-zA-Z0-9_-]*$'
 _FALLBACK_TREATMENT_SIZE = 100
 
+
 def _check_not_null(value, name, operation):
     """
     Check if value is null.
@@ -204,10 +205,12 @@ def _remove_empty_spaces(value, name, operation):
         _LOGGER.warning("%s: %s '%s' has extra whitespace, trimming.", operation, name, value)
     return strip_value
 
+
 def _convert_str_to_lower(value, name, operation):
     lower_value = value.lower()
     if value != lower_value:
-        _LOGGER.warning("%s: %s '%s' should be all lowercase - converting string to lowercase", operation, name, value)
+        _LOGGER.warning(
+            "%s: %s '%s' should be all lowercase - converting string to lowercase", operation, name, value)
     return lower_value
 
 
@@ -271,6 +274,7 @@ def validate_feature_flag_name(feature_flag_name, method_name):
 
     return _remove_empty_spaces(feature_flag_name, 'feature flag name', method_name)
 
+
 def validate_track_key(key):
     """
     Check if key is valid for track.
@@ -299,6 +303,7 @@ def _validate_traffic_type_value(traffic_type):
         return False
 
     return True
+
 
 def validate_traffic_type(traffic_type, should_validate_existance, feature_flag_storage):
     """
@@ -394,6 +399,7 @@ def validate_value(value):
 
     return value
 
+
 def validate_manager_feature_flag_name(feature_flag_name, should_validate_existance, feature_flag_storage):
     """
     Check if feature flag name is valid for track.
@@ -416,6 +422,7 @@ def validate_manager_feature_flag_name(feature_flag_name, should_validate_exista
         return None
 
     return feature_flag
+
 
 async def validate_manager_feature_flag_name_async(feature_flag_name, should_validate_existance, feature_flag_storage):
     """
@@ -440,6 +447,7 @@ async def validate_manager_feature_flag_name_async(feature_flag_name, should_val
 
     return feature_flag
 
+
 def validate_feature_flag_names(feature_flags, method_name):
     """
     Check if feature flag name is valid for track.
@@ -447,13 +455,14 @@ def validate_feature_flag_names(feature_flags, method_name):
     :param feature_flag_name: feature flag name to be checked
     :type feature_flag_name: str
     """
-    for feature_flag in  feature_flags.keys():
+    for feature_flag in feature_flags.keys():
         if feature_flags[feature_flag] is None:
             _LOGGER.warning(
                 "%s: you passed \"%s\" that does not exist in this environment, "
                 "please double check what Feature flags exist in the Split user interface.",
                 method_name, feature_flag
             )
+
 
 def _check_feature_flag_instance(feature_flags, method_name):
     if feature_flags is None or not isinstance(feature_flags, list):
@@ -479,7 +488,7 @@ def _get_filtered_feature_flag(feature_flags, method_name):
 def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
     method_name,
     feature_flag_names,
-    ):
+):
     """
     Check if feature flags is valid for get_treatments.
 
@@ -502,6 +511,7 @@ def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
         valid_feature_flags.append(ff)
     return valid_feature_flags
 
+
 def generate_control_treatments(feature_flags, fallback_treatment_calculator):
     """
     Generate valid feature flags to control.
@@ -516,11 +526,11 @@ def generate_control_treatments(feature_flags, fallback_treatment_calculator):
 
     to_return = {}
     for feature_flag in feature_flags:
-        if isinstance(feature_flag, str) and len(feature_flag.strip())> 0:
+        if isinstance(feature_flag, str) and len(feature_flag.strip()) > 0:
             fallback_treatment = fallback_treatment_calculator.resolve(feature_flag, "")
             treatment = fallback_treatment.treatment
             config = fallback_treatment.config
-            
+
             to_return[feature_flag] = (treatment, config)
     return to_return
 
@@ -545,15 +555,18 @@ def validate_attributes(attributes, method_name):
 
     return True
 
+
 def validate_evaluation_options(evaluation_options, method_name):
     if evaluation_options == None:
         return None
-    
+
     if not isinstance(evaluation_options, client.EvaluationOptions):
-        _LOGGER.error("%s: evaluation options should be an instance of EvaluationOptions. Setting its value to None.", method_name)
+        _LOGGER.error(
+            "%s: evaluation options should be an instance of EvaluationOptions. Setting its value to None.", method_name)
         return None
-    
-    return evaluation_options    
+
+    return evaluation_options
+
 
 class _ApiLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
     def filter(self, record):
@@ -612,7 +625,8 @@ def valid_properties(properties, source):
             continue
 
         if not _check_element_type(element):
-            _LOGGER.warning('%s: Property %s is of invalid type. Setting value to None', source, element)
+            _LOGGER.warning(
+                '%s: Property %s is of invalid type. Setting value to None', source, element)
             element = None
 
         valid_properties[property] = element
@@ -631,13 +645,15 @@ def valid_properties(properties, source):
                         ' when processed', source)
     return True, valid_properties if len(valid_properties) else None, size
 
+
 def _check_element_type(element):
     if not isinstance(element, str) and not isinstance(element, Number) \
-        and not isinstance(element, bool):
-            return False
-    
+            and not isinstance(element, bool):
+        return False
+
     return True
-    
+
+
 def validate_pluggable_adapter(config):
     """
     Check if pluggable adapter contains the expected method signature
@@ -652,7 +668,8 @@ def validate_pluggable_adapter(config):
         return True
 
     if config.get('storageWrapper') is None:
-        _LOGGER.error("Expecting pluggable storage `wrapper` in options, but no valid wrapper instance was provided.")
+        _LOGGER.error(
+            "Expecting pluggable storage `wrapper` in options, but no valid wrapper instance was provided.")
         return False
 
     if config.get('storagePrefix') is not None:
@@ -667,7 +684,7 @@ def validate_pluggable_adapter(config):
 
     expected_methods = {'get': 1, 'get_items': 1, 'get_many': 1, 'set': 2, 'push_items': 2,
                         'delete': 1, 'increment': 2, 'decrement': 2, 'get_keys_by_prefix': 1,
-                        'get_many': 1, 'add_items' : 2, 'remove_items': 2, 'item_contains': 2,
+                        'get_many': 1, 'add_items': 2, 'remove_items': 2, 'item_contains': 2,
                         'get_items_count': 1, 'expire': 2}
     methods = inspect.getmembers(pluggable_adapter, predicate=inspect.ismethod)
     for exp_method in expected_methods:
@@ -684,10 +701,12 @@ def validate_pluggable_adapter(config):
             return False
 
         if len(get_method_args) < expected_methods[exp_method]:
-            _LOGGER.error("Pluggable adapter method %s has less than required arguments count: %s : " % (exp_method, len(get_method_args)))
+            _LOGGER.error("Pluggable adapter method %s has less than required arguments count: %s : " % (
+                exp_method, len(get_method_args)))
             return False
 
     return True
+
 
 def validate_flag_sets(flag_sets, method_name):
     """
@@ -698,7 +717,8 @@ def validate_flag_sets(flag_sets, method_name):
     :rtype: list[str]
     """
     if not isinstance(flag_sets, list):
-        _LOGGER.warning("%s: flag sets parameter type should be list object, parameter is discarded", method_name)
+        _LOGGER.warning(
+            "%s: flag sets parameter type should be list object, parameter is discarded", method_name)
         return []
 
     sanitized_flag_sets = set()
@@ -719,27 +739,32 @@ def validate_flag_sets(flag_sets, method_name):
 
     return list(sanitized_flag_sets)
 
+
 def validate_fallback_treatment(fallback_treatment):
     if not isinstance(fallback_treatment, FallbackTreatment):
-        _LOGGER.warning("Config: Fallback treatment instance should be FallbackTreatment, input is discarded")
+        _LOGGER.warning(
+            "Config: Fallback treatment instance should be FallbackTreatment, input is discarded")
         return False
 
     if not isinstance(fallback_treatment.treatment, str):
         _LOGGER.warning("Config: Fallback treatment value should be str type, input is discarded")
         return False
-        
+
     if not validate_regex_name(fallback_treatment.treatment):
-        _LOGGER.warning("Config: Fallback treatment should match regex %s", _FALLBACK_TREATMENT_REGEX)
+        _LOGGER.warning("Config: Fallback treatment should match regex %s",
+                        _FALLBACK_TREATMENT_REGEX)
         return False
-        
+
     if len(fallback_treatment.treatment) > _FALLBACK_TREATMENT_SIZE:
-        _LOGGER.warning("Config: Fallback treatment size should not exceed %s characters", _FALLBACK_TREATMENT_SIZE)
+        _LOGGER.warning(
+            "Config: Fallback treatment size should not exceed %s characters", _FALLBACK_TREATMENT_SIZE)
         return False
-                
+
     return True
+
 
 def validate_regex_name(name):
     if re.match(_FALLBACK_TREATMENT_REGEX, name) == None:
         return False
-    
+
     return True

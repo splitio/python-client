@@ -42,6 +42,7 @@ class LocalhostEventsStorage(EventStorage):
         """Accept any arguments and do nothing."""
         pass
 
+
 class LocalhostImpressionsStorageAsync(ImpressionStorage):
     """Impression storage that doesn't cache anything."""
 

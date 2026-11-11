@@ -15,7 +15,7 @@ from splitio.util.backoff import Backoff
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.util.storage_helper import update_feature_flag_storage, update_feature_flag_storage_async,  \
     update_rule_based_segment_storage, update_rule_based_segment_storage_async
-    
+
 from splitio.sync import util
 from splitio.optional.loaders import asyncio, aiofiles
 
@@ -51,8 +51,8 @@ class SplitSynchronizerBase(object):
         self._feature_flag_storage = feature_flag_storage
         self._rule_based_segment_storage = rule_based_segment_storage
         self._backoff = Backoff(
-                                _ON_DEMAND_FETCH_BACKOFF_BASE,
-                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
+            _ON_DEMAND_FETCH_BACKOFF_BASE,
+            _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
 
     @property
     def feature_flag_storage(self):
@@ -79,7 +79,8 @@ class SplitSynchronizerBase(object):
         return (till is not None and till < change_number) or (rbs_till is not None and rbs_till < rbs_change_number)
 
     def _check_return_conditions(self, feature_flag_changes):
-        return feature_flag_changes.get('ff')['t'] == feature_flag_changes.get('ff')['s'] and feature_flag_changes.get('rbs')['t'] == feature_flag_changes.get('rbs')['s']        
+        return feature_flag_changes.get('ff')['t'] == feature_flag_changes.get('ff')['s'] and feature_flag_changes.get('rbs')['t'] == feature_flag_changes.get('rbs')['s']
+
 
 class SplitSynchronizer(SplitSynchronizerBase):
     """Feature Flag changes synchronizer."""
@@ -97,7 +98,8 @@ class SplitSynchronizer(SplitSynchronizerBase):
         :param rule_based_segment_storage: Rule based segment Storage.
         :type rule_based_segment_storage: splitio.storage.InMemoryRuleBasedStorage
         """
-        SplitSynchronizerBase.__init__(self, feature_flag_api, feature_flag_storage, rule_based_segment_storage)
+        SplitSynchronizerBase.__init__(
+            self, feature_flag_api, feature_flag_storage, rule_based_segment_storage)
 
     def _fetch_until(self, fetch_options, till=None, rbs_till=None):
         """
@@ -124,30 +126,36 @@ class SplitSynchronizer(SplitSynchronizerBase):
             rbs_change_number = self._rule_based_segment_storage.get_change_number()
             if rbs_change_number is None:
                 rbs_change_number = -1
-                
+
             if self._check_exit_conditions(till, rbs_till, change_number, rbs_change_number):
                 # the passed till is less than change_number, no need to perform updates
                 return change_number, rbs_change_number, segment_list
 
             try:
-                feature_flag_changes = self._api.fetch_splits(change_number, rbs_change_number, fetch_options)
+                feature_flag_changes = self._api.fetch_splits(
+                    change_number, rbs_change_number, fetch_options)
             except APIException as exc:
                 if exc._status_code is not None and exc._status_code == 414:
-                    _LOGGER.error('Exception caught: the amount of flag sets provided are big causing uri length error.')
+                    _LOGGER.error(
+                        'Exception caught: the amount of flag sets provided are big causing uri length error.')
                     _LOGGER.debug('Exception information: ', exc_info=True)
                     raise APIUriException("URI is too long due to FlagSets count", exc._status_code)
 
                 _LOGGER.error('Exception raised while fetching feature flags')
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
-            
-            fetched_rule_based_segments = [(rule_based_segments.from_raw(rule_based_segment)) for rule_based_segment in feature_flag_changes.get('rbs').get('d', [])]
-            rbs_segment_list = update_rule_based_segment_storage(self._rule_based_segment_storage, fetched_rule_based_segments, feature_flag_changes.get('rbs')['t'], self._api.clear_storage)
-            
-            fetched_feature_flags = [(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('ff').get('d', [])]
-            segment_list.update(update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes.get('ff')['t'], self._api.clear_storage))
+
+            fetched_rule_based_segments = [(rule_based_segments.from_raw(
+                rule_based_segment)) for rule_based_segment in feature_flag_changes.get('rbs').get('d', [])]
+            rbs_segment_list = update_rule_based_segment_storage(
+                self._rule_based_segment_storage, fetched_rule_based_segments, feature_flag_changes.get('rbs')['t'], self._api.clear_storage)
+
+            fetched_feature_flags = [(splits.from_raw(feature_flag))
+                                     for feature_flag in feature_flag_changes.get('ff').get('d', [])]
+            segment_list.update(update_feature_flag_storage(self._feature_flag_storage,
+                                fetched_feature_flags, feature_flag_changes.get('ff')['t'], self._api.clear_storage))
             segment_list.update(rbs_segment_list)
-            
+
             if self._check_return_conditions(feature_flag_changes):
                 return feature_flag_changes.get('ff')['t'], feature_flag_changes.get('rbs')['t'], segment_list
 
@@ -172,7 +180,8 @@ class SplitSynchronizer(SplitSynchronizerBase):
         remaining_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES
         while True:
             remaining_attempts -= 1
-            change_number, rbs_change_number, segment_list = self._fetch_until(fetch_options, till, rbs_till)
+            change_number, rbs_change_number, segment_list = self._fetch_until(
+                fetch_options, till, rbs_till)
             final_segment_list.update(segment_list)
             if (till is None or till <= change_number) and (rbs_till is None or rbs_till <= rbs_change_number):
                 return True, remaining_attempts, change_number, rbs_change_number, final_segment_list
@@ -206,17 +215,21 @@ class SplitSynchronizer(SplitSynchronizerBase):
         :type rbs_till: int
         """
         final_segment_list = set()
-        fetch_options = FetchOptions(True, sets=self._get_config_sets())  # Set Cache-Control to no-cache
+        fetch_options = FetchOptions(True, sets=self._get_config_sets()
+                                     )  # Set Cache-Control to no-cache
         successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = self._attempt_feature_flag_sync(fetch_options,
-                                                                                      till, rbs_till)
+                                                                                                                              till, rbs_till)
         final_segment_list.update(segment_list)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return final_segment_list
 
-        with_cdn_bypass = FetchOptions(True, change_number, rbs_change_number, sets=self._get_config_sets())  # Set flag for bypassing CDN
-        without_cdn_successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = self._attempt_feature_flag_sync(with_cdn_bypass, till, rbs_till)
+        # Set flag for bypassing CDN
+        with_cdn_bypass = FetchOptions(
+            True, change_number, rbs_change_number, sets=self._get_config_sets())
+        without_cdn_successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = self._attempt_feature_flag_sync(
+            with_cdn_bypass, till, rbs_till)
         final_segment_list.update(segment_list)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if without_cdn_successful_sync:
@@ -240,6 +253,7 @@ class SplitSynchronizer(SplitSynchronizerBase):
         """
         self._feature_flag_storage.kill_locally(feature_flag_name, default_treatment, change_number)
 
+
 class SplitSynchronizerAsync(SplitSynchronizerBase):
     """Feature Flag changes synchronizer async."""
 
@@ -256,7 +270,8 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
         :param rule_based_segment_storage: Rule based segment Storage.
         :type rule_based_segment_storage: splitio.storage.InMemoryRuleBasedStorage
         """
-        SplitSynchronizerBase.__init__(self, feature_flag_api, feature_flag_storage, rule_based_segment_storage)
+        SplitSynchronizerBase.__init__(
+            self, feature_flag_api, feature_flag_storage, rule_based_segment_storage)
 
     async def _fetch_until(self, fetch_options, till=None, rbs_till=None):
         """
@@ -279,11 +294,11 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
             change_number = await self._feature_flag_storage.get_change_number()
             if change_number is None:
                 change_number = -1
-                
+
             rbs_change_number = await self._rule_based_segment_storage.get_change_number()
             if rbs_change_number is None:
                 rbs_change_number = -1
-                
+
             if self._check_exit_conditions(till, rbs_till, change_number, rbs_change_number):
                 # the passed till is less than change_number, no need to perform updates
                 return change_number, rbs_change_number, segment_list
@@ -292,7 +307,8 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
                 feature_flag_changes = await self._api.fetch_splits(change_number, rbs_change_number, fetch_options)
             except APIException as exc:
                 if exc._status_code is not None and exc._status_code == 414:
-                    _LOGGER.error('Exception caught: the amount of flag sets provided are big causing uri length error.')
+                    _LOGGER.error(
+                        'Exception caught: the amount of flag sets provided are big causing uri length error.')
                     _LOGGER.debug('Exception information: ', exc_info=True)
                     raise APIUriException("URI is too long due to FlagSets count", exc._status_code)
 
@@ -300,10 +316,12 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
                 _LOGGER.debug('Exception information: ', exc_info=True)
                 raise exc
 
-            fetched_rule_based_segments = [(rule_based_segments.from_raw(rule_based_segment)) for rule_based_segment in feature_flag_changes.get('rbs').get('d', [])]
+            fetched_rule_based_segments = [(rule_based_segments.from_raw(
+                rule_based_segment)) for rule_based_segment in feature_flag_changes.get('rbs').get('d', [])]
             rbs_segment_list = await update_rule_based_segment_storage_async(self._rule_based_segment_storage, fetched_rule_based_segments, feature_flag_changes.get('rbs')['t'], self._api.clear_storage)
-            
-            fetched_feature_flags = [(splits.from_raw(feature_flag)) for feature_flag in feature_flag_changes.get('ff').get('d', [])]
+
+            fetched_feature_flags = [(splits.from_raw(feature_flag))
+                                     for feature_flag in feature_flag_changes.get('ff').get('d', [])]
             segment_list = await update_feature_flag_storage_async(self._feature_flag_storage, fetched_feature_flags, feature_flag_changes.get('ff')['t'], self._api.clear_storage)
             segment_list.update(rbs_segment_list)
 
@@ -353,16 +371,19 @@ class SplitSynchronizerAsync(SplitSynchronizerBase):
         :type rbs_till: int
         """
         final_segment_list = set()
-        fetch_options = FetchOptions(True, sets=self._get_config_sets())  # Set Cache-Control to no-cache
+        fetch_options = FetchOptions(True, sets=self._get_config_sets()
+                                     )  # Set Cache-Control to no-cache
         successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = await self._attempt_feature_flag_sync(fetch_options,
-                                                                                      till, rbs_till)
+                                                                                                                                    till, rbs_till)
         final_segment_list.update(segment_list)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return final_segment_list
 
-        with_cdn_bypass = FetchOptions(True, change_number, rbs_change_number, sets=self._get_config_sets())  # Set flag for bypassing CDN
+        # Set flag for bypassing CDN
+        with_cdn_bypass = FetchOptions(
+            True, change_number, rbs_change_number, sets=self._get_config_sets())
         without_cdn_successful_sync, remaining_attempts, change_number, rbs_change_number, segment_list = await self._attempt_feature_flag_sync(with_cdn_bypass, till, rbs_till)
         final_segment_list.update(segment_list)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
@@ -394,6 +415,7 @@ class LocalhostMode(Enum):
     LEGACY = 0
     YAML = 1
     JSON = 2
+
 
 class LocalSplitSynchronizerBase(object):
     """Localhost mode feature_flag base synchronizer."""
@@ -483,7 +505,7 @@ class LocalSplitSynchronizerBase(object):
                 'combiner': 'AND'
             }
         }
-        
+
     def _sanitize_json_elements(self, parsed):
         """
         Sanitize all json elements.
@@ -496,7 +518,7 @@ class LocalSplitSynchronizerBase(object):
         """
         parsed = self._satitize_json_section(parsed, 'ff')
         parsed = self._satitize_json_section(parsed, 'rbs')
-        
+
         return parsed
 
     def _satitize_json_section(self, parsed, section_name):
@@ -519,7 +541,7 @@ class LocalSplitSynchronizerBase(object):
             parsed[section_name]['s'] = parsed[section_name]['t']
 
         return parsed
-        
+
     def _sanitize_feature_flag_elements(self, parsed_feature_flags):
         """
         Sanitize all feature flags elements.
@@ -533,18 +555,23 @@ class LocalSplitSynchronizerBase(object):
         sanitized_feature_flags = []
         for feature_flag in parsed_feature_flags:
             if 'name' not in feature_flag or feature_flag['name'].strip() == '':
-                _LOGGER.warning("A feature flag in json file does not have (Name) or property is empty, skipping.")
+                _LOGGER.warning(
+                    "A feature flag in json file does not have (Name) or property is empty, skipping.")
                 continue
             for element in [('trafficTypeName', 'user', None, None, None, None),
                             ('trafficAllocation', 100, 0, 100,  None, None),
-                            ('trafficAllocationSeed', int(get_current_epoch_time_ms() / 1000), None, None, None, [0]),
-                            ('seed', int(get_current_epoch_time_ms() / 1000), None, None, None, [0]),
-                            ('status', splits.Status.ACTIVE.value, None, None, [e.value for e in splits.Status], None),
+                            ('trafficAllocationSeed', int(
+                                get_current_epoch_time_ms() / 1000), None, None, None, [0]),
+                            ('seed', int(get_current_epoch_time_ms() / 1000),
+                             None, None, None, [0]),
+                            ('status', splits.Status.ACTIVE.value, None,
+                             None, [e.value for e in splits.Status], None),
                             ('killed', False, None, None, None, None),
                             ('defaultTreatment', 'control', None, None, None, ['', ' ']),
                             ('changeNumber', 0, 0, None, None, None),
                             ('algo', 2, 2, 2, None, None)]:
-                feature_flag = util._sanitize_object_element(feature_flag, 'split', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4], not_in_list=element[5])
+                feature_flag = util._sanitize_object_element(
+                    feature_flag, 'split', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4], not_in_list=element[5])
             feature_flag = self._sanitize_condition(feature_flag)
             if 'sets' not in feature_flag:
                 feature_flag['sets'] = []
@@ -567,13 +594,16 @@ class LocalSplitSynchronizerBase(object):
         sanitized_rb_segments = []
         for rb_segment in parsed_rb_segments:
             if 'name' not in rb_segment or rb_segment['name'].strip() == '':
-                _LOGGER.warning("A rule based segment in json file does not have (Name) or property is empty, skipping.")
+                _LOGGER.warning(
+                    "A rule based segment in json file does not have (Name) or property is empty, skipping.")
                 continue
-            
+
             for element in [('trafficTypeName', 'user', None, None, None, None),
-                            ('status', splits.Status.ACTIVE.value, None, None, [e.value for e in splits.Status], None),
+                            ('status', splits.Status.ACTIVE.value, None,
+                             None, [e.value for e in splits.Status], None),
                             ('changeNumber', 0, 0, None, None, None)]:
-                rb_segment = util._sanitize_object_element(rb_segment, 'rule based segment', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4], not_in_list=element[5])
+                rb_segment = util._sanitize_object_element(
+                    rb_segment, 'rule based segment', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=element[4], not_in_list=element[5])
             rb_segment = self._sanitize_condition(rb_segment)
             rb_segment = self._remove_partition(rb_segment)
             sanitized_rb_segments.append(rb_segment)
@@ -603,34 +633,35 @@ class LocalSplitSynchronizerBase(object):
                                     break
 
         if not found_all_keys_matcher:
-            _LOGGER.debug("Missing default rule condition for feature flag: %s, adding default rule with 100%% off treatment", feature_flag['name'])
+            _LOGGER.debug(
+                "Missing default rule condition for feature flag: %s, adding default rule with 100%% off treatment", feature_flag['name'])
             feature_flag['conditions'].append(
-            {
-                "conditionType": "ROLLOUT",
-                "matcherGroup": {
-                "combiner": "AND",
-                "matchers": [{
-                    "keySelector": { "trafficType": "user", "attribute": None },
-                    "matcherType": "ALL_KEYS",
-                    "negate": False,
-                    "userDefinedSegmentMatcherData": None,
-                    "whitelistMatcherData": None,
-                    "unaryNumericMatcherData": None,
-                    "betweenMatcherData": None,
-                    "booleanMatcherData": None,
-                    "dependencyMatcherData": None,
-                    "stringMatcherData": None
-                    }]
-                },
-                "partitions": [
-                    { "treatment": "on", "size": 0 },
-                    { "treatment": "off", "size": 100 }
-                ],
-            "label": "default rule"
-            })
+                {
+                    "conditionType": "ROLLOUT",
+                    "matcherGroup": {
+                        "combiner": "AND",
+                        "matchers": [{
+                            "keySelector": {"trafficType": "user", "attribute": None},
+                            "matcherType": "ALL_KEYS",
+                            "negate": False,
+                            "userDefinedSegmentMatcherData": None,
+                            "whitelistMatcherData": None,
+                            "unaryNumericMatcherData": None,
+                            "betweenMatcherData": None,
+                            "booleanMatcherData": None,
+                            "dependencyMatcherData": None,
+                            "stringMatcherData": None
+                        }]
+                    },
+                    "partitions": [
+                        {"treatment": "on", "size": 0},
+                        {"treatment": "off", "size": 100}
+                    ],
+                    "label": "default rule"
+                })
 
         return feature_flag
-    
+
     def _remove_partition(self, rb_segment):
         sanitized = []
         for condition in rb_segment['conditions']:
@@ -659,12 +690,14 @@ class LocalSplitSynchronizerBase(object):
                     all_keys.append(cls._make_all_keys_condition(data['treatment']))
                 if 'config' in data:
                     configs[data['treatment']] = data['config']
-            to_return[feature_flag_name] = cls._make_feature_flag(feature_flag_name, whitelist + all_keys, configs)
+            to_return[feature_flag_name] = cls._make_feature_flag(
+                feature_flag_name, whitelist + all_keys, configs)
         return to_return
 
     def _check_exit_conditions(self, storage_cn, parsed_till, default_till):
         if storage_cn > parsed_till and parsed_till != default_till:
             return True
+
 
 class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
     """Localhost mode feature_flag synchronizer."""
@@ -680,8 +713,9 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
         :param localhost_mode: mode for localhost either JSON, YAML or LEGACY.
         :type localhost_mode: splitio.sync.split.LocalhostMode
         """
-        LocalSplitSynchronizerBase.__init__(self, filename, feature_flag_storage, rule_based_segment_storage, localhost_mode)
-        
+        LocalSplitSynchronizerBase.__init__(
+            self, filename, feature_flag_storage, rule_based_segment_storage, localhost_mode)
+
     @classmethod
     def _read_feature_flags_from_legacy_file(cls, filename):
         """
@@ -775,30 +809,34 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
             segment_list = set()
             fecthed_ff_sha = util._get_sha(json.dumps(parsed['ff']))
             fecthed_rbs_sha = util._get_sha(json.dumps(parsed['rbs']))
-            
+
             if fecthed_ff_sha == self._current_ff_sha and fecthed_rbs_sha == self._current_rbs_sha:
                 return []
 
             self._current_ff_sha = fecthed_ff_sha
             self._current_rbs_sha = fecthed_rbs_sha
-            
+
             if self._check_exit_conditions(self._feature_flag_storage.get_change_number(), parsed['ff']['t'], self._DEFAULT_FEATURE_FLAG_TILL) \
-             and self._check_exit_conditions(self._rule_based_segment_storage.get_change_number(), parsed['rbs']['t'], self._DEFAULT_RB_SEGMENT_TILL):
+                    and self._check_exit_conditions(self._rule_based_segment_storage.get_change_number(), parsed['rbs']['t'], self._DEFAULT_RB_SEGMENT_TILL):
                 return []
 
             if not self._check_exit_conditions(self._feature_flag_storage.get_change_number(), parsed['ff']['t'], self._DEFAULT_FEATURE_FLAG_TILL):
-                fetched_feature_flags = [splits.from_raw(feature_flag) for feature_flag in parsed['ff']['d']]
-                segment_list = update_feature_flag_storage(self._feature_flag_storage, fetched_feature_flags, parsed['ff']['t'])
-            
+                fetched_feature_flags = [splits.from_raw(
+                    feature_flag) for feature_flag in parsed['ff']['d']]
+                segment_list = update_feature_flag_storage(
+                    self._feature_flag_storage, fetched_feature_flags, parsed['ff']['t'])
+
             if not self._check_exit_conditions(self._rule_based_segment_storage.get_change_number(), parsed['rbs']['t'], self._DEFAULT_RB_SEGMENT_TILL):
-                fetched_rb_segments = [rule_based_segments.from_raw(rb_segment) for rb_segment in parsed['rbs']['d']]
-                segment_list.update(update_rule_based_segment_storage(self._rule_based_segment_storage, fetched_rb_segments, parsed['rbs']['t']))
-                        
+                fetched_rb_segments = [rule_based_segments.from_raw(
+                    rb_segment) for rb_segment in parsed['rbs']['d']]
+                segment_list.update(update_rule_based_segment_storage(
+                    self._rule_based_segment_storage, fetched_rb_segments, parsed['rbs']['t']))
+
             return segment_list
 
         except Exception as exc:
             _LOGGER.debug('Exception: ', exc_info=True)
-            raise ValueError("Error reading feature flags from json.") from exc        
+            raise ValueError("Error reading feature flags from json.") from exc
 
     def _read_feature_flags_from_json_file(self, filename):
         """
@@ -813,19 +851,20 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
         try:
             with open(filename, 'r') as flo:
                 parsed = json.load(flo)
-            
+
             # check if spec version is old
             if parsed.get('splits'):
                 parsed = util.convert_to_new_spec(parsed)
-                
+
             santitized = self._sanitize_json_elements(parsed)
             santitized['ff']['d'] = self._sanitize_feature_flag_elements(santitized['ff']['d'])
             santitized['rbs']['d'] = self._sanitize_rb_segment_elements(santitized['rbs']['d'])
             return santitized
-        
+
         except Exception as exc:
             _LOGGER.debug('Exception: ', exc_info=True)
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
+
 
 class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
     """Localhost mode async feature_flag synchronizer."""
@@ -841,7 +880,8 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
         :param localhost_mode: mode for localhost either JSON, YAML or LEGACY.
         :type localhost_mode: splitio.sync.split.LocalhostMode
         """
-        LocalSplitSynchronizerBase.__init__(self, filename, feature_flag_storage, rule_based_segment_storage, localhost_mode)
+        LocalSplitSynchronizerBase.__init__(
+            self, filename, feature_flag_storage, rule_based_segment_storage, localhost_mode)
 
     @classmethod
     async def _read_feature_flags_from_legacy_file(cls, filename):
@@ -937,23 +977,25 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
             segment_list = set()
             fecthed_ff_sha = util._get_sha(json.dumps(parsed['ff']))
             fecthed_rbs_sha = util._get_sha(json.dumps(parsed['rbs']))
-            
+
             if fecthed_ff_sha == self._current_ff_sha and fecthed_rbs_sha == self._current_rbs_sha:
                 return []
 
             self._current_ff_sha = fecthed_ff_sha
             self._current_rbs_sha = fecthed_rbs_sha
-            
+
             if self._check_exit_conditions(await self._feature_flag_storage.get_change_number(), parsed['ff']['t'], self._DEFAULT_FEATURE_FLAG_TILL) \
-             and self._check_exit_conditions(await self._rule_based_segment_storage.get_change_number(), parsed['rbs']['t'], self._DEFAULT_RB_SEGMENT_TILL):
+                    and self._check_exit_conditions(await self._rule_based_segment_storage.get_change_number(), parsed['rbs']['t'], self._DEFAULT_RB_SEGMENT_TILL):
                 return []
 
             if not self._check_exit_conditions(await self._feature_flag_storage.get_change_number(), parsed['ff']['t'], self._DEFAULT_FEATURE_FLAG_TILL):
-                fetched_feature_flags = [splits.from_raw(feature_flag) for feature_flag in parsed['ff']['d']]
+                fetched_feature_flags = [splits.from_raw(
+                    feature_flag) for feature_flag in parsed['ff']['d']]
                 segment_list = await update_feature_flag_storage_async(self._feature_flag_storage, fetched_feature_flags, parsed['ff']['t'])
-            
+
             if not self._check_exit_conditions(await self._rule_based_segment_storage.get_change_number(), parsed['rbs']['t'], self._DEFAULT_RB_SEGMENT_TILL):
-                fetched_rb_segments = [rule_based_segments.from_raw(rb_segment) for rb_segment in parsed['rbs']['d']]
+                fetched_rb_segments = [rule_based_segments.from_raw(
+                    rb_segment) for rb_segment in parsed['rbs']['d']]
                 segment_list.update(await update_rule_based_segment_storage_async(self._rule_based_segment_storage, fetched_rb_segments, parsed['rbs']['t']))
 
             return segment_list
@@ -979,7 +1021,7 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
             # check if spec version is old
             if parsed.get('splits'):
                 parsed = util.convert_to_new_spec(parsed)
-                
+
             santitized = self._sanitize_json_elements(parsed)
             santitized['ff']['d'] = self._sanitize_feature_flag_elements(santitized['ff']['d'])
             santitized['rbs']['d'] = self._sanitize_rb_segment_elements(santitized['rbs']['d'])

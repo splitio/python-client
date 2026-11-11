@@ -23,6 +23,7 @@ _EXC_MSG = '{source} library is throwing exceptions'
 
 HttpResponse = namedtuple('HttpResponse', ['status_code', 'body', 'headers'])
 
+
 def _build_url(server, path, urls):
     """
     Build URL according to server specified.
@@ -39,6 +40,7 @@ def _build_url(server, path, urls):
     url += '/' if urls[server][:-1] != '/' else ''
     return urllib.parse.urljoin(url, path)
 
+
 def _construct_urls(sdk_url=None, events_url=None, auth_url=None, telemetry_url=None):
     return {
         'sdk': sdk_url if sdk_url is not None else SDK_URL,
@@ -46,6 +48,7 @@ def _construct_urls(sdk_url=None, events_url=None, auth_url=None, telemetry_url=
         'auth': auth_url if auth_url is not None else AUTH_URL,
         'telemetry': telemetry_url if telemetry_url is not None else TELEMETRY_URL,
     }
+
 
 def _build_basic_headers(sdk_key):
     """
@@ -59,6 +62,7 @@ def _build_basic_headers(sdk_key):
         'Authorization': "Bearer %s" % sdk_key
     }
 
+
 class HttpClientException(Exception):
     """HTTP Client exception."""
 
@@ -70,6 +74,7 @@ class HttpClientException(Exception):
         :type message: str
         """
         Exception.__init__(self, message)
+
 
 class HTTPAdapterWithProxyKerberosAuth(requests.adapters.HTTPAdapter):
     """HTTPAdapter override for Kerberos Proxy auth"""
@@ -85,9 +90,11 @@ class HTTPAdapterWithProxyKerberosAuth(requests.adapters.HTTPAdapter):
             auth = HTTPKerberosAuth(principal=self._principal, password=self._password)
         else:
             auth = HTTPKerberosAuth()
-        negotiate_details = auth.generate_request_header(None, parse_url(proxy).host, is_preemptive=True)
+        negotiate_details = auth.generate_request_header(
+            None, parse_url(proxy).host, is_preemptive=True)
         headers['Proxy-Authorization'] = negotiate_details
         return headers
+
 
 class HttpClientBase(object, metaclass=abc.ABCMeta):
     """HttpClient wrapper template."""
@@ -108,7 +115,7 @@ class HttpClientBase(object, metaclass=abc.ABCMeta):
         :type telemetry_url: str
         """
         _LOGGER.debug("Initializing httpclient")
-        self._timeout = timeout/1000 if timeout else None # Convert ms to seconds.
+        self._timeout = timeout/1000 if timeout else None  # Convert ms to seconds.
         self._urls = _construct_urls(sdk_url, events_url, auth_url, telemetry_url)
         self._proxies = proxies
 
@@ -154,10 +161,12 @@ class HttpClientBase(object, metaclass=abc.ABCMeta):
         """
         self._telemetry_runtime_producer.record_sync_latency(self._metric_name, elapsed)
         if 200 <= status_code < 300:
-            self._telemetry_runtime_producer.record_successful_sync(self._metric_name, get_current_epoch_time_ms())
+            self._telemetry_runtime_producer.record_successful_sync(
+                self._metric_name, get_current_epoch_time_ms())
             return
 
         self._telemetry_runtime_producer.record_sync_error(self._metric_name, status_code)
+
 
 class HttpClient(HttpClientBase):
     """HttpClient wrapper."""
@@ -177,7 +186,8 @@ class HttpClient(HttpClientBase):
         :param telemetry_url: Optional alternative telemetry URL.
         :type telemetry_url: str
         """
-        HttpClientBase.__init__(self, timeout, sdk_url, events_url, auth_url, telemetry_url, proxies)
+        HttpClientBase.__init__(self, timeout, sdk_url, events_url,
+                                auth_url, telemetry_url, proxies)
 
     def get(self, server, path, sdk_key, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
         """
@@ -253,6 +263,7 @@ class HttpClient(HttpClientBase):
         except Exception as exc:  # pylint: disable=broad-except
             raise HttpClientException(_EXC_MSG.format(source='request')) from exc
 
+
 class HttpClientAsync(HttpClientBase):
     """HttpClientAsync wrapper."""
 
@@ -270,7 +281,8 @@ class HttpClientAsync(HttpClientBase):
         :param telemetry_url: Optional alternative telemetry URL.
         :type telemetry_url: str
         """
-        HttpClientBase.__init__(self, timeout, sdk_url, events_url, auth_url, telemetry_url, proxies)
+        HttpClientBase.__init__(self, timeout, sdk_url, events_url,
+                                auth_url, telemetry_url, proxies)
         self._session = aiohttp.ClientSession()
         # aiohttp silently re-sends an idempotent request once if the server drops a persistent
         # connection: disable it so that failures are retried with the SDK backoff
@@ -320,8 +332,8 @@ class HttpClientAsync(HttpClientBase):
                 return HttpResponse(response.status, body, response.headers)
 
         except aiohttp.ClientPayloadError as exc:
-                _LOGGER.error("ContentLengthError exception detected: %s", exc)
-                return HttpResponse(400, "", {})
+            _LOGGER.error("ContentLengthError exception detected: %s", exc)
+            return HttpResponse(400, "", {})
 
         except aiohttp.ClientError as exc:  # pylint: disable=broad-except
             raise HttpClientException(_EXC_MSG.format(source='aiohttp')) from exc
@@ -392,6 +404,7 @@ class HttpClientAsync(HttpClientBase):
         if not self._session.closed:
             await self._session.close()
 
+
 class HttpClientKerberos(HttpClientBase):
     """HttpClient wrapper."""
 
@@ -415,7 +428,7 @@ class HttpClientKerberos(HttpClientBase):
         :type authentication_params: [str, str]
         """
         _LOGGER.debug("Initializing httpclient for Kerberos auth")
-        self._timeout = timeout/1000 if timeout else None # Convert ms to seconds.
+        self._timeout = timeout/1000 if timeout else None  # Convert ms to seconds.
         self._urls = _construct_urls(sdk_url, events_url, auth_url, telemetry_url)
         self._authentication_scheme = authentication_scheme
         self._authentication_params = authentication_params
@@ -570,12 +583,14 @@ class HttpClientKerberos(HttpClientBase):
             if self._authentication_scheme == AuthenticateScheme.KERBEROS_SPNEGO:
                 _LOGGER.debug("Using Kerberos Spnego Authentication")
                 if self._authentication_params != [None, None]:
-                    self._sessions[server].auth = HTTPKerberosAuth(principal=self._authentication_params[0], password=self._authentication_params[1], mutual_authentication=OPTIONAL)
+                    self._sessions[server].auth = HTTPKerberosAuth(
+                        principal=self._authentication_params[0], password=self._authentication_params[1], mutual_authentication=OPTIONAL)
                 else:
                     self._sessions[server].auth = HTTPKerberosAuth(mutual_authentication=OPTIONAL)
             elif self._authentication_scheme == AuthenticateScheme.KERBEROS_PROXY:
                 _LOGGER.debug("Using Kerberos Proxy Authentication")
                 if self._authentication_params != [None, None]:
-                    self._sessions[server].mount('https://', HTTPAdapterWithProxyKerberosAuth(principal=self._authentication_params[0], password=self._authentication_params[1]))
+                    self._sessions[server].mount('https://', HTTPAdapterWithProxyKerberosAuth(
+                        principal=self._authentication_params[0], password=self._authentication_params[1]))
                 else:
                     self._sessions[server].mount('https://', HTTPAdapterWithProxyKerberosAuth())

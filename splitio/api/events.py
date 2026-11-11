@@ -54,7 +54,8 @@ class EventsAPI(EventsAPIBase):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.EVENT, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.EVENT, self._telemetry_runtime_producer)
 
     def flush_events(self, events):
         """
@@ -82,6 +83,7 @@ class EventsAPI(EventsAPIBase):  # pylint: disable=too-few-public-methods
             _LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Events not flushed properly.') from exc
 
+
 class EventsAPIAsync(EventsAPIBase):  # pylint: disable=too-few-public-methods
     """Async Class that uses an httpClient to communicate with the events API."""
 
@@ -100,7 +102,8 @@ class EventsAPIAsync(EventsAPIBase):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.EVENT, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.EVENT, self._telemetry_runtime_producer)
 
     async def flush_events(self, events):
         """

@@ -1,7 +1,8 @@
 """Prerequisites matcher classes."""
 
+
 class PrerequisitesMatcher(object):
-    
+
     def __init__(self, prerequisites):
         """
         Build a PrerequisitesMatcher.
@@ -10,8 +11,8 @@ class PrerequisitesMatcher(object):
         :type raw_matcher: List of Prerequisites
         """
         self._prerequisites = prerequisites
-    
-    def match(self, key, attributes=None, context=None):      
+
+    def match(self, key, attributes=None, context=None):
         """
         Evaluate user input against a matcher and return whether the match is successful.
 
@@ -31,7 +32,8 @@ class PrerequisitesMatcher(object):
         evaluator = context.get('evaluator')
         bucketing_key = context.get('bucketing_key')
         for prerequisite in self._prerequisites:
-            result = evaluator.eval_with_context(key, bucketing_key, prerequisite.feature_flag_name, attributes, context['ec'])
+            result = evaluator.eval_with_context(
+                key, bucketing_key, prerequisite.feature_flag_name, attributes, context['ec'])
             if result['treatment'] not in prerequisite.treatments:
                 return False
 

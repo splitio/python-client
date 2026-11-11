@@ -10,11 +10,13 @@ from splitio.models.splits import Status
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class SegmentType(Enum):
     """Segment type."""
-    
+
     STANDARD = "standard"
     RULE_BASED = "rule-based"
+
 
 class RuleBasedSegment(object):
     """RuleBasedSegment object class."""
@@ -45,32 +47,32 @@ class RuleBasedSegment(object):
             self._status = Status(status)
         except ValueError:
             self._status = Status.ARCHIVED
-        
+
     @property
     def name(self):
         """Return segment name."""
         return self._name
-    
+
     @property
     def traffic_type_name(self):
         """Return traffic type name."""
         return self._traffic_type_name
-    
+
     @property
     def change_number(self):
         """Return change number."""
         return self._change_number
-    
+
     @property
     def status(self):
         """Return status."""
         return self._status
-    
+
     @property
     def conditions(self):
         """Return conditions."""
         return self._conditions
-    
+
     @property
     def excluded(self):
         """Return excluded."""
@@ -86,7 +88,7 @@ class RuleBasedSegment(object):
             'conditions': [c.to_json() for c in self.conditions],
             'excluded': self.excluded.to_json()
         }
-        
+
     def get_condition_segment_names(self):
         segments = set()
         for condition in self._conditions:
@@ -94,7 +96,8 @@ class RuleBasedSegment(object):
                 if matcher._matcher_type == 'IN_SEGMENT':
                     segments.add(matcher.to_json()['userDefinedSegmentMatcherData']['segmentName'])
         return segments
-        
+
+
 def from_raw(raw_rule_based_segment):
     """
     Parse a Rule based segment from a JSON portion of splitChanges.
@@ -109,29 +112,32 @@ def from_raw(raw_rule_based_segment):
         conditions = [condition.from_raw(c) for c in raw_rule_based_segment['conditions']]
     except MatcherNotFoundException as e:
         _LOGGER.error(str(e))
-        _LOGGER.debug("Using default conditions template for feature flag: %s", raw_rule_based_segment['name'])
+        _LOGGER.debug("Using default conditions template for feature flag: %s",
+                      raw_rule_based_segment['name'])
         conditions = [condition.from_raw(_DEFAULT_CONDITIONS_TEMPLATE)]
-    
+
     if raw_rule_based_segment.get('excluded') == None:
         raw_rule_based_segment['excluded'] = {'keys': [], 'segments': []}
-        
+
     if raw_rule_based_segment['excluded'].get('keys') == None:
         raw_rule_based_segment['excluded']['keys'] = []
 
     if raw_rule_based_segment['excluded'].get('segments') == None:
         raw_rule_based_segment['excluded']['segments'] = []
-        
+
     return RuleBasedSegment(
         raw_rule_based_segment['name'],
-        raw_rule_based_segment['trafficTypeName'],        
+        raw_rule_based_segment['trafficTypeName'],
         raw_rule_based_segment['changeNumber'],
         raw_rule_based_segment['status'],
         conditions,
-        Excluded(raw_rule_based_segment['excluded']['keys'], raw_rule_based_segment['excluded']['segments'])
+        Excluded(raw_rule_based_segment['excluded']['keys'],
+                 raw_rule_based_segment['excluded']['segments'])
     )
 
+
 class Excluded(object):
-    
+
     def __init__(self, keys, segments):
         """
         Class constructor.
@@ -145,7 +151,7 @@ class Excluded(object):
         self._segments = [ExcludedSegment(segment['name'], segment['type']) for segment in segments]
 
     def get_excluded_keys(self):
-        """Return excluded keys."""        
+        """Return excluded keys."""
         return self._keys
 
     def get_excluded_segments(self):
@@ -167,8 +173,9 @@ class Excluded(object):
             'segments': self._segments
         }
 
+
 class ExcludedSegment(object):
-    
+
     def __init__(self, name, type):
         """
         Class constructor.

@@ -116,8 +116,10 @@ class LocalMemoryCacheBase(object):  # pylint: disable=too-many-instance-attribu
             node = node.previous
         return '<MRU>\n' + '\n'.join(nodes) + '\n<LRU>'
 
+
 class LocalMemoryCache(LocalMemoryCacheBase):  # pylint: disable=too-many-instance-attributes
     """Local cache for threading"""
+
     def __init__(
             self,
             key_func,
@@ -156,7 +158,6 @@ class LocalMemoryCache(LocalMemoryCacheBase):  # pylint: disable=too-many-instan
             self._rollover()
             return node.value
 
-
     def remove_expired(self):
         """Remove expired elements."""
         with self._lock:
@@ -165,8 +166,10 @@ class LocalMemoryCache(LocalMemoryCacheBase):  # pylint: disable=too-many-instan
                 if not self._is_expired(value)
             }
 
+
 class LocalMemoryCacheAsync(LocalMemoryCacheBase):  # pylint: disable=too-many-instance-attributes
     """Local cache for asyncio"""
+
     def __init__(
             self,
             key_func,
@@ -217,6 +220,7 @@ class LocalMemoryCacheAsync(LocalMemoryCacheBase):  # pylint: disable=too-many-i
             self._data[key] = node
             self._rollover()
 
+
 def decorate(key_func, max_age_seconds=DEFAULT_MAX_AGE, max_size=DEFAULT_MAX_SIZE):
     """
     Decorate a function or method to cache results up  to `max_age_seconds`.
@@ -251,7 +255,8 @@ def decorate(key_func, max_age_seconds=DEFAULT_MAX_AGE, max_size=DEFAULT_MAX_SIZ
         _cache = LocalMemoryCache(key_func, user_function, max_age_seconds, max_size)
         # The lambda below IS necessary, otherwise update_wrapper fails since the function
         # is an instance method and has no reference to the __module__ namespace.
-        wrapper = lambda *args, **kwargs: _cache.get(*args, **kwargs)  # pylint: disable=unnecessary-lambda
+        wrapper = lambda *args, **kwargs: _cache.get(*args,
+                                                     **kwargs)  # pylint: disable=unnecessary-lambda
         return update_wrapper(wrapper, user_function)
 
     return _decorator

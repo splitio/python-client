@@ -44,8 +44,8 @@ class SegmentSynchronizer(object):
         self._worker_pool = workerpool.WorkerPool(_MAX_WORKERS, self.synchronize_segment)
         self._worker_pool.start()
         self._backoff = Backoff(
-                                _ON_DEMAND_FETCH_BACKOFF_BASE,
-                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
+            _ON_DEMAND_FETCH_BACKOFF_BASE,
+            _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
 
     def recreate(self):
         """
@@ -152,13 +152,15 @@ class SegmentSynchronizer(object):
         :rtype: bool
         """
         fetch_options = FetchOptions(True, spec=None)  # Set Cache-Control to no-cache
-        successful_sync, remaining_attempts, change_number = self._attempt_segment_sync(segment_name, fetch_options, till)
+        successful_sync, remaining_attempts, change_number = self._attempt_segment_sync(
+            segment_name, fetch_options, till)
         attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if successful_sync:  # succedeed sync
             _LOGGER.debug('Refresh completed in %d attempts.', attempts)
             return True
         with_cdn_bypass = FetchOptions(True, change_number, spec=None)  # Set flag for bypassing CDN
-        without_cdn_successful_sync, remaining_attempts, change_number = self._attempt_segment_sync(segment_name, with_cdn_bypass, till)
+        without_cdn_successful_sync, remaining_attempts, change_number = self._attempt_segment_sync(
+            segment_name, with_cdn_bypass, till)
         without_cdn_attempts = _ON_DEMAND_FETCH_BACKOFF_MAX_RETRIES - remaining_attempts
         if without_cdn_successful_sync:
             _LOGGER.debug('Refresh completed bypassing the CDN in %d attempts.',
@@ -166,10 +168,10 @@ class SegmentSynchronizer(object):
             return True
 
         _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
-                        without_cdn_attempts)
+                      without_cdn_attempts)
         return False
 
-    def synchronize_segments(self, segment_names = None, dont_wait = False):
+    def synchronize_segments(self, segment_names=None, dont_wait=False):
         """
         Submit all current segments and wait for them to finish depend on dont_wait flag, then set the ready flag.
 
@@ -184,7 +186,8 @@ class SegmentSynchronizer(object):
         """
         if segment_names is None:
             segment_names = set(self._feature_flag_storage.get_segment_names())
-            segment_names.update(get_standard_segment_names_in_rbs_storage(self._rule_based_segment_storage))
+            segment_names.update(get_standard_segment_names_in_rbs_storage(
+                self._rule_based_segment_storage))
 
         for segment_name in segment_names:
             _LOGGER.debug("Adding segment name to sync worker")
@@ -230,8 +233,8 @@ class SegmentSynchronizerAsync(object):
         self._worker_pool = workerpool.WorkerPoolAsync(_MAX_WORKERS, self.synchronize_segment)
         self._worker_pool.start()
         self._backoff = Backoff(
-                                _ON_DEMAND_FETCH_BACKOFF_BASE,
-                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
+            _ON_DEMAND_FETCH_BACKOFF_BASE,
+            _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
 
     def recreate(self):
         """
@@ -274,7 +277,7 @@ class SegmentSynchronizerAsync(object):
 
             try:
                 segment_changes = await self._api.fetch_segment(segment_name, change_number,
-                                                          fetch_options)
+                                                                fetch_options)
             except APIException as exc:
                 _LOGGER.error('Exception raised while fetching segment %s', segment_name)
                 _LOGGER.debug('Exception information: ', exc_info=True)
@@ -353,10 +356,10 @@ class SegmentSynchronizerAsync(object):
             return True
 
         _LOGGER.debug('No changes fetched after %d attempts with CDN bypassed.',
-                        without_cdn_attempts)
+                      without_cdn_attempts)
         return False
 
-    async def synchronize_segments(self, segment_names = None, dont_wait = False):
+    async def synchronize_segments(self, segment_names=None, dont_wait=False):
         """
         Submit all current segments and wait for them to finish depend on dont_wait flag, then set the ready flag.
 
@@ -418,8 +421,10 @@ class LocalSegmentSynchronizerBase(object):
                         ('added', [], None, None, None, None),
                         ('removed', [], None, None, None, None)
                         ]:
-            parsed = util._sanitize_object_element(parsed, 'segment', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=None, not_in_list=element[5])
-        parsed = util._sanitize_object_element(parsed, 'segment', 'since', parsed['till'], -1, parsed['till'], None, [0])
+            parsed = util._sanitize_object_element(
+                parsed, 'segment', element[0], element[1], lower_value=element[2], upper_value=element[3], in_list=None, not_in_list=element[5])
+        parsed = util._sanitize_object_element(
+            parsed, 'segment', 'since', parsed['till'], -1, parsed['till'], None, [0])
 
         return parsed
 
@@ -446,7 +451,7 @@ class LocalSegmentSynchronizer(LocalSegmentSynchronizerBase):
         self._segment_storage = segment_storage
         self._segment_sha = {}
 
-    def synchronize_segments(self, segment_names = None):
+    def synchronize_segments(self, segment_names=None):
         """
         Loop through given segment names and synchronize each one.
 
@@ -484,10 +489,10 @@ class LocalSegmentSynchronizer(LocalSegmentSynchronizerBase):
             fetched = self._read_segment_from_json_file(segment_name)
             fetched_sha = util._get_sha(json.dumps(fetched))
             if not self.segment_exist_in_storage(segment_name):
-                    self._segment_sha[segment_name] = fetched_sha
-                    self._segment_storage.put(segments.from_raw(fetched))
-                    _LOGGER.debug("segment %s is added to storage", segment_name)
-                    return True
+                self._segment_sha[segment_name] = fetched_sha
+                self._segment_storage.put(segments.from_raw(fetched))
+                _LOGGER.debug("segment %s is added to storage", segment_name)
+                return True
 
             if fetched_sha == self._segment_sha[segment_name]:
                 return True
@@ -496,7 +501,8 @@ class LocalSegmentSynchronizer(LocalSegmentSynchronizerBase):
             if self._segment_storage.get_change_number(segment_name) > fetched['till'] and fetched['till'] != self._DEFAULT_SEGMENT_TILL:
                 return True
 
-            self._segment_storage.update(segment_name, fetched['added'], fetched['removed'], fetched['till'])
+            self._segment_storage.update(
+                segment_name, fetched['added'], fetched['removed'], fetched['till'])
             _LOGGER.debug("segment %s is updated", segment_name)
         except Exception as e:
             _LOGGER.error("Could not fetch segment: %s \n" + str(e), segment_name)
@@ -557,7 +563,7 @@ class LocalSegmentSynchronizerAsync(LocalSegmentSynchronizerBase):
         self._segment_storage = segment_storage
         self._segment_sha = {}
 
-    async def synchronize_segments(self, segment_names = None):
+    async def synchronize_segments(self, segment_names=None):
         """
         Loop through given segment names and synchronize each one.
 
@@ -595,10 +601,10 @@ class LocalSegmentSynchronizerAsync(LocalSegmentSynchronizerBase):
             fetched = await self._read_segment_from_json_file(segment_name)
             fetched_sha = util._get_sha(json.dumps(fetched))
             if not await self.segment_exist_in_storage(segment_name):
-                    self._segment_sha[segment_name] = fetched_sha
-                    await self._segment_storage.put(segments.from_raw(fetched))
-                    _LOGGER.debug("segment %s is added to storage", segment_name)
-                    return True
+                self._segment_sha[segment_name] = fetched_sha
+                await self._segment_storage.put(segments.from_raw(fetched))
+                _LOGGER.debug("segment %s is added to storage", segment_name)
+                return True
 
             if fetched_sha == self._segment_sha[segment_name]:
                 return True

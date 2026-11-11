@@ -26,5 +26,6 @@ except ImportError:
     HTTPKerberosAuth = missing_auth_dependencies
     OPTIONAL = missing_auth_dependencies
 
+
 async def _anext(it):
     return await it.__anext__()

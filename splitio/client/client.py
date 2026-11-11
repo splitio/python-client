@@ -60,7 +60,8 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         self._labels_enabled = labels_enabled
         self._recorder = recorder
         self._splitter = Splitter()
-        self._feature_flag_storage = factory._get_storage('splits')  # pylint: disable=protected-access
+        self._feature_flag_storage = factory._get_storage(
+            'splits')  # pylint: disable=protected-access
         self._segment_storage = factory._get_storage('segments')  # pylint: disable=protected-access
         self._events_storage = factory._get_storage('events')  # pylint: disable=protected-access
         self._evaluator = Evaluator(self._splitter, fallback_treatment_calculator)
@@ -104,7 +105,8 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         if not input_validator.validate_attributes(attributes, 'get_' + method.value):
             raise _InvalidInputError()
 
-        evaluation_options = ClientBase._validate_treatment_options('get_' + method.value, evaluation_options)
+        evaluation_options = ClientBase._validate_treatment_options(
+            'get_' + method.value, evaluation_options)
         return matching_key, bucketing_key, feature, attributes, evaluation_options
 
     @staticmethod
@@ -114,42 +116,46 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         if not matching_key:
             raise _InvalidInputError()
 
-        features = input_validator.validate_feature_flags_get_treatments('get_' + method.value, features)
+        features = input_validator.validate_feature_flags_get_treatments(
+            'get_' + method.value, features)
         if not features:
             raise _InvalidInputError()
 
         if not input_validator.validate_attributes(attributes, 'get_' + method.value):
             raise _InvalidInputError()
 
-        evaluation_options = ClientBase._validate_treatment_options('get_' + method.value, evaluation_options)
+        evaluation_options = ClientBase._validate_treatment_options(
+            'get_' + method.value, evaluation_options)
         return matching_key, bucketing_key, features, attributes, evaluation_options
 
     @staticmethod
     def _validate_treatment_options(method_name, evaluation_options=None):
-        evaluation_options = input_validator.validate_evaluation_options(evaluation_options, method_name)
+        evaluation_options = input_validator.validate_evaluation_options(
+            evaluation_options, method_name)
         if evaluation_options == None:
             return None
-        
+
         if evaluation_options.properties is not None:
-            valid, properties, size = input_validator.valid_properties(evaluation_options.properties, method_name)
+            valid, properties, size = input_validator.valid_properties(
+                evaluation_options.properties, method_name)
             evaluation_options = EvaluationOptions(properties)
             if not valid:
                 evaluation_options = EvaluationOptions(None)
         return evaluation_options
-        
+
     def _build_impression(self, key, bucketing, feature, result, properties=None):
         """Build an impression based on evaluation data & it's result."""
         return ImpressionDecorated(
-                Impression(matching_key=key,
-                feature_name=feature,
-                treatment=result['treatment'],
-                label=result['impression']['label'] if self._labels_enabled else None,
-                change_number=result['impression']['change_number'],
-                bucketing_key=bucketing,
-                time=utctime_ms(),
-                previous_time=None,
-                properties=json.dumps(properties) if properties is not None else None),
-                disabled=result['impressions_disabled'])
+            Impression(matching_key=key,
+                       feature_name=feature,
+                       treatment=result['treatment'],
+                       label=result['impression']['label'] if self._labels_enabled else None,
+                       change_number=result['impression']['change_number'],
+                       bucketing_key=bucketing,
+                       time=utctime_ms(),
+                       previous_time=None,
+                       properties=json.dumps(properties) if properties is not None else None),
+            disabled=result['impressions_disabled'])
 
     def _build_impressions(self, key, bucketing, results, properties=None):
         """Build an impression based on evaluation data & it's result."""
@@ -206,39 +212,43 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
 
     def _get_properties(self, evaluation_options):
         return evaluation_options.properties if evaluation_options != None else None
-        
+
     def _get_fallback_treatment_with_config(self, feature):
         fallback_treatment = self._fallback_treatment_calculator.resolve(feature, "")
         return fallback_treatment.treatment, fallback_treatment.config
 
     def _get_fallback_eval_results(self, eval_result, feature):
         result = copy.deepcopy(eval_result)
-        fallback_treatment = self._fallback_treatment_calculator.resolve(feature, result["impression"]["label"])
+        fallback_treatment = self._fallback_treatment_calculator.resolve(
+            feature, result["impression"]["label"])
         result["impression"]["label"] = fallback_treatment.label
         result["treatment"] = fallback_treatment.treatment
         result["configurations"] = fallback_treatment.config
-        
+
         return result
 
     def _check_impression_label(self, result):
         return result['impression']['label'] == None or (result['impression']['label'] != None and result['impression']['label'].find(Label.SPLIT_NOT_FOUND) == -1)
-    
+
     def _validate_sdk_event_info(self, sdk_event, callback_handle):
         if not self._check_sdk_event(sdk_event):
             return False
-        
+
         if not hasattr(callback_handle, '__call__'):
-            _LOGGER.warning("Client Event Subscription: The callback handle passed must be of type function, ignoring event subscribing action.")
+            _LOGGER.warning(
+                "Client Event Subscription: The callback handle passed must be of type function, ignoring event subscribing action.")
             return False
-        
+
         return True
 
     def _check_sdk_event(self, sdk_event):
         if not isinstance(sdk_event, SdkEvent):
-            _LOGGER.warning("Client Event Subscription: The event passed must be of type SdkEvent, ignoring event subscribing action.")
+            _LOGGER.warning(
+                "Client Event Subscription: The event passed must be of type SdkEvent, ignoring event subscribing action.")
             return False
-        
+
         return True
+
 
 class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
     """Entry point for the split sdk."""
@@ -258,8 +268,10 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
 
         :rtype: Client
         """
-        ClientBase.__init__(self, factory, recorder, events_manager, labels_enabled, fallback_treatment_calculator)
-        self._context_factory = EvaluationDataFactory(factory._get_storage('splits'), factory._get_storage('segments'), factory._get_storage('rule_based_segments'))
+        ClientBase.__init__(self, factory, recorder, events_manager,
+                            labels_enabled, fallback_treatment_calculator)
+        self._context_factory = EvaluationDataFactory(factory._get_storage(
+            'splits'), factory._get_storage('segments'), factory._get_storage('rule_based_segments'))
 
     def destroy(self):
         """
@@ -268,13 +280,13 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         Only applicable when using in-memory operation mode.
         """
         self._factory.destroy()
-        
+
     def on(self, sdk_event, callback_handle):
         if not self._validate_sdk_event_info(sdk_event, callback_handle):
             return
-        
+
         self._events_manager.register(sdk_event, callback_handle)
-        
+
     def get_treatment(self, key, feature_flag_name, attributes=None, evaluation_options=None):
         """
         Get the treatment for a feature flag and key, with an optional dictionary of attributes.
@@ -294,9 +306,10 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :rtype: str
         """
         try:
-            treatment, _ = self._get_treatment(MethodExceptionsAndLatencies.TREATMENT, key, feature_flag_name, attributes, evaluation_options)
+            treatment, _ = self._get_treatment(
+                MethodExceptionsAndLatencies.TREATMENT, key, feature_flag_name, attributes, evaluation_options)
             return treatment
-    
+
         except:
             _LOGGER.error('get_treatment failed')
             treatment, _ = self._get_fallback_treatment_with_config(feature_flag_name)
@@ -326,7 +339,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         except Exception:
             _LOGGER.error('get_treatment_with_config failed')
             return self._get_fallback_treatment_with_config(feature_flag_name)
-            
+
     def _get_treatment(self, method, key, feature, attributes=None, evaluation_options=None):
         """
         Validate key, feature flag name and object, and get the treatment and config with an optional dictionary of attributes.
@@ -344,7 +357,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: The treatment and config for the key and feature flag
         :rtype: dict
         """
-        if not self._client_is_usable(): # not destroyed & not waiting for a fork
+        if not self._client_is_usable():  # not destroyed & not waiting for a fork
             return self._get_fallback_treatment_with_config(feature)
 
         start = get_current_epoch_time_ms()
@@ -353,16 +366,18 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
             self._telemetry_init_producer.record_not_ready_usage()
 
         try:
-            key, bucketing, feature, attributes, evaluation_options = self._validate_treatment_input(key, feature, attributes, method, evaluation_options)
+            key, bucketing, feature, attributes, evaluation_options = self._validate_treatment_input(
+                key, feature, attributes, method, evaluation_options)
         except _InvalidInputError:
             return self._get_fallback_treatment_with_config(feature)
 
         result = self._get_fallback_eval_results(self._NON_READY_EVAL_RESULT, feature)
-        
+
         if self.ready:
             try:
                 ctx = self._context_factory.context_for(key, [feature])
-                input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature)}, 'get_' + method.value)
+                input_validator.validate_feature_flag_names(
+                    {feature: ctx.flags.get(feature)}, 'get_' + method.value)
                 result = self._evaluator.eval_with_context(key, bucketing, feature, attributes, ctx)
             except RuntimeError as e:
                 _LOGGER.error('Error getting treatment for feature flag')
@@ -372,11 +387,12 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
 
         properties = self._get_properties(evaluation_options)
         if self._check_impression_label(result):
-            impression_decorated = self._build_impression(key, bucketing, feature, result, properties)
+            impression_decorated = self._build_impression(
+                key, bucketing, feature, result, properties)
             self._record_stats([(impression_decorated, attributes)], start, method)
 
         return result['treatment'], result['configurations']
-        
+
     def get_treatments(self, key, feature_flag_names, attributes=None, evaluation_options=None):
         """
         Evaluate multiple feature flags and return a dictionary with all the feature flag/treatments.
@@ -396,7 +412,8 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :rtype: dict
         """
         try:
-            with_config = self._get_treatments(key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS, attributes, evaluation_options)
+            with_config = self._get_treatments(
+                key, feature_flag_names, MethodExceptionsAndLatencies.TREATMENTS, attributes, evaluation_options)
             return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
 
         except Exception:
@@ -442,7 +459,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        return self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET, attributes, evaluation_options)
+        return self._get_treatments_by_flag_sets(key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET, attributes, evaluation_options)
 
     def get_treatments_by_flag_sets(self, key, flag_sets, attributes=None, evaluation_options=None):
         """
@@ -460,7 +477,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        return self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS, attributes, evaluation_options)
+        return self._get_treatments_by_flag_sets(key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS, attributes, evaluation_options)
 
     def get_treatments_with_config_by_flag_set(self, key, flag_set, attributes=None, evaluation_options=None):
         """
@@ -478,7 +495,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        return self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET, attributes, evaluation_options)
+        return self._get_treatments_by_flag_sets(key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET, attributes, evaluation_options)
 
     def get_treatments_with_config_by_flag_sets(self, key, flag_sets, attributes=None, evaluation_options=None):
         """
@@ -496,7 +513,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        return self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS, attributes, evaluation_options)
+        return self._get_treatments_by_flag_sets(key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS, attributes, evaluation_options)
 
     def _get_treatments_by_flag_sets(self, key, flag_sets, method, attributes=None, evaluation_options=None):
         """
@@ -516,15 +533,18 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        feature_flags_names = self._get_feature_flag_names_by_flag_sets(flag_sets, 'get_' + method.value)
+        feature_flags_names = self._get_feature_flag_names_by_flag_sets(
+            flag_sets, 'get_' + method.value)
         if feature_flags_names == []:
-            _LOGGER.warning("%s: No valid Flag set or no feature flags found for evaluating treatments", 'get_' + method.value)
+            _LOGGER.warning(
+                "%s: No valid Flag set or no feature flags found for evaluating treatments", 'get_' + method.value)
             return {}
 
         if 'config' in method.value:
             return self._get_treatments(key, feature_flags_names, method, attributes, evaluation_options)
 
-        with_config = self._get_treatments(key, feature_flags_names, method, attributes, evaluation_options)
+        with_config = self._get_treatments(
+            key, feature_flags_names, method, attributes, evaluation_options)
         return {feature_flag: result[0] for (feature_flag, result) in with_config.items()}
 
     def get_treatments_by_flag_set(self, key, flag_set, attributes=None, evaluation_options=None):
@@ -546,7 +566,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        return self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET, attributes, evaluation_options)
+        return self._get_treatments_by_flag_sets(key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET, attributes, evaluation_options)
 
     def get_treatments_by_flag_sets(self, key, flag_sets, attributes=None, evaluation_options=None):
         """
@@ -567,7 +587,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        return self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS, attributes, evaluation_options)
+        return self._get_treatments_by_flag_sets(key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS, attributes, evaluation_options)
 
     def get_treatments_with_config_by_flag_set(self, key, flag_set, attributes=None, evaluation_options=None):
         """
@@ -588,7 +608,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        return self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET, attributes, evaluation_options)
+        return self._get_treatments_by_flag_sets(key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET, attributes, evaluation_options)
 
     def get_treatments_with_config_by_flag_sets(self, key, flag_sets, attributes=None, evaluation_options=None):
         """
@@ -609,7 +629,7 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        return self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS, attributes, evaluation_options)
+        return self._get_treatments_by_flag_sets(key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS, attributes, evaluation_options)
 
     def _get_feature_flag_names_by_flag_sets(self, flag_sets, method_name):
         """
@@ -621,9 +641,11 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :rtype: list
         """
         sanitized_flag_sets = input_validator.validate_flag_sets(flag_sets, method_name)
-        feature_flags_by_set = self._feature_flag_storage.get_feature_flags_by_sets(sanitized_flag_sets)
+        feature_flags_by_set = self._feature_flag_storage.get_feature_flags_by_sets(
+            sanitized_flag_sets)
         if feature_flags_by_set is None:
-            _LOGGER.warning("Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
+            _LOGGER.warning(
+                "Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
             return []
 
         return feature_flags_by_set
@@ -655,21 +677,26 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
             self._telemetry_init_producer.record_not_ready_usage()
 
         try:
-            key, bucketing, features, attributes, evaluation_options = self._validate_treatments_input(key, features, attributes, method, evaluation_options)
+            key, bucketing, features, attributes, evaluation_options = self._validate_treatments_input(
+                key, features, attributes, method, evaluation_options)
         except _InvalidInputError:
             return input_validator.generate_control_treatments(features, self._fallback_treatment_calculator)
 
-        results = {n: self._get_fallback_eval_results(self._NON_READY_EVAL_RESULT, n) for n in features}
+        results = {n: self._get_fallback_eval_results(
+            self._NON_READY_EVAL_RESULT, n) for n in features}
         if self.ready:
             try:
                 ctx = self._context_factory.context_for(key, features)
-                input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature) for feature in features}, 'get_' + method.value)
-                results = self._evaluator.eval_many_with_context(key, bucketing, features, attributes, ctx)
+                input_validator.validate_feature_flag_names(
+                    {feature: ctx.flags.get(feature) for feature in features}, 'get_' + method.value)
+                results = self._evaluator.eval_many_with_context(
+                    key, bucketing, features, attributes, ctx)
             except RuntimeError as e:
                 _LOGGER.error('Error getting treatment for feature flag')
                 _LOGGER.debug('Error: ', exc_info=True)
                 self._telemetry_evaluation_producer.record_exception(method)
-                results = {n: self._get_fallback_eval_results(self._FAILED_EVAL_RESULT, n) for n in features}
+                results = {n: self._get_fallback_eval_results(
+                    self._FAILED_EVAL_RESULT, n) for n in features}
 
         properties = self._get_properties(evaluation_options)
         imp_decorated_attrs = [
@@ -719,7 +746,8 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
         :rtype: bool
         """
         if not self.ready:
-            _LOGGER.warning("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
+            _LOGGER.warning(
+                "track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
             self._telemetry_init_producer.record_not_ready_usage()
 
         start = get_current_epoch_time_ms()
@@ -729,7 +757,8 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
             should_validate_existance,
             self._factory._get_storage('splits'),  # pylint: disable=protected-access
         )
-        is_valid, event, size = self._validate_track(key, traffic_type, event_type, value, properties)
+        is_valid, event, size = self._validate_track(
+            key, traffic_type, event_type, value, properties)
         if not is_valid:
             return False
 
@@ -765,8 +794,10 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
 
         :rtype: Client
         """
-        ClientBase.__init__(self, factory, recorder, events_manager, labels_enabled, fallback_treatment_calculator)
-        self._context_factory = AsyncEvaluationDataFactory(factory._get_storage('splits'), factory._get_storage('segments'), factory._get_storage('rule_based_segments'))
+        ClientBase.__init__(self, factory, recorder, events_manager,
+                            labels_enabled, fallback_treatment_calculator)
+        self._context_factory = AsyncEvaluationDataFactory(factory._get_storage(
+            'splits'), factory._get_storage('segments'), factory._get_storage('rule_based_segments'))
 
     async def destroy(self):
         """
@@ -779,7 +810,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
     async def on(self, sdk_event, callback_handle):
         if not self._validate_sdk_event_info(sdk_event, callback_handle):
             return
-        
+
         await self._events_manager.register(sdk_event, callback_handle)
 
     async def get_treatment(self, key, feature_flag_name, attributes=None, evaluation_options=None):
@@ -851,7 +882,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: The treatment and config for the key and feature flag
         :rtype: dict
         """
-        if not self._client_is_usable(): # not destroyed & not waiting for a fork
+        if not self._client_is_usable():  # not destroyed & not waiting for a fork
             return self._get_fallback_treatment_with_config(feature)
 
         start = get_current_epoch_time_ms()
@@ -860,7 +891,8 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
             await self._telemetry_init_producer.record_not_ready_usage()
 
         try:
-            key, bucketing, feature, attributes, evaluation_options = self._validate_treatment_input(key, feature, attributes, method, evaluation_options)
+            key, bucketing, feature, attributes, evaluation_options = self._validate_treatment_input(
+                key, feature, attributes, method, evaluation_options)
         except _InvalidInputError:
             return self._get_fallback_treatment_with_config(feature)
 
@@ -868,9 +900,10 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         if self.ready:
             try:
                 ctx = await self._context_factory.context_for(key, [feature])
-                input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature)}, 'get_' + method.value)
+                input_validator.validate_feature_flag_names(
+                    {feature: ctx.flags.get(feature)}, 'get_' + method.value)
                 result = self._evaluator.eval_with_context(key, bucketing, feature, attributes, ctx)
-            except Exception as e: # toto narrow this
+            except Exception as e:  # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')
                 _LOGGER.debug('Error: ', exc_info=True)
                 await self._telemetry_evaluation_producer.record_exception(method)
@@ -878,7 +911,8 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
 
         properties = self._get_properties(evaluation_options)
         if self._check_impression_label(result):
-            impression_decorated = self._build_impression(key, bucketing, feature, result, properties)
+            impression_decorated = self._build_impression(
+                key, bucketing, feature, result, properties)
             await self._record_stats([(impression_decorated, attributes)], start, method)
         return result['treatment'], result['configurations']
 
@@ -947,7 +981,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        return await self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET, attributes, evaluation_options)
+        return await self._get_treatments_by_flag_sets(key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET, attributes, evaluation_options)
 
     async def get_treatments_by_flag_sets(self, key, flag_sets, attributes=None, evaluation_options=None):
         """
@@ -965,7 +999,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        return await self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS, attributes, evaluation_options)
+        return await self._get_treatments_by_flag_sets(key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS, attributes, evaluation_options)
 
     async def get_treatments_with_config_by_flag_set(self, key, flag_set, attributes=None, evaluation_options=None):
         """
@@ -983,7 +1017,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        return await self._get_treatments_by_flag_sets( key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET, attributes, evaluation_options)
+        return await self._get_treatments_by_flag_sets(key, [flag_set], MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET, attributes, evaluation_options)
 
     async def get_treatments_with_config_by_flag_sets(self, key, flag_sets, attributes=None, evaluation_options=None):
         """
@@ -1001,7 +1035,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :return: Dictionary with the result of all the feature flags provided
         :rtype: dict
         """
-        return await self._get_treatments_by_flag_sets( key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS, attributes, evaluation_options)
+        return await self._get_treatments_by_flag_sets(key, flag_sets, MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS, attributes, evaluation_options)
 
     async def _get_treatments_by_flag_sets(self, key, flag_sets, method, attributes=None, evaluation_options=None):
         """
@@ -1023,7 +1057,8 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         """
         feature_flags_names = await self._get_feature_flag_names_by_flag_sets(flag_sets, 'get_' + method.value)
         if feature_flags_names == []:
-            _LOGGER.warning("%s: No valid Flag set or no feature flags found for evaluating treatments", 'get_' + method.value)
+            _LOGGER.warning(
+                "%s: No valid Flag set or no feature flags found for evaluating treatments", 'get_' + method.value)
             return {}
 
         if 'config' in method.value:
@@ -1043,7 +1078,8 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         sanitized_flag_sets = input_validator.validate_flag_sets(flag_sets, method_name)
         feature_flags_by_set = await self._feature_flag_storage.get_feature_flags_by_sets(sanitized_flag_sets)
         if feature_flags_by_set is None:
-            _LOGGER.warning("Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
+            _LOGGER.warning(
+                "Fetching feature flags for flag set %s encountered an error, skipping this flag set." % (flag_sets))
             return []
 
         return feature_flags_by_set
@@ -1074,21 +1110,26 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
             await self._telemetry_init_producer.record_not_ready_usage()
 
         try:
-            key, bucketing, features, attributes, evaluation_options = self._validate_treatments_input(key, features, attributes, method, evaluation_options)
+            key, bucketing, features, attributes, evaluation_options = self._validate_treatments_input(
+                key, features, attributes, method, evaluation_options)
         except _InvalidInputError:
             return input_validator.generate_control_treatments(features, self._fallback_treatment_calculator)
 
-        results = {n: self._get_fallback_eval_results(self._NON_READY_EVAL_RESULT, n) for n in features}
+        results = {n: self._get_fallback_eval_results(
+            self._NON_READY_EVAL_RESULT, n) for n in features}
         if self.ready:
             try:
                 ctx = await self._context_factory.context_for(key, features)
-                input_validator.validate_feature_flag_names({feature: ctx.flags.get(feature) for feature in features}, 'get_' + method.value)
-                results = self._evaluator.eval_many_with_context(key, bucketing, features, attributes, ctx)
-            except Exception as e: # toto narrow this
+                input_validator.validate_feature_flag_names(
+                    {feature: ctx.flags.get(feature) for feature in features}, 'get_' + method.value)
+                results = self._evaluator.eval_many_with_context(
+                    key, bucketing, features, attributes, ctx)
+            except Exception as e:  # toto narrow this
                 _LOGGER.error('Error getting treatment for feature flag')
                 _LOGGER.debug('Error: ', exc_info=True)
                 await self._telemetry_evaluation_producer.record_exception(method)
-                results = {n: self._get_fallback_eval_results(self._FAILED_EVAL_RESULT, n) for n in features}
+                results = {n: self._get_fallback_eval_results(
+                    self._FAILED_EVAL_RESULT, n) for n in features}
 
         properties = self._get_properties(evaluation_options)
         imp_decorated_attrs = [
@@ -1117,7 +1158,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         """
         end = get_current_epoch_time_ms()
         await self._recorder.record_treatment_stats(impressions_decorated, get_latency_bucket_index(end - start),
-                                              operation, 'get_' + operation.value)
+                                                    operation, 'get_' + operation.value)
 
     async def track(self, key, traffic_type, event_type, value=None, properties=None):
         """
@@ -1138,7 +1179,8 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
         :rtype: bool
         """
         if not self.ready:
-            _LOGGER.warning("track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
+            _LOGGER.warning(
+                "track: the SDK is not ready, results may be incorrect. Make sure to wait for SDK readiness before using this method")
             await self._telemetry_init_producer.record_not_ready_usage()
 
         start = get_current_epoch_time_ms()
@@ -1148,7 +1190,8 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
             should_validate_existance,
             self._factory._get_storage('splits'),  # pylint: disable=protected-access
         )
-        is_valid, event, size = self._validate_track(key, traffic_type, event_type, value, properties)
+        is_valid, event, size = self._validate_track(
+            key, traffic_type, event_type, value, properties)
         if not is_valid:
             return False
 
@@ -1164,6 +1207,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
             _LOGGER.error('Error processing track event')
             _LOGGER.debug('Error: ', exc_info=True)
             return False
+
 
 class _InvalidInputError(Exception):
     pass

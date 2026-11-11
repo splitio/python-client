@@ -18,6 +18,7 @@ MAX_TAGS = 10
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class FlagSets(object):
     """InMemory Flagsets storage."""
 
@@ -110,8 +111,9 @@ class FlagSets(object):
                 if self.flag_set_exist(flag_set) and len(self.get_flag_set(flag_set)) == 0 and not should_filter:
                     self._remove_flag_set(flag_set)
 
+
 class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
-    """InMemory implementation of a feature flag storage base."""    
+    """InMemory implementation of a feature flag storage base."""
 
     def __init__(self, internal_event_queue):
         """Constructor."""
@@ -158,7 +160,7 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
             self._internal_event_queue.put(
                 SdkInternalEventNotification(
                     SdkInternalEvent.RB_SEGMENTS_UPDATED,
-                    EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))        
+                    EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))
 
     def _put(self, rule_based_segment):
         """
@@ -183,7 +185,8 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
         with self._lock:
             rule_based_segment = self._rule_based_segments.get(segment_name)
             if not rule_based_segment:
-                _LOGGER.warning("Tried to delete nonexistant Rule based segment %s. Skipping", segment_name)
+                _LOGGER.warning(
+                    "Tried to delete nonexistant Rule based segment %s. Skipping", segment_name)
                 return False
 
             self._rule_based_segments.pop(segment_name)
@@ -217,7 +220,7 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
         """
         with self._lock:
             return list(self._rule_based_segments.keys())
-            
+
     def get_large_segment_names(self):
         """
         Retrieve a list of all excluded large segments names.
@@ -239,12 +242,14 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
         """
         with self._lock:
             return set(segment_names).issubset(self._rule_based_segments.keys())
-        
+
     def fetch_many(self, segment_names):
         return {rb_segment_name: self.get(rb_segment_name) for rb_segment_name in segment_names}
-        
+
+
 class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
-    """InMemory implementation of a feature flag storage base."""    
+    """InMemory implementation of a feature flag storage base."""
+
     def __init__(self, internal_event_queue):
         """Constructor."""
         self._lock = asyncio.Lock()
@@ -290,7 +295,7 @@ class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
             await self._internal_event_queue.put(
                 SdkInternalEventNotification(
                     SdkInternalEvent.RB_SEGMENTS_UPDATED,
-                    EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))        
+                    EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))
 
     async def _put(self, rule_based_segment):
         """
@@ -315,7 +320,8 @@ class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
         async with self._lock:
             rule_based_segment = self._rule_based_segments.get(segment_name)
             if not rule_based_segment:
-                _LOGGER.warning("Tried to delete nonexistant Rule based segment %s. Skipping", segment_name)
+                _LOGGER.warning(
+                    "Tried to delete nonexistant Rule based segment %s. Skipping", segment_name)
                 return False
 
             self._rule_based_segments.pop(segment_name)
@@ -349,7 +355,7 @@ class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
         """
         async with self._lock:
             return list(self._rule_based_segments.keys())
-    
+
     async def get_large_segment_names(self):
         """
         Retrieve a list of all excluded large segments names.
@@ -374,6 +380,7 @@ class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
 
     async def fetch_many(self, segment_names):
         return {rb_segment_name: await self.get(rb_segment_name) for rb_segment_name in segment_names}
+
 
 class InMemorySplitStorageBase(SplitStorage):
     """InMemory implementation of a feature flag storage base."""
@@ -491,6 +498,7 @@ class InMemorySplitStorageBase(SplitStorage):
         self._traffic_types.subtract([traffic_type_name])
         self._traffic_types += Counter()
 
+
 class InMemorySplitStorage(InMemorySplitStorageBase):
     """InMemory implementation of a feature flag storage."""
 
@@ -513,7 +521,7 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
             self._change_number = -1
             self._traffic_types = Counter()
             self.flag_set = FlagSets(self.flag_set_filter.flag_sets)
-        
+
     def get(self, feature_flag_name):
         """
         Retrieve a feature flag.
@@ -570,10 +578,12 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
         with self._lock:
             if feature_flag.name in self._feature_flags:
                 self._remove_from_flag_sets(self._feature_flags[feature_flag.name])
-                self._decrease_traffic_type_count(self._feature_flags[feature_flag.name].traffic_type_name)
+                self._decrease_traffic_type_count(
+                    self._feature_flags[feature_flag.name].traffic_type_name)
             self._feature_flags[feature_flag.name] = feature_flag
             self._increase_traffic_type_count(feature_flag.traffic_type_name)
-            self.flag_set.update_flag_set(feature_flag.sets, feature_flag.name, self.flag_set_filter.should_filter)
+            self.flag_set.update_flag_set(
+                feature_flag.sets, feature_flag.name, self.flag_set_filter.should_filter)
 
     def _remove(self, feature_flag_name):
         """
@@ -588,7 +598,8 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
         with self._lock:
             feature_flag = self._feature_flags.get(feature_flag_name)
             if not feature_flag:
-                _LOGGER.warning("Tried to delete nonexistant feature flag %s. Skipping", feature_flag_name)
+                _LOGGER.warning(
+                    "Tried to delete nonexistant feature flag %s. Skipping", feature_flag_name)
                 return False
 
             self._feature_flags.pop(feature_flag_name)
@@ -602,7 +613,8 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
         :param feature_flag: feature flag object
         :type feature_flag: splitio.models.splits.Split
         """
-        self.flag_set.remove_flag_set(feature_flag.sets, feature_flag.name, self.flag_set_filter.should_filter)
+        self.flag_set.remove_flag_set(feature_flag.sets, feature_flag.name,
+                                      self.flag_set_filter.should_filter)
 
     def get_feature_flags_by_sets(self, sets):
         """
@@ -616,7 +628,8 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
             sets_to_fetch = []
             for flag_set in sets:
                 if not self.flag_set.flag_set_exist(flag_set):
-                    _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring it." % (flag_set))
+                    _LOGGER.warning(
+                        "Flag set %s is not part of the configured flag set list, ignoring it." % (flag_set))
                     continue
                 sets_to_fetch.append(flag_set)
 
@@ -720,6 +733,7 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
         """
         return self.flag_set.flag_set_exist(flag_set)
 
+
 class InMemorySplitStorageAsync(InMemorySplitStorageBase):
     """InMemory implementation of a feature flag async storage."""
 
@@ -799,10 +813,12 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         async with self._lock:
             if feature_flag.name in self._feature_flags:
                 await self._remove_from_flag_sets(self._feature_flags[feature_flag.name])
-                self._decrease_traffic_type_count(self._feature_flags[feature_flag.name].traffic_type_name)
+                self._decrease_traffic_type_count(
+                    self._feature_flags[feature_flag.name].traffic_type_name)
             self._feature_flags[feature_flag.name] = feature_flag
             self._increase_traffic_type_count(feature_flag.traffic_type_name)
-            self.flag_set.update_flag_set(feature_flag.sets, feature_flag.name, self.flag_set_filter.should_filter)
+            self.flag_set.update_flag_set(
+                feature_flag.sets, feature_flag.name, self.flag_set_filter.should_filter)
 
     async def _remove(self, feature_flag_name):
         """
@@ -817,7 +833,8 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         async with self._lock:
             feature_flag = self._feature_flags.get(feature_flag_name)
             if not feature_flag:
-                _LOGGER.warning("Tried to delete nonexistant feature flag %s. Skipping", feature_flag_name)
+                _LOGGER.warning(
+                    "Tried to delete nonexistant feature flag %s. Skipping", feature_flag_name)
                 return False
 
             self._feature_flags.pop(feature_flag_name)
@@ -831,7 +848,8 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         :param feature_flag: feature flag object
         :type feature_flag: splitio.models.splits.Split
         """
-        self.flag_set.remove_flag_set(feature_flag.sets, feature_flag.name, self.flag_set_filter.should_filter)
+        self.flag_set.remove_flag_set(feature_flag.sets, feature_flag.name,
+                                      self.flag_set_filter.should_filter)
 
     async def get_feature_flags_by_sets(self, sets):
         """
@@ -845,7 +863,8 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
             sets_to_fetch = []
             for flag_set in sets:
                 if not self.flag_set.flag_set_exist(flag_set):
-                    _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring it." % (flag_set))
+                    _LOGGER.warning(
+                        "Flag set %s is not part of the configured flag set list, ignoring it." % (flag_set))
                     continue
                 sets_to_fetch.append(flag_set)
 
@@ -938,7 +957,6 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
                 SdkInternalEvent.FLAG_KILLED_NOTIFICATION,
                 EventsMetadata(SdkEventType.FLAG_UPDATE, {feature_flag_name})))
 
-
     async def get_segment_names(self):
         """
         Return a set of all segments referenced by feature flags in storage.
@@ -957,6 +975,7 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
         :rtype: bool
         """
         return self.flag_set.flag_set_exist(flag_set)
+
 
 class InMemorySegmentStorage(SegmentStorage):
     """In-memory implementation of a segment storage."""
@@ -997,9 +1016,9 @@ class InMemorySegmentStorage(SegmentStorage):
             self._segments[segment.name] = segment
 
             self._internal_event_queue.put(
-            SdkInternalEventNotification(
-                SdkInternalEvent.SEGMENTS_UPDATED,
-                EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))        
+                SdkInternalEventNotification(
+                    SdkInternalEvent.SEGMENTS_UPDATED,
+                    EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))
 
     def update(self, segment_name, to_add, to_remove, change_number=None):
         """
@@ -1021,11 +1040,11 @@ class InMemorySegmentStorage(SegmentStorage):
             if change_number is not None:
                 self._segments[segment_name].change_number = change_number
 
-            if len(to_add) > 0 or len(to_remove) >0:
+            if len(to_add) > 0 or len(to_remove) > 0:
                 self._internal_event_queue.put(
-                SdkInternalEventNotification(
-                    SdkInternalEvent.SEGMENTS_UPDATED,
-                    EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))        
+                    SdkInternalEventNotification(
+                        SdkInternalEvent.SEGMENTS_UPDATED,
+                        EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))
 
     def get_change_number(self, segment_name):
         """
@@ -1138,10 +1157,9 @@ class InMemorySegmentStorageAsync(SegmentStorage):
         async with self._lock:
             self._segments[segment.name] = segment
             await self._internal_event_queue.put(
-            SdkInternalEventNotification(
-                SdkInternalEvent.SEGMENTS_UPDATED,
-                EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))        
-
+                SdkInternalEventNotification(
+                    SdkInternalEvent.SEGMENTS_UPDATED,
+                    EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))
 
     async def update(self, segment_name, to_add, to_remove, change_number=None):
         """
@@ -1162,12 +1180,11 @@ class InMemorySegmentStorageAsync(SegmentStorage):
             self._segments[segment_name].update(to_add, to_remove)
             if change_number is not None:
                 self._segments[segment_name].change_number = change_number
-            if len(to_add) > 0 or len(to_remove) >0:
+            if len(to_add) > 0 or len(to_remove) > 0:
                 await self._internal_event_queue.put(
-                SdkInternalEventNotification(
-                    SdkInternalEvent.SEGMENTS_UPDATED,
-                    EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))        
-            
+                    SdkInternalEventNotification(
+                        SdkInternalEvent.SEGMENTS_UPDATED,
+                        EventsMetadata(SdkEventType.SEGMENTS_UPDATE, {})))
 
     async def get_change_number(self, segment_name):
         """
@@ -1278,6 +1295,7 @@ class InMemoryImpressionStorageBase(ImpressionStorage):
         """
         pass
 
+
 class InMemoryImpressionStorage(InMemoryImpressionStorageBase):
     """In memory implementation of an impressions storage."""
 
@@ -1306,12 +1324,15 @@ class InMemoryImpressionStorage(InMemoryImpressionStorageBase):
                 for impression in impressions:
                     self._impressions.put(impression, False)
                     impressions_stored += 1
-            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, len(impressions))
+            self._telemetry_runtime_producer.record_impression_stats(
+                CounterConstants.IMPRESSIONS_QUEUED, len(impressions))
             return True
 
         except queue.Full:
-            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_DROPPED, len(impressions) - impressions_stored)
-            self._telemetry_runtime_producer.record_impression_stats(CounterConstants.IMPRESSIONS_QUEUED, impressions_stored)
+            self._telemetry_runtime_producer.record_impression_stats(
+                CounterConstants.IMPRESSIONS_DROPPED, len(impressions) - impressions_stored)
+            self._telemetry_runtime_producer.record_impression_stats(
+                CounterConstants.IMPRESSIONS_QUEUED, impressions_stored)
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
             _LOGGER.warning(
@@ -1413,6 +1434,7 @@ class InMemoryEventStorageBase(EventStorage):
     In memory storage base class for events.
     Supports adding and popping events.
     """
+
     def set_queue_full_hook(self, hook):
         """
         Set a hook to be called when the queue is full.
@@ -1483,12 +1505,15 @@ class InMemoryEventStorage(InMemoryEventStorageBase):
 
                     self._events.put(event.event, False)
                     events_stored += 1
-            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, len(events))
+            self._telemetry_runtime_producer.record_event_stats(
+                CounterConstants.EVENTS_QUEUED, len(events))
             return True
 
         except queue.Full:
-            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_DROPPED, len(events) - events_stored)
-            self._telemetry_runtime_producer.record_event_stats(CounterConstants.EVENTS_QUEUED, events_stored)
+            self._telemetry_runtime_producer.record_event_stats(
+                CounterConstants.EVENTS_DROPPED, len(events) - events_stored)
+            self._telemetry_runtime_producer.record_event_stats(
+                CounterConstants.EVENTS_QUEUED, events_stored)
             if self._queue_full_hook is not None and callable(self._queue_full_hook):
                 self._queue_full_hook()
             _LOGGER.warning(
@@ -1524,6 +1549,7 @@ class InMemoryEventStorageAsync(InMemoryEventStorageBase):
     In memory async storage for events.
     Supports adding and popping events.
     """
+
     def __init__(self, eventsQueueSize, telemetry_runtime_producer):
         """
         Construct an instance.
@@ -1746,6 +1772,7 @@ class InMemoryTelemetryStorageBase(TelemetryStorage):
         """Get and reset update from sse."""
         pass
 
+
 class InMemoryTelemetryStorage(InMemoryTelemetryStorageBase):
     """In-memory telemetry storage."""
 
@@ -1770,7 +1797,8 @@ class InMemoryTelemetryStorage(InMemoryTelemetryStorageBase):
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
         """Record active and redundant factories."""
-        self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+        self._tel_config.record_active_and_redundant_factories(
+            active_factory_count, redundant_factory_count)
 
     def record_ready_time(self, ready_time):
         """Record ready time."""
@@ -1798,7 +1826,7 @@ class InMemoryTelemetryStorage(InMemoryTelemetryStorageBase):
 
     def record_latency(self, method, latency):
         """Record method latency time."""
-        self._method_latencies.add_latency(method,latency)
+        self._method_latencies.add_latency(method, latency)
 
     def record_exception(self, method):
         """Record method exception."""
@@ -1917,6 +1945,7 @@ class InMemoryTelemetryStorage(InMemoryTelemetryStorageBase):
         """Get and reset update from sse."""
         return self._counters.pop_update_from_sse(event)
 
+
 class InMemoryTelemetryStorageAsync(InMemoryTelemetryStorageBase):
     """In-memory telemetry async storage."""
 
@@ -1972,7 +2001,7 @@ class InMemoryTelemetryStorageAsync(InMemoryTelemetryStorageBase):
 
     async def record_latency(self, method, latency):
         """Record method latency time."""
-        await self._method_latencies.add_latency(method,latency)
+        await self._method_latencies.add_latency(method, latency)
 
     async def record_exception(self, method):
         """Record method exception."""
@@ -2091,6 +2120,7 @@ class InMemoryTelemetryStorageAsync(InMemoryTelemetryStorageBase):
         """Get and reset update from sse."""
         return await self._counters.pop_update_from_sse(event)
 
+
 class LocalhostTelemetryStorage():
     """Localhost telemetry storage."""
     def do_nothing(*_, **__):
@@ -2098,6 +2128,7 @@ class LocalhostTelemetryStorage():
 
     def __getattr__(self, _):
         return self.do_nothing
+
 
 class LocalhostTelemetryStorageAsync():
     """Localhost telemetry storage."""

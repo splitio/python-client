@@ -21,6 +21,7 @@ _DEFAULT_SOCKET_READ_TIMEOUT = 70
 
 SSEEvent = namedtuple('SSEEvent', ['event_id', 'event', 'retry', 'data'])
 
+
 class EventBuilder(object):
     """Event builder class."""
 
@@ -47,6 +48,7 @@ class EventBuilder(object):
         """Construct an event with relevant fields."""
         return SSEEvent(self._lines.get('id'), self._lines.get('event'),
                         self._lines.get('retry'), self._lines.get('data'))
+
 
 class SSEClient(object):
     """SSE Client implementation."""
@@ -129,17 +131,17 @@ class SSEClient(object):
         url, headers = urlparse(url), get_headers(extra_headers)
         if proxy_url is None:
             proxy_url = os.getenv("HTTPS_PROXY") if os.getenv("HTTPS_PROXY") else None
-            
+
         if proxy_url is not None:
             proxy_host, proxy_port, proxy_headers = self._get_proxy_info(proxy_url)
             self._conn = (HTTPSConnection(proxy_host, proxy_port, timeout=timeout)
-                        if url.scheme == 'https'
-                        else HTTPConnection(proxy_host, proxy_port, timeout=timeout))
+                          if url.scheme == 'https'
+                          else HTTPConnection(proxy_host, proxy_port, timeout=timeout))
             self._conn.set_tunnel(url.hostname, url.port, headers=proxy_headers)
-        else:    
+        else:
             self._conn = (HTTPSConnection(url.hostname, url.port, timeout=timeout)
-                        if url.scheme == 'https'
-                        else HTTPConnection(url.hostname, port=url.port, timeout=timeout))
+                          if url.scheme == 'https'
+                          else HTTPConnection(url.hostname, port=url.port, timeout=timeout))
 
         self._conn.request('GET', '%s?%s' % (url.path, url.query), headers=headers)
         # Keep the socket: for responses delimited by connection close (no chunked encoding nor
@@ -152,11 +154,13 @@ class SSEClient(object):
         proxy_port = urlsplit(proxy_url).port
         if proxy_port is None:
             proxy_port = 443 if urlsplit(proxy_url).scheme == 'https' else 80
-            
-        proxy_user = urllib.parse.unquote(urlsplit(proxy_url).username) if urlsplit(proxy_url).username is not None else None
-        proxy_pass = urllib.parse.unquote(urlsplit(proxy_url).password) if urlsplit(proxy_url).password is not None else ''
+
+        proxy_user = urllib.parse.unquote(urlsplit(proxy_url).username) if urlsplit(
+            proxy_url).username is not None else None
+        proxy_pass = urllib.parse.unquote(urlsplit(proxy_url).password) if urlsplit(
+            proxy_url).password is not None else ''
         proxy_headers = {}
-        
+
         if proxy_user is not None:
             auth_str = f"{proxy_user}:{proxy_pass}"
             b64_auth = base64.b64encode(auth_str.encode("utf-8")).decode("ascii")
@@ -164,14 +168,15 @@ class SSEClient(object):
             proxy_headers = {
                 "Proxy-Authorization": f"Basic {b64_auth}"
             }
-        
+
         return proxy_host, proxy_port, proxy_headers
-        
+
     def shutdown(self):
         """Shutdown the current connection."""
         sock = self._sock
         if self._conn is None or sock is None:
-            _LOGGER.warning("no sse connection has been started on this SSEClient instance. Ignoring")
+            _LOGGER.warning(
+                "no sse connection has been started on this SSEClient instance. Ignoring")
             return
 
         if self._shutdown_requested:
@@ -204,7 +209,8 @@ class SSEClientAsync(object):
         self._socket_read_timeout = socket_read_timeout + socket_read_timeout * .3
         self._response = None
         self._done = asyncio.Event()
-        self._client_timeout = aiohttp.ClientTimeout(total=60*60, sock_read=self._socket_read_timeout)
+        self._client_timeout = aiohttp.ClientTimeout(
+            total=60*60, sock_read=self._socket_read_timeout)
         self._sess = aiohttp.ClientSession(timeout=self._client_timeout)
         # aiohttp silently re-sends an idempotent request once if the server drops the connection,
         # which would hide a failed attempt from the push manager's retry/backoff logic.
@@ -282,6 +288,7 @@ class SSEClientAsync(object):
     async def close_session(self):
         if not self._sess.closed:
             await self._sess.close()
+
 
 def get_headers(extra=None):
     """

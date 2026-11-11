@@ -9,6 +9,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class ImpressionSynchronizer(object):
     """Impressions synchronizer class."""
+
     def __init__(self, impressions_api, storage, bulk_size):
         """
         Class constructor.
@@ -101,6 +102,7 @@ class ImpressionsCountSynchronizer(object):
 
 class ImpressionSynchronizerAsync(object):
     """Impressions async synchronizer class."""
+
     def __init__(self, impressions_api, storage, bulk_size):
         """
         Class constructor.

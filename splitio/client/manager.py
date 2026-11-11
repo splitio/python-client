@@ -102,6 +102,7 @@ class SplitManager(object):
 
         return feature_flag.to_split_view() if feature_flag is not None else None
 
+
 class SplitManagerAsync(object):
     """Split Manager. Gives insights on data cached by splits."""
 

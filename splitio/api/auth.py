@@ -32,7 +32,8 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.TOKEN, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.TOKEN, self._telemetry_runtime_producer)
 
     def authenticate(self):
         """
@@ -61,6 +62,7 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
             _LOGGER.debug('Exception information: ', exc_info=True)
             raise APIException('Could not perform authentication.') from exc
 
+
 class AuthAPIAsync(object):  # pylint: disable=too-few-public-methods
     """Async Class that uses an httpClient to communicate with the SDK Auth Service API."""
 
@@ -79,7 +81,8 @@ class AuthAPIAsync(object):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.TOKEN, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.TOKEN, self._telemetry_runtime_producer)
 
     async def authenticate(self):
         """

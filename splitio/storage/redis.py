@@ -16,12 +16,13 @@ from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_
 _LOGGER = logging.getLogger(__name__)
 MAX_TAGS = 10
 
+
 class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
     """Redis-based storage for rule based segments."""
-    
+
     _RB_SEGMENT_KEY = 'SPLITIO.rbsegment.{segment_name}'
     _RB_SEGMENT_TILL_KEY = 'SPLITIO.rbsegments.till'
-    
+
     def __init__(self, redis_client):
         """
         Class constructor.
@@ -43,7 +44,7 @@ class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
         :rtype: str.
         """
         return self._RB_SEGMENT_KEY.format(segment_name=segment_name)
-    
+
     def get(self, segment_name):
         """
         Retrieve a rule based segment.
@@ -62,7 +63,7 @@ class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
         except RedisAdapterException:
             _LOGGER.error('Error fetching rule based segment from storage')
             _LOGGER.debug('Error: ', exc_info=True)
-            return None        
+            return None
 
     def update(self, to_add, to_delete, new_change_number):
         """
@@ -92,7 +93,7 @@ class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
             _LOGGER.error('Error fetching rule based segment change number from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
-        
+
     def contains(self, segment_names):
         """
         Return whether the segments exists in rule based segment in cache.
@@ -104,7 +105,7 @@ class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
         :rtype: bool
         """
         return set(segment_names).issubset(self.get_segment_names())
-        
+
     def get_segment_names(self):
         """
         Retrieve a list of all rule based segments names.
@@ -129,7 +130,7 @@ class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
         :return: List of segment names.
         :rtype: list(str)
         """
-        pass    
+        pass
 
     def fetch_many(self, segment_names):
         """
@@ -144,7 +145,7 @@ class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
         to_return = dict()
         if len(segment_names) == 0:
             return to_return
-        
+
         try:
             keys = [self._get_key(segment_name) for segment_name in segment_names]
             raw_rbs_segments = self._redis.mget(keys)
@@ -156,19 +157,21 @@ class RedisRuleBasedSegmentsStorage(RuleBasedSegmentsStorage):
                     rbs_segment = rule_based_segments.from_raw(json.loads(raw_rbs_segments[i]))
                 except (ValueError, TypeError):
                     _LOGGER.error('Could not parse rule based segment.')
-                    _LOGGER.debug("Raw rule based segment that failed parsing attempt: %s", raw_rbs_segments[i])
+                    _LOGGER.debug(
+                        "Raw rule based segment that failed parsing attempt: %s", raw_rbs_segments[i])
                 to_return[segment_names[i]] = rbs_segment
         except RedisAdapterException:
             _LOGGER.error('Error fetching rule based segments from storage')
             _LOGGER.debug('Error: ', exc_info=True)
         return to_return
 
+
 class RedisRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
     """Redis-based storage for rule based segments."""
-    
+
     _RB_SEGMENT_KEY = 'SPLITIO.rbsegment.{segment_name}'
     _RB_SEGMENT_TILL_KEY = 'SPLITIO.rbsegments.till'
-    
+
     def __init__(self, redis_client):
         """
         Class constructor.
@@ -190,7 +193,7 @@ class RedisRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
         :rtype: str.
         """
         return self._RB_SEGMENT_KEY.format(segment_name=segment_name)
-    
+
     async def get(self, segment_name):
         """
         Retrieve a rule based segment.
@@ -209,7 +212,7 @@ class RedisRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
         except RedisAdapterException:
             _LOGGER.error('Error fetching rule based segment from storage')
             _LOGGER.debug('Error: ', exc_info=True)
-            return None        
+            return None
 
     async def update(self, to_add, to_delete, new_change_number):
         """
@@ -239,7 +242,7 @@ class RedisRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
             _LOGGER.error('Error fetching rule based segment change number from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
-        
+
     async def contains(self, segment_names):
         """
         Return whether the segments exists in rule based segment in cache.
@@ -251,7 +254,7 @@ class RedisRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
         :rtype: bool
         """
         return set(segment_names).issubset(await self.get_segment_names())
-        
+
     async def get_segment_names(self):
         """
         Retrieve a list of all rule based segments names.
@@ -276,7 +279,7 @@ class RedisRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
         :return: List of segment names.
         :rtype: list(str)
         """
-        pass    
+        pass
 
     async def fetch_many(self, segment_names):
         """
@@ -303,12 +306,14 @@ class RedisRuleBasedSegmentsStorageAsync(RuleBasedSegmentsStorage):
                     rbs_segment = rule_based_segments.from_raw(json.loads(raw_rbs_segments[i]))
                 except (ValueError, TypeError):
                     _LOGGER.error('Could not parse rule based segment.')
-                    _LOGGER.debug("Raw rule based segment that failed parsing attempt: %s", raw_rbs_segments[i])
+                    _LOGGER.debug(
+                        "Raw rule based segment that failed parsing attempt: %s", raw_rbs_segments[i])
                 to_return[segment_names[i]] = rbs_segment
         except RedisAdapterException:
             _LOGGER.error('Error fetching rule based segments from storage')
             _LOGGER.debug('Error: ', exc_info=True)
         return to_return
+
 
 class RedisSplitStorageBase(SplitStorage):
     """Redis-based storage base for feature flags."""
@@ -463,7 +468,8 @@ class RedisSplitStorage(RedisSplitStorageBase):
         self._pipe = self._redis.pipeline
         if enable_caching:
             self.get = add_cache(lambda *p, **_: p[0], max_age)(self.get)
-            self.is_valid_traffic_type = add_cache(lambda *p, **_: p[0], max_age)(self.is_valid_traffic_type)  # pylint: disable=line-too-long
+            self.is_valid_traffic_type = add_cache(
+                lambda *p, **_: p[0], max_age)(self.is_valid_traffic_type)  # pylint: disable=line-too-long
             self.fetch_many = add_cache(lambda *p, **_: frozenset(p[0]), max_age)(self.fetch_many)
 
     def get(self, feature_flag_name):  # pylint: disable=method-hidden
@@ -536,7 +542,8 @@ class RedisSplitStorage(RedisSplitStorageBase):
                     feature_flag = splits.from_raw(json.loads(raw_feature_flags[i]))
                 except (ValueError, TypeError):
                     _LOGGER.error('Could not parse feature flag.')
-                    _LOGGER.debug("Raw feature flag that failed parsing attempt: %s", raw_feature_flags[i])
+                    _LOGGER.debug("Raw feature flag that failed parsing attempt: %s",
+                                  raw_feature_flags[i])
                 to_return[feature_flag_names[i]] = feature_flag
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flags from storage')
@@ -556,7 +563,8 @@ class RedisSplitStorage(RedisSplitStorageBase):
         try:
             raw = self._redis.get(self._get_traffic_type_key(traffic_type_name))
             count = json.loads(raw) if raw else 0
-            _LOGGER.debug("Fetching TrafficType [%s] count in redis: %s" % (traffic_type_name, count))
+            _LOGGER.debug("Fetching TrafficType [%s] count in redis: %s" % (
+                traffic_type_name, count))
             return count > 0
 
         except RedisAdapterException:
@@ -620,6 +628,7 @@ class RedisSplitStorage(RedisSplitStorageBase):
             _LOGGER.debug('Error: ', exc_info=True)
         return to_return
 
+
 class RedisSplitStorageAsync(RedisSplitStorage):
     """Async Redis-based storage for feature flags."""
 
@@ -634,7 +643,6 @@ class RedisSplitStorageAsync(RedisSplitStorage):
         if enable_caching:
             self._feature_flag_cache = LocalMemoryCacheAsync(None, None, max_age)
             self._traffic_type_cache = LocalMemoryCacheAsync(None, None, max_age)
-
 
     async def get(self, feature_flag_name):  # pylint: disable=method-hidden
         """
@@ -716,7 +724,8 @@ class RedisSplitStorageAsync(RedisSplitStorage):
                     feature_flag = splits.from_raw(json.loads(raw_feature_flags[i]))
                 except (ValueError, TypeError):
                     _LOGGER.error('Could not parse feature flag.')
-                    _LOGGER.debug("Raw feature flag that failed parsing attempt: %s", raw_feature_flags[i])
+                    _LOGGER.debug("Raw feature flag that failed parsing attempt: %s",
+                                  raw_feature_flags[i])
                 to_return[feature_flag_names[i]] = feature_flag
         except RedisAdapterException:
             _LOGGER.error('Error fetching feature flags from storage')
@@ -890,7 +899,8 @@ class RedisSegmentStorageBase(SegmentStorage):
         """
         try:
             res = self._redis.sismember(self._get_key(segment_name), key)
-            _LOGGER.debug("Checking Segment [%s] contain key [%s] in redis: %s" % (segment_name, key, res))
+            _LOGGER.debug("Checking Segment [%s] contain key [%s] in redis: %s" % (
+                segment_name, key, res))
             return bool(res)
         except RedisAdapterException:
             _LOGGER.error('Error testing members in segment stored in redis')
@@ -985,7 +995,8 @@ class RedisSegmentStorage(RedisSegmentStorageBase):
         """
         try:
             res = self._redis.sismember(self._get_key(segment_name), key)
-            _LOGGER.debug("Checking Segment [%s] contain key [%s] in redis: %s" % (segment_name, key, res))
+            _LOGGER.debug("Checking Segment [%s] contain key [%s] in redis: %s" % (
+                segment_name, key, res))
             return res
 
         except RedisAdapterException:
@@ -1064,7 +1075,8 @@ class RedisSegmentStorageAsync(RedisSegmentStorageBase):
         """
         try:
             res = await self._redis.sismember(self._get_key(segment_name), key)
-            _LOGGER.debug("Checking Segment [%s] contain key [%s] in redis: %s" % (segment_name, key, res))
+            _LOGGER.debug("Checking Segment [%s] contain key [%s] in redis: %s" % (
+                segment_name, key, res))
             return res
 
         except RedisAdapterException:
@@ -1289,23 +1301,23 @@ class RedisEventsStorageBase(EventStorage):
 
     def _wrap_events(self, events):
         return [
-        json.dumps({
-            'e': {
-                'key': e.event.key,
-                'trafficTypeName': e.event.traffic_type_name,
-                'eventTypeId': e.event.event_type_id,
-                'value': e.event.value,
-                'timestamp': e.event.timestamp,
-                'properties': e.event.properties,
-            },
-            'm': {
-                's': self._sdk_metadata.sdk_version,
-                'n': self._sdk_metadata.instance_name,
-                'i': self._sdk_metadata.instance_ip,
-            }
-        })
-        for e in events
-    ]
+            json.dumps({
+                'e': {
+                    'key': e.event.key,
+                    'trafficTypeName': e.event.traffic_type_name,
+                    'eventTypeId': e.event.event_type_id,
+                    'value': e.event.value,
+                    'timestamp': e.event.timestamp,
+                    'properties': e.event.properties,
+                },
+                'm': {
+                    's': self._sdk_metadata.sdk_version,
+                    'n': self._sdk_metadata.instance_name,
+                    'i': self._sdk_metadata.instance_ip,
+                }
+            })
+            for e in events
+        ]
 
     def put(self, events):
         """
@@ -1344,6 +1356,7 @@ class RedisEventsStorageBase(EventStorage):
         :type inserted: int
         """
         pass
+
 
 class RedisEventsStorage(RedisEventsStorageBase):
     """Redis based event storage class."""
@@ -1507,9 +1520,9 @@ class RedisTelemetryStorageBase(TelemetryStorage):
         """
         _LOGGER.debug("Adding Latency stats to redis key %s" % (self._TELEMETRY_LATENCIES_KEY))
         _LOGGER.debug(self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
-            method.value + '/' + str(bucket))
+                      method.value + '/' + str(bucket))
         pipe.hincrby(self._TELEMETRY_LATENCIES_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
-            method.value + '/' + str(bucket), 1)
+                     method.value + '/' + str(bucket), 1)
 
     def record_latency(self, method, latency):
         """
@@ -1607,12 +1620,15 @@ class RedisTelemetryStorage(RedisTelemetryStorageBase):
     def push_config_stats(self):
         """push config stats to redis."""
         _LOGGER.debug("Adding Config stats to redis key %s" % (self._TELEMETRY_CONFIG_KEY))
-        _LOGGER.debug(str(self._format_config_stats(self._tel_config.get_stats(), self.pop_config_tags())))
-        self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip, str(self._format_config_stats(self._tel_config.get_stats(), self.pop_config_tags())))
+        _LOGGER.debug(str(self._format_config_stats(
+            self._tel_config.get_stats(), self.pop_config_tags())))
+        self._redis_client.hset(self._TELEMETRY_CONFIG_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name +
+                                '/' + self._sdk_metadata.instance_ip, str(self._format_config_stats(self._tel_config.get_stats(), self.pop_config_tags())))
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
         """Record active and redundant factories."""
-        self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+        self._tel_config.record_active_and_redundant_factories(
+            active_factory_count, redundant_factory_count)
 
     def record_exception(self, method):
         """
@@ -1623,16 +1639,18 @@ class RedisTelemetryStorage(RedisTelemetryStorageBase):
         """
         _LOGGER.debug("Adding Excepction stats to redis key %s" % (self._TELEMETRY_EXCEPTIONS_KEY))
         _LOGGER.debug(self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
-                    method.value)
+                      method.value)
         pipe = self._make_pipe()
         pipe.hincrby(self._TELEMETRY_EXCEPTIONS_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
-                    method.value, 1)
+                     method.value, 1)
         result = pipe.execute()
-        self.expire_keys(self._TELEMETRY_EXCEPTIONS_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])
+        self.expire_keys(self._TELEMETRY_EXCEPTIONS_KEY,
+                         self._TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
         """Record active and redundant factories."""
-        self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+        self._tel_config.record_active_and_redundant_factories(
+            active_factory_count, redundant_factory_count)
 
     def expire_latency_keys(self, total_keys, inserted):
         """
@@ -1643,7 +1661,8 @@ class RedisTelemetryStorage(RedisTelemetryStorageBase):
         :param inserted: added keys.
         :type inserted: int
         """
-        self.expire_keys(self._TELEMETRY_LATENCIES_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, total_keys, inserted)
+        self.expire_keys(self._TELEMETRY_LATENCIES_KEY,
+                         self._TELEMETRY_KEY_DEFAULT_TTL, total_keys, inserted)
 
     def expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
         """
@@ -1738,10 +1757,10 @@ class RedisTelemetryStorageAsync(RedisTelemetryStorageBase):
         """
         _LOGGER.debug("Adding Excepction stats to redis key %s" % (self._TELEMETRY_EXCEPTIONS_KEY))
         _LOGGER.debug(self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
-                    method.value)
+                      method.value)
         pipe = self._make_pipe()
         pipe.hincrby(self._TELEMETRY_EXCEPTIONS_KEY, self._sdk_metadata.sdk_version + '/' + self._sdk_metadata.instance_name + '/' + self._sdk_metadata.instance_ip + '/' +
-                    method.value, 1)
+                     method.value, 1)
         result = await pipe.execute()
         await self.expire_keys(self._TELEMETRY_EXCEPTIONS_KEY, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result[0])
 

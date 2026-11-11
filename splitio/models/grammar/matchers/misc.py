@@ -35,7 +35,8 @@ class DependencyMatcher(Matcher):
         assert evaluator is not None
 
         bucketing_key = context.get('bucketing_key')
-        result = evaluator.eval_with_context(key, bucketing_key, self._split_name, attributes, context['ec'])
+        result = evaluator.eval_with_context(
+            key, bucketing_key, self._split_name, attributes, context['ec'])
         return result['treatment'] in self._treatments
 
     def _add_matcher_specific_properties_to_json(self):

@@ -61,6 +61,7 @@ class StatsRecorder(object, metaclass=abc.ABCMeta):
         """
         pass
 
+
 class StatsRecorderThreadingBase(StatsRecorder):
     """StandardRecorder class."""
 
@@ -79,7 +80,8 @@ class StatsRecorderThreadingBase(StatsRecorder):
         :param imp_counter: Impressions Counter instance
         :type imp_counter: splitio.engine.impressions.Counter
         """
-        StatsRecorder.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
+        StatsRecorder.__init__(self, impressions_manager, event_storage,
+                               impression_storage, listener, unique_keys_tracker, imp_counter)
 
     def _send_impressions_to_listener(self, impressions):
         """
@@ -94,6 +96,7 @@ class StatsRecorderThreadingBase(StatsRecorder):
                     self._listener.log_impression(impression, attributes)
             except ImpressionListenerException:
                 pass
+
 
 class StatsRecorderAsyncBase(StatsRecorder):
     """StandardRecorder class."""
@@ -113,7 +116,8 @@ class StatsRecorderAsyncBase(StatsRecorder):
         :param imp_counter: Impressions Counter instance
         :type imp_counter: splitio.engine.impressions.Counter
         """
-        StatsRecorder.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
+        StatsRecorder.__init__(self, impressions_manager, event_storage,
+                               impression_storage, listener, unique_keys_tracker, imp_counter)
 
     async def _send_impressions_to_listener_async(self, impressions):
         """
@@ -128,6 +132,7 @@ class StatsRecorderAsyncBase(StatsRecorder):
                     await self._listener.log_impression(impression, attributes)
             except ImpressionListenerException:
                 pass
+
 
 class StandardRecorder(StatsRecorderThreadingBase):
     """StandardRecorder class."""
@@ -147,7 +152,8 @@ class StandardRecorder(StatsRecorderThreadingBase):
         :param imp_counter: Impressions Counter instance
         :type imp_counter: splitio.engine.impressions.Counter
         """
-        StatsRecorderThreadingBase.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
+        StatsRecorderThreadingBase.__init__(
+            self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
         self._telemetry_evaluation_producer = telemetry_evaluation_producer
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
@@ -165,15 +171,18 @@ class StandardRecorder(StatsRecorderThreadingBase):
         try:
             if method_name is not None:
                 self._telemetry_evaluation_producer.record_latency(operation, latency)
-            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(impressions_decorated)
+            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(
+                impressions_decorated)
             if deduped > 0:
-                self._telemetry_runtime_producer.record_impression_stats(telemetry.CounterConstants.IMPRESSIONS_DEDUPED, deduped)
+                self._telemetry_runtime_producer.record_impression_stats(
+                    telemetry.CounterConstants.IMPRESSIONS_DEDUPED, deduped)
             self._impression_storage.put(impressions)
             self._send_impressions_to_listener(for_listener)
             if len(for_counter) > 0:
                 self._imp_counter.track(for_counter)
             if len(for_unique_keys_tracker) > 0:
-                [self._unique_keys_tracker.track(item[0], item[1]) for item in for_unique_keys_tracker]
+                [self._unique_keys_tracker.track(item[0], item[1])
+                 for item in for_unique_keys_tracker]
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording impressions')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -185,8 +194,10 @@ class StandardRecorder(StatsRecorderThreadingBase):
         :param event: events tracked
         :type event: splitio.models.events.EventWrapper
         """
-        self._telemetry_evaluation_producer.record_latency(MethodExceptionsAndLatencies.TRACK, latency)
+        self._telemetry_evaluation_producer.record_latency(
+            MethodExceptionsAndLatencies.TRACK, latency)
         return self._event_sotrage.put(event)
+
 
 class StandardRecorderAsync(StatsRecorderAsyncBase):
     """StandardRecorder async class."""
@@ -206,7 +217,8 @@ class StandardRecorderAsync(StatsRecorderAsyncBase):
         :param imp_counter: Impressions Counter instance
         :type imp_counter: splitio.engine.impressions.Counter
         """
-        StatsRecorderAsyncBase.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
+        StatsRecorderAsyncBase.__init__(self, impressions_manager, event_storage,
+                                        impression_storage, listener, unique_keys_tracker, imp_counter)
         self._telemetry_evaluation_producer = telemetry_evaluation_producer
         self._telemetry_runtime_producer = telemetry_runtime_producer
 
@@ -224,7 +236,8 @@ class StandardRecorderAsync(StatsRecorderAsyncBase):
         try:
             if method_name is not None:
                 await self._telemetry_evaluation_producer.record_latency(operation, latency)
-            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(impressions_decorated)
+            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(
+                impressions_decorated)
             if deduped > 0:
                 await self._telemetry_runtime_producer.record_impression_stats(telemetry.CounterConstants.IMPRESSIONS_DEDUPED, deduped)
 
@@ -233,7 +246,8 @@ class StandardRecorderAsync(StatsRecorderAsyncBase):
             if len(for_counter) > 0:
                 self._imp_counter.track(for_counter)
             if len(for_unique_keys_tracker) > 0:
-                unique_keys_coros = [self._unique_keys_tracker.track(item[0], item[1]) for item in for_unique_keys_tracker]
+                unique_keys_coros = [self._unique_keys_tracker.track(
+                    item[0], item[1]) for item in for_unique_keys_tracker]
                 await asyncio.gather(*unique_keys_coros)
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording impressions')
@@ -248,6 +262,7 @@ class StandardRecorderAsync(StatsRecorderAsyncBase):
         """
         await self._telemetry_evaluation_producer.record_latency(MethodExceptionsAndLatencies.TRACK, latency)
         return await self._event_sotrage.put(event)
+
 
 class PipelinedRecorder(StatsRecorderThreadingBase):
     """PipelinedRecorder class."""
@@ -272,7 +287,8 @@ class PipelinedRecorder(StatsRecorderThreadingBase):
         :param imp_counter: Impressions Counter instance
         :type imp_counter: splitio.engine.impressions.Counter
         """
-        StatsRecorderThreadingBase.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
+        StatsRecorderThreadingBase.__init__(
+            self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
         self._make_pipe = pipe
         self._data_sampling = data_sampling
         self._telemetry_redis_storage = telemetry_redis_storage
@@ -294,7 +310,8 @@ class PipelinedRecorder(StatsRecorderThreadingBase):
                 if self._data_sampling < rnumber:
                     return
 
-            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(impressions_decorated)
+            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(
+                impressions_decorated)
             if impressions:
                 pipe = self._make_pipe()
                 self._impression_storage.add_impressions_to_pipe(impressions, pipe)
@@ -309,7 +326,8 @@ class PipelinedRecorder(StatsRecorderThreadingBase):
             if len(for_counter) > 0:
                 self._imp_counter.track(for_counter)
             if len(for_unique_keys_tracker) > 0:
-                [self._unique_keys_tracker.track(item[0], item[1]) for item in for_unique_keys_tracker]
+                [self._unique_keys_tracker.track(item[0], item[1])
+                 for item in for_unique_keys_tracker]
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording impressions')
             _LOGGER.debug('Error: ', exc_info=True)
@@ -324,7 +342,8 @@ class PipelinedRecorder(StatsRecorderThreadingBase):
         try:
             pipe = self._make_pipe()
             self._event_sotrage.add_events_to_pipe(event, pipe)
-            self._telemetry_redis_storage.add_latency_to_pipe(MethodExceptionsAndLatencies.TRACK, latency, pipe)
+            self._telemetry_redis_storage.add_latency_to_pipe(
+                MethodExceptionsAndLatencies.TRACK, latency, pipe)
             result = pipe.execute()
             if len(result) == 2:
                 self._event_sotrage.expire_keys(result[0], len(event))
@@ -338,6 +357,7 @@ class PipelinedRecorder(StatsRecorderThreadingBase):
             _LOGGER.error('Error recording events')
             _LOGGER.debug('Error: ', exc_info=True)
             return False
+
 
 class PipelinedRecorderAsync(StatsRecorderAsyncBase):
     """PipelinedRecorder async class."""
@@ -362,7 +382,8 @@ class PipelinedRecorderAsync(StatsRecorderAsyncBase):
         :param imp_counter: Impressions Counter instance
         :type imp_counter: splitio.engine.impressions.Counter
         """
-        StatsRecorderAsyncBase.__init__(self, impressions_manager, event_storage, impression_storage, listener, unique_keys_tracker, imp_counter)
+        StatsRecorderAsyncBase.__init__(self, impressions_manager, event_storage,
+                                        impression_storage, listener, unique_keys_tracker, imp_counter)
         self._make_pipe = pipe
         self._data_sampling = data_sampling
         self._telemetry_redis_storage = telemetry_redis_storage
@@ -384,7 +405,8 @@ class PipelinedRecorderAsync(StatsRecorderAsyncBase):
                 if self._data_sampling < rnumber:
                     return
 
-            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(impressions_decorated)
+            impressions, deduped, for_listener, for_counter, for_unique_keys_tracker = self._impressions_manager.process_impressions(
+                impressions_decorated)
             if impressions:
                 pipe = self._make_pipe()
                 self._impression_storage.add_impressions_to_pipe(impressions, pipe)
@@ -399,7 +421,8 @@ class PipelinedRecorderAsync(StatsRecorderAsyncBase):
             if len(for_counter) > 0:
                 self._imp_counter.track(for_counter)
             if len(for_unique_keys_tracker) > 0:
-                unique_keys_coros = [self._unique_keys_tracker.track(item[0], item[1]) for item in for_unique_keys_tracker]
+                unique_keys_coros = [self._unique_keys_tracker.track(
+                    item[0], item[1]) for item in for_unique_keys_tracker]
                 await asyncio.gather(*unique_keys_coros)
         except Exception:  # pylint: disable=broad-except
             _LOGGER.error('Error recording impressions')
@@ -415,7 +438,8 @@ class PipelinedRecorderAsync(StatsRecorderAsyncBase):
         try:
             pipe = self._make_pipe()
             self._event_sotrage.add_events_to_pipe(event, pipe)
-            self._telemetry_redis_storage.add_latency_to_pipe(MethodExceptionsAndLatencies.TRACK, latency, pipe)
+            self._telemetry_redis_storage.add_latency_to_pipe(
+                MethodExceptionsAndLatencies.TRACK, latency, pipe)
             result = await pipe.execute()
             if len(result) == 2:
                 await self._event_sotrage.expire_keys(result[0], len(event))

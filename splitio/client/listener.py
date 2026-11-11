@@ -8,6 +8,7 @@ class ImpressionListenerException(Exception):
 
     pass
 
+
 class ImpressionListener(object, metaclass=abc.ABCMeta):
     """Impression listener interface."""
 
@@ -20,6 +21,7 @@ class ImpressionListener(object, metaclass=abc.ABCMeta):
         :type data: dict
         """
         pass
+
 
 class ImpressionListenerBase(ImpressionListener):  # pylint: disable=too-few-public-methods
     """
@@ -54,6 +56,7 @@ class ImpressionListenerBase(ImpressionListener):  # pylint: disable=too-few-pub
     def log_impression(self, impression, attributes=None):
         pass
 
+
 class ImpressionListenerWrapper(ImpressionListenerBase):  # pylint: disable=too-few-public-methods
     """
     Impression listener safe-execution wrapper.
@@ -61,6 +64,7 @@ class ImpressionListenerWrapper(ImpressionListenerBase):  # pylint: disable=too-
     Wrapper in charge of building all the data that client would require in case
     of adding some logic with the treatment and impression results.
     """
+
     def __init__(self, impression_listener, sdk_metadata):
         """
         Class Constructor.
@@ -85,7 +89,8 @@ class ImpressionListenerWrapper(ImpressionListenerBase):  # pylint: disable=too-
         try:
             self.impression_listener.log_impression(data)
         except Exception as exc:  # pylint: disable=broad-except
-            raise ImpressionListenerException('Error in log_impression user\'s method is throwing exceptions') from exc
+            raise ImpressionListenerException(
+                'Error in log_impression user\'s method is throwing exceptions') from exc
 
 
 class ImpressionListenerWrapperAsync(ImpressionListenerBase):  # pylint: disable=too-few-public-methods
@@ -95,6 +100,7 @@ class ImpressionListenerWrapperAsync(ImpressionListenerBase):  # pylint: disable
     Wrapper in charge of building all the data that client would require in case
     of adding some logic with the treatment and impression results.
     """
+
     def __init__(self, impression_listener, sdk_metadata):
         """
         Class Constructor.
@@ -119,4 +125,5 @@ class ImpressionListenerWrapperAsync(ImpressionListenerBase):  # pylint: disable
         try:
             await self.impression_listener.log_impression(data)
         except Exception as exc:  # pylint: disable=broad-except
-            raise ImpressionListenerException('Error in log_impression user\'s method is throwing exceptions') from exc
+            raise ImpressionListenerException(
+                'Error in log_impression user\'s method is throwing exceptions') from exc

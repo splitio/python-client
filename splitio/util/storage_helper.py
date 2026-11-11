@@ -5,6 +5,7 @@ from splitio.models import rule_based_segments
 
 _LOGGER = logging.getLogger(__name__)
 
+
 def update_feature_flag_storage(feature_flag_storage, feature_flags, change_number, clear_storage=False):
     """
     Update feature flag storage from given list of feature flags while checking the flag set logic
@@ -24,7 +25,7 @@ def update_feature_flag_storage(feature_flag_storage, feature_flags, change_numb
     to_delete = []
     if clear_storage:
         feature_flag_storage.clear()
-        
+
     for feature_flag in feature_flags:
         if feature_flag_storage.flag_set_filter.intersect(feature_flag.sets) and feature_flag.status == splits.Status.ACTIVE:
             to_add.append(feature_flag)
@@ -35,6 +36,7 @@ def update_feature_flag_storage(feature_flag_storage, feature_flags, change_numb
 
     feature_flag_storage.update(to_add, to_delete, change_number)
     return segment_list
+
 
 def update_rule_based_segment_storage(rule_based_segment_storage, rule_based_segments, change_number, clear_storage=False):
     """
@@ -67,7 +69,8 @@ def update_rule_based_segment_storage(rule_based_segment_storage, rule_based_seg
 
     rule_based_segment_storage.update(to_add, to_delete, change_number)
     return segment_list
-    
+
+
 def get_standard_segment_names_in_rbs_storage(rule_based_segment_storage):
     """
     Retrieve a list of all standard segments names.
@@ -80,9 +83,10 @@ def get_standard_segment_names_in_rbs_storage(rule_based_segment_storage):
         rb_segment_obj = rule_based_segment_storage.get(rb_segment)
         segment_list.update(set(rb_segment_obj.excluded.get_excluded_standard_segments()))
         segment_list.update(rb_segment_obj.get_condition_segment_names())
-        
+
     return segment_list
-    
+
+
 async def update_feature_flag_storage_async(feature_flag_storage, feature_flags, change_number, clear_storage=False):
     """
     Update feature flag storage from given list of feature flags while checking the flag set logic
@@ -99,7 +103,7 @@ async def update_feature_flag_storage_async(feature_flag_storage, feature_flags,
     """
     if clear_storage:
         await feature_flag_storage.clear()
-    
+
     segment_list = set()
     to_add = []
     to_delete = []
@@ -113,6 +117,7 @@ async def update_feature_flag_storage_async(feature_flag_storage, feature_flags,
 
     await feature_flag_storage.update(to_add, to_delete, change_number)
     return segment_list
+
 
 async def update_rule_based_segment_storage_async(rule_based_segment_storage, rule_based_segments, change_number, clear_storage=False):
     """
@@ -130,7 +135,7 @@ async def update_rule_based_segment_storage_async(rule_based_segment_storage, ru
     """
     if clear_storage:
         await rule_based_segment_storage.clear()
-    
+
     segment_list = set()
     to_add = []
     to_delete = []
@@ -146,6 +151,7 @@ async def update_rule_based_segment_storage_async(rule_based_segment_storage, ru
     await rule_based_segment_storage.update(to_add, to_delete, change_number)
     return segment_list
 
+
 async def get_standard_segment_names_in_rbs_storage_async(rule_based_segment_storage):
     """
     Retrieve a list of all standard segments names.
@@ -159,8 +165,9 @@ async def get_standard_segment_names_in_rbs_storage_async(rule_based_segment_sto
         rb_segment_obj = await rule_based_segment_storage.get(rb_segment)
         segment_list.update(set(rb_segment_obj.excluded.get_excluded_standard_segments()))
         segment_list.update(rb_segment_obj.get_condition_segment_names())
-        
+
     return segment_list
+
 
 def get_valid_flag_sets(flag_sets, flag_set_filter):
     """
@@ -177,11 +184,13 @@ def get_valid_flag_sets(flag_sets, flag_set_filter):
     sets_to_fetch = []
     for flag_set in flag_sets:
         if not flag_set_filter.set_exist(flag_set) and flag_set_filter.should_filter:
-            _LOGGER.warning("Flag set %s is not part of the configured flag set list, ignoring the request." % (flag_set))
+            _LOGGER.warning(
+                "Flag set %s is not part of the configured flag set list, ignoring the request." % (flag_set))
             continue
         sets_to_fetch.append(flag_set)
 
     return sets_to_fetch
+
 
 def combine_valid_flag_sets(result_sets):
     """

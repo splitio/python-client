@@ -9,6 +9,7 @@ from splitio.optional.loaders import asyncio
 
 _TIME_INTERVAL_MS = 3600 * 1000  # one hour
 
+
 def truncate_time(timestamp_ms):
     """
     Truncate a timestamp in milliseconds to have hour granularity.
@@ -21,7 +22,8 @@ def truncate_time(timestamp_ms):
     """
     return timestamp_ms - (timestamp_ms % _TIME_INTERVAL_MS)
 
-def truncate_impressions_time(imps, counter = None):
+
+def truncate_impressions_time(imps, counter=None):
     """
     Process impressions.
 

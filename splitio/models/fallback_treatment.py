@@ -1,6 +1,7 @@
 """Segment module."""
 import json
 
+
 class FallbackTreatment(object):
     """FallbackTreatment object class."""
 
@@ -27,7 +28,7 @@ class FallbackTreatment(object):
     def config(self):
         """Return config."""
         return self._config
-    
+
     @property
     def label(self):
         """Return label prefix."""

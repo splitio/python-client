@@ -9,6 +9,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class EventSynchronizer(object):
     """Event Synchronizer class"""
+
     def __init__(self, events_api, storage, bulk_size):
         """
         Class constructor.
@@ -70,6 +71,7 @@ class EventSynchronizer(object):
 
 class EventSynchronizerAsync(object):
     """Event Synchronizer async class"""
+
     def __init__(self, events_api, storage, bulk_size):
         """
         Class constructor.

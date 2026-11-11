@@ -7,7 +7,7 @@ _LOGGER = logging.getLogger(__name__)
 M_DELIMITER = "+"
 P_DELIMITER = "-"
 V_DELIMITER = "."
-    
+
 
 def compare(var1, var2):
     """

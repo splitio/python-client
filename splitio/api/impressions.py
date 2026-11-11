@@ -44,25 +44,25 @@ class ImpressionsAPIBase(object):  # pylint: disable=too-few-public-methods
     def _filter_out_null_prop(impression):
         if impression.properties == None:
             return {
-                    'k': impression.matching_key,
-                    't': impression.treatment,
-                    'm': impression.time,
-                    'c': impression.change_number,
-                    'r': impression.label,
-                    'b': impression.bucketing_key,
-                    'pt': impression.previous_time
-                    }
-            
-        return {
                 'k': impression.matching_key,
                 't': impression.treatment,
                 'm': impression.time,
                 'c': impression.change_number,
                 'r': impression.label,
                 'b': impression.bucketing_key,
-                'pt': impression.previous_time,
-                'properties': impression.properties
-                }
+                'pt': impression.previous_time
+            }
+
+        return {
+            'k': impression.matching_key,
+            't': impression.treatment,
+            'm': impression.time,
+            'c': impression.change_number,
+            'r': impression.label,
+            'b': impression.bucketing_key,
+            'pt': impression.previous_time,
+            'properties': impression.properties
+        }
 
     @staticmethod
     def _build_counters(counters):
@@ -112,7 +112,8 @@ class ImpressionsAPI(ImpressionsAPIBase):  # pylint: disable=too-few-public-meth
         :type impressions: list
         """
         bulk = self._build_bulk(impressions)
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.IMPRESSION, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.IMPRESSION, self._telemetry_runtime_producer)
         try:
             response = self._client.post(
                 'events',
@@ -138,7 +139,8 @@ class ImpressionsAPI(ImpressionsAPIBase):  # pylint: disable=too-few-public-meth
         :type impressions: list
         """
         bulk = self._build_counters(counters)
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.IMPRESSION_COUNT, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.IMPRESSION_COUNT, self._telemetry_runtime_producer)
         try:
             response = self._client.post(
                 'events',
@@ -184,7 +186,8 @@ class ImpressionsAPIAsync(ImpressionsAPIBase):  # pylint: disable=too-few-public
         :type impressions: list
         """
         bulk = self._build_bulk(impressions)
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.IMPRESSION, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.IMPRESSION, self._telemetry_runtime_producer)
         try:
             response = await self._client.post(
                 'events',
@@ -210,7 +213,8 @@ class ImpressionsAPIAsync(ImpressionsAPIBase):  # pylint: disable=too-few-public
         :type impressions: list
         """
         bulk = self._build_counters(counters)
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.IMPRESSION_COUNT, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.IMPRESSION_COUNT, self._telemetry_runtime_producer)
         try:
             response = await self._client.post(
                 'events',

@@ -4,6 +4,7 @@ import time
 
 EPOCH_DATETIME = datetime(1970, 1, 1)
 
+
 def utctime():
     """
     Return the utc time in nanoseconds.
@@ -22,6 +23,7 @@ def utctime_ms():
     :rtype: int
     """
     return int(utctime() * 1000)
+
 
 def get_current_epoch_time_ms():
     """

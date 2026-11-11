@@ -31,7 +31,8 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.SEGMENT, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.SEGMENT, self._telemetry_runtime_producer)
 
     def fetch_segment(self, segment_name, change_number, fetch_options):
         """
@@ -90,7 +91,8 @@ class SegmentsAPIAsync(object):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.SEGMENT, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.SEGMENT, self._telemetry_runtime_producer)
 
     async def fetch_segment(self, segment_name, change_number, fetch_options):
         """

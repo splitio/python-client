@@ -10,42 +10,45 @@ _LOGGER = logging.getLogger(__name__)
 
 SplitView = namedtuple(
     'SplitView',
-    ['name', 'traffic_type', 'killed', 'treatments', 'change_number', 'configs', 'default_treatment', 'sets', 'impressions_disabled', 'prerequisites']
+    ['name', 'traffic_type', 'killed', 'treatments', 'change_number', 'configs',
+        'default_treatment', 'sets', 'impressions_disabled', 'prerequisites']
 )
 
-_DEFAULT_CONDITIONS_TEMPLATE =   {
+_DEFAULT_CONDITIONS_TEMPLATE = {
     "conditionType": "ROLLOUT",
     "matcherGroup": {
         "combiner": "AND",
         "matchers": [
-        {
-            "keySelector": None,
-            "matcherType": "ALL_KEYS",
-            "negate": False,
-            "userDefinedSegmentMatcherData": None,
-            "whitelistMatcherData": None,
-            "unaryNumericMatcherData": None,
-            "betweenMatcherData": None,
-            "dependencyMatcherData": None,
-            "booleanMatcherData": None,
-            "stringMatcherData": None
-        }]
+            {
+                "keySelector": None,
+                "matcherType": "ALL_KEYS",
+                "negate": False,
+                "userDefinedSegmentMatcherData": None,
+                "whitelistMatcherData": None,
+                "unaryNumericMatcherData": None,
+                "betweenMatcherData": None,
+                "dependencyMatcherData": None,
+                "booleanMatcherData": None,
+                "stringMatcherData": None
+            }]
     },
     "partitions": [
         {
-        "treatment": "control",
-        "size": 100
+            "treatment": "control",
+            "size": 100
         }
     ],
     "label": "targeting rule type unsupported by sdk"
 }
 
+
 class Prerequisites(object):
     """Prerequisites."""
+
     def __init__(self, feature_flag_name, treatments):
         self._feature_flag_name = feature_flag_name
         self._treatments = treatments
-    
+
     @property
     def feature_flag_name(self):
         """Return featur eflag name."""
@@ -55,13 +58,15 @@ class Prerequisites(object):
     def treatments(self):
         """Return treatments."""
         return self._treatments
-    
+
     def to_json(self):
         to_return = []
         for feature_flag_name in self._feature_flag_name:
-            to_return.append({"n": feature_flag_name, "ts": [treatment for treatment in self._treatments]})
-        
+            to_return.append({"n": feature_flag_name, "ts": [
+                             treatment for treatment in self._treatments]})
+
         return to_return
+
 
 class Status(Enum):
     """Split status."""
@@ -96,7 +101,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
             configurations=None,
             sets=None,
             impressions_disabled=None,
-            prerequisites = None
+            prerequisites=None
     ):
         """
         Class constructor.
@@ -219,7 +224,7 @@ class Split(object):  # pylint: disable=too-many-instance-attributes
     def impressions_disabled(self):
         """Return impressions_disabled of the split."""
         return self._impressions_disabled
-    
+
     @property
     def prerequisites(self):
         """Return prerequisites of the split."""
@@ -332,13 +337,16 @@ def from_raw(raw_split):
         traffic_allocation_seed=raw_split.get('trafficAllocationSeed'),
         configurations=raw_split.get('configurations'),
         sets=set(raw_split.get('sets')) if raw_split.get('sets') is not None else [],
-        impressions_disabled=raw_split.get('impressionsDisabled') if raw_split.get('impressionsDisabled') is not None else False,
-        prerequisites=from_raw_prerequisites(raw_split.get('prerequisites')) if raw_split.get('prerequisites') is not None else []
+        impressions_disabled=raw_split.get('impressionsDisabled') if raw_split.get(
+            'impressionsDisabled') is not None else False,
+        prerequisites=from_raw_prerequisites(raw_split.get(
+            'prerequisites')) if raw_split.get('prerequisites') is not None else []
     )
+
 
 def from_raw_prerequisites(raw_prerequisites):
     to_return = []
     for prerequisite in raw_prerequisites:
         to_return.append(Prerequisites(prerequisite['n'], prerequisite['ts']))
-    
+
     return to_return

@@ -58,6 +58,7 @@ class EqualToSemverMatcher(Matcher):
         """Add matcher specific properties to base dict before returning it."""
         return {'matcherType': 'EQUAL_TO_SEMVER', 'stringMatcherData': self._data}
 
+
 class GreaterThanOrEqualToSemverMatcher(Matcher):
     """A matcher for Semver greater than or equal to."""
 
@@ -86,7 +87,8 @@ class GreaterThanOrEqualToSemverMatcher(Matcher):
         :rtype: bool
         """
         if self._semver is None:
-            _LOGGER.error("stringMatcherData is required for GREATER_THAN_OR_EQUAL_TO_SEMVER matcher type")
+            _LOGGER.error(
+                "stringMatcherData is required for GREATER_THAN_OR_EQUAL_TO_SEMVER matcher type")
             return False
 
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
@@ -136,7 +138,8 @@ class LessThanOrEqualToSemverMatcher(Matcher):
         :rtype: bool
         """
         if self._semver is None:
-            _LOGGER.error("stringMatcherData is required for LESS_THAN_OR_EQUAL_TO_SEMVER matcher type")
+            _LOGGER.error(
+                "stringMatcherData is required for LESS_THAN_OR_EQUAL_TO_SEMVER matcher type")
             return False
 
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))

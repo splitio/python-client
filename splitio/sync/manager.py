@@ -19,7 +19,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
 
     _CENTINEL_EVENT = object()
 
-    def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_url=None):  # pylint:disable=too-many-arguments
+    def __init__(self, ready_flag, synchronizer, auth_api, streaming_enabled, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_url=None):
         """
         Construct Manager.
 
@@ -56,7 +56,8 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
             self._stop_event = Event()  # interrupts the backoff between streaming retries
             self._backoff = Backoff()
             self._queue = Queue()
-            self._push = PushManager(auth_api, synchronizer, self._queue, sdk_metadata, telemetry_runtime_producer, sse_url, client_key, proxy_url)
+            self._push = PushManager(auth_api, synchronizer, self._queue, sdk_metadata,
+                                     telemetry_runtime_producer, sse_url, client_key, proxy_url)
             self._push_status_handler = Thread(target=self._streaming_feedback_handler,
                                                name='PushStatusHandler', daemon=True)
 
@@ -115,13 +116,15 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                     self._push.update_workers_status(True)
                     self._backoff.reset()
                     _LOGGER.info('streaming up and running. disabling periodic fetching.')
-                    self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.STREAMING.value,  get_current_epoch_time_ms()))
+                    self._telemetry_runtime_producer.record_streaming_event(
+                        (StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.STREAMING.value,  get_current_epoch_time_ms()))
                 elif status == Status.PUSH_SUBSYSTEM_DOWN:
                     self._push.update_workers_status(False)
                     self._synchronizer.sync_all()
                     self._synchronizer.start_periodic_fetching()
                     _LOGGER.info('streaming temporarily down. starting periodic fetching')
-                    self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
+                    self._telemetry_runtime_producer.record_streaming_event(
+                        (StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
                 elif status == Status.PUSH_RETRYABLE_ERROR:
                     self._push.update_workers_status(False)
                     self._push.stop(True)
@@ -138,7 +141,8 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                     self._synchronizer.sync_all()
                     self._synchronizer.start_periodic_fetching()
                     _LOGGER.info('non-recoverable error in streaming. switching to polling.')
-                    self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
+                    self._telemetry_runtime_producer.record_streaming_event(
+                        (StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
                     return
             except Exception:  # pylint:disable=broad-except
                 # Keep this thread alive: if it dies, no further streaming status change is
@@ -173,7 +177,7 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
 
     _CENTINEL_EVENT = object()
 
-    def __init__(self, synchronizer, auth_api, streaming_enabled, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy=None):  # pylint:disable=too-many-arguments
+    def __init__(self, synchronizer, auth_api, streaming_enabled, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy=None):
         """
         Construct Manager.
 
@@ -202,7 +206,8 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
             self._push_status_handler_active = True
             self._backoff = Backoff()
             self._queue = asyncio.Queue()
-            self._push = PushManagerAsync(auth_api, synchronizer, self._queue, sdk_metadata, telemetry_runtime_producer, sse_url, client_key, proxy=proxy)
+            self._push = PushManagerAsync(auth_api, synchronizer, self._queue, sdk_metadata,
+                                          telemetry_runtime_producer, sse_url, client_key, proxy=proxy)
         self._stopped = False
 
     async def start(self, max_retry_attempts=_SYNC_ALL_NO_RETRIES):
@@ -316,7 +321,7 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
 class RedisManagerBase(object):  # pylint:disable=too-many-instance-attributes
     """Manager base Class."""
 
-    def __init__(self, synchronizer):  # pylint:disable=too-many-arguments
+    def __init__(self, synchronizer):
         """
         Construct Manager.
 
@@ -344,7 +349,7 @@ class RedisManagerBase(object):  # pylint:disable=too-many-instance-attributes
 class RedisManager(RedisManagerBase):  # pylint:disable=too-many-instance-attributes
     """Manager Class."""
 
-    def __init__(self, synchronizer):  # pylint:disable=too-many-arguments
+    def __init__(self, synchronizer):
         """
         Construct Manager.
 
@@ -367,7 +372,7 @@ class RedisManager(RedisManagerBase):  # pylint:disable=too-many-instance-attrib
 class RedisManagerAsync(RedisManagerBase):  # pylint:disable=too-many-instance-attributes
     """Manager async Class."""
 
-    def __init__(self, synchronizer):  # pylint:disable=too-many-arguments
+    def __init__(self, synchronizer):
         """
         Construct Manager.
 

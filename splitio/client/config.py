@@ -11,11 +11,13 @@ from splitio.models.fallback_config import FallbackTreatmentsConfiguration
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_DATA_SAMPLING = 1
 
+
 class AuthenticateScheme(Enum):
     """Authentication Scheme."""
     NONE = 'NONE'
     KERBEROS_SPNEGO = 'KERBEROS_SPNEGO'
     KERBEROS_PROXY = 'KERBEROS_PROXY'
+
 
 DEFAULT_CONFIG = {
     'operationMode': 'standalone',
@@ -76,6 +78,7 @@ DEFAULT_CONFIG = {
     'proxyUrl': None,
 }
 
+
 def _parse_operation_mode(sdk_key, config):
     """
     Process incoming config to determine operation mode and storage type
@@ -94,13 +97,13 @@ def _parse_operation_mode(sdk_key, config):
         _LOGGER.debug('Using Redis storage operation mode')
         return 'consumer', 'redis'
 
-    if  config.get('storageType') is not None:
+    if config.get('storageType') is not None:
         if config.get('storageType').lower() == 'pluggable':
             _LOGGER.debug('Using Pluggable storage operation mode')
             return 'consumer', 'pluggable'
 
         _LOGGER.warning('You passed an invalid storageType, acceptable value is '
-                            '`pluggable`. Defaulting storage to In-Memory mode.')
+                        '`pluggable`. Defaulting storage to In-Memory mode.')
 
     _LOGGER.debug('Using In-Memory operation mode')
     return 'standalone', 'memory'
@@ -121,7 +124,7 @@ def _sanitize_impressions_mode(storage_type, mode, refresh_rate=None):
             mode = ImpressionsMode(mode.upper())
         except (ValueError, AttributeError):
             mode = ImpressionsMode.OPTIMIZED
-            _LOGGER.warning('You passed an invalid impressionsMode, impressionsMode should be ' \
+            _LOGGER.warning('You passed an invalid impressionsMode, impressionsMode should be '
                             'one of the following values: `debug`, `none` or `optimized`. '
                             ' Defaulting to `optimized` mode.')
 
@@ -131,6 +134,7 @@ def _sanitize_impressions_mode(storage_type, mode, refresh_rate=None):
         refresh_rate = max(60, refresh_rate) if refresh_rate is not None else 5 * 60
 
     return mode, refresh_rate
+
 
 def sanitize(sdk_key, config):
     """
@@ -153,21 +157,24 @@ def sanitize(sdk_key, config):
     processed['impressionsMode'] = imp_mode
     processed['impressionsRefreshRate'] = imp_rate
     if processed['metricsRefreshRate'] < 60:
-        _LOGGER.warning('metricRefreshRate parameter minimum value is 60 seconds, defaulting to 3600 seconds.')
+        _LOGGER.warning(
+            'metricRefreshRate parameter minimum value is 60 seconds, defaulting to 3600 seconds.')
         processed['metricsRefreshRate'] = 3600
 
     if config['operationMode'] == 'consumer' and config.get('flagSetsFilter') is not None:
         processed['flagSetsFilter'] = None
-        _LOGGER.warning('config: FlagSets filter is not applicable for Consumer modes where the SDK does keep rollout data in sync. FlagSet filter was discarded.')
+        _LOGGER.warning(
+            'config: FlagSets filter is not applicable for Consumer modes where the SDK does keep rollout data in sync. FlagSet filter was discarded.')
     else:
-        processed['flagSetsFilter'] = sorted(validate_flag_sets(processed['flagSetsFilter'], 'SDK Config')) if processed['flagSetsFilter'] is not None else None
+        processed['flagSetsFilter'] = sorted(validate_flag_sets(
+            processed['flagSetsFilter'], 'SDK Config')) if processed['flagSetsFilter'] is not None else None
 
     if config.get('httpAuthenticateScheme') is not None:
         try:
             authenticate_scheme = AuthenticateScheme(config['httpAuthenticateScheme'].upper())
         except (ValueError, AttributeError):
             authenticate_scheme = AuthenticateScheme.NONE
-            _LOGGER.warning('You passed an invalid HttpAuthenticationScheme, HttpAuthenticationScheme should be ' \
+            _LOGGER.warning('You passed an invalid HttpAuthenticationScheme, HttpAuthenticationScheme should be '
                             'one of the following values: `none`, `kerberos_proxy` or `kerberos_spnego`. '
                             ' Defaulting to `none` mode.')
         processed["httpAuthenticateScheme"] = authenticate_scheme
@@ -175,13 +182,14 @@ def sanitize(sdk_key, config):
     processed = _sanitize_fallback_config(config, processed)
 
     if config.get("redisErrors") is not None:
-        _LOGGER.warning('Parameter `redisErrors` is deprecated as it is no longer supported in redis lib.' \
+        _LOGGER.warning('Parameter `redisErrors` is deprecated as it is no longer supported in redis lib.'
                         ' Will ignore this value.')
         processed["redisErrors"] = None
 
     processed = _sanitize_proxy(config, processed)
-                        
+
     return processed
+
 
 def _sanitize_proxy(config, processed):
     if config.get("proxyUrl") is None:
@@ -191,8 +199,8 @@ def _sanitize_proxy(config, processed):
         _LOGGER.warning('Config: proxyUrl parameter must be of type str.')
         processed["proxyUrl"] = None
         return processed
-        
-    try:    
+
+    try:
         parsed = urlsplit(config.get("proxyUrl"))
         if parsed.hostname is None:
             _LOGGER.warning('Config: could not parse hostname from proxyUrl parameter.')
@@ -202,18 +210,21 @@ def _sanitize_proxy(config, processed):
         if parsed.port is not None:
             p = int(parsed.port)
     except Exception:
-        _LOGGER.warning('Config: proxy hostname should be a valid hostname and proxy port should be of int type.')
+        _LOGGER.warning(
+            'Config: proxy hostname should be a valid hostname and proxy port should be of int type.')
         processed["proxyUrl"] = None
         return processed
 
     return processed
-    
+
+
 def _sanitize_fallback_config(config, processed):
     if config.get('fallbackTreatments') is None:
         return processed
 
     if not isinstance(config['fallbackTreatments'], FallbackTreatmentsConfiguration):
-        _LOGGER.warning('Config: fallbackTreatments parameter should be of `FallbackTreatmentsConfiguration` class.')
+        _LOGGER.warning(
+            'Config: fallbackTreatments parameter should be of `FallbackTreatmentsConfiguration` class.')
         processed['fallbackTreatments'] = None
         return processed
 
@@ -226,11 +237,13 @@ def _sanitize_fallback_config(config, processed):
     if config['fallbackTreatments'].by_flag_fallback_treatment is not None:
         for feature_name in config['fallbackTreatments'].by_flag_fallback_treatment.keys():
             if not validate_regex_name(feature_name) or not validate_fallback_treatment(config['fallbackTreatments'].by_flag_fallback_treatment[feature_name]):
-                _LOGGER.warning('Config: fallback treatment parameter for feature flag %s is discarded.', feature_name)
+                _LOGGER.warning(
+                    'Config: fallback treatment parameter for feature flag %s is discarded.', feature_name)
                 continue
 
             sanitized_flag_fallback_treatments[feature_name] = config['fallbackTreatments'].by_flag_fallback_treatment[feature_name]
 
-    processed['fallbackTreatments'] = FallbackTreatmentsConfiguration(sanitized_global_fallback_treatment, sanitized_flag_fallback_treatments)
+    processed['fallbackTreatments'] = FallbackTreatmentsConfiguration(
+        sanitized_global_fallback_treatment, sanitized_flag_fallback_treatments)
 
     return processed

@@ -22,7 +22,7 @@ except ImportError:
     # Fallback to interpreted python hash algoritm (slower)
     from splitio.engine.hashfns import murmur3py  # pylint: disable=ungrouped-imports
     _murmur_hash = murmur3py.murmur32_py  # pylint: disable=invalid-name
-    _murmur_hash128 = lambda k, s: murmur3py.hash128_x64(k, s)[0]  # pylint: disable=invalid-name
+    def _murmur_hash128(k, s): return murmur3py.hash128_x64(k, s)[0]  # pylint: disable=invalid-name
 
 
 _HASH_ALGORITHMS = {

@@ -7,6 +7,7 @@ from splitio.models.telemetry import HTTPExceptionsAndLatencies
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
     """Class that uses an httpClient to communicate with the Telemetry API."""
 
@@ -23,7 +24,8 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.TELEMETRY, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.TELEMETRY, self._telemetry_runtime_producer)
 
     def record_unique_keys(self, uniques):
         """
@@ -113,7 +115,8 @@ class TelemetryAPIAsync(object):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.TELEMETRY, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.TELEMETRY, self._telemetry_runtime_producer)
 
     async def record_unique_keys(self, uniques):
         """

@@ -8,6 +8,7 @@ from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class WorkerPool(object):
     """Worker pool class to implement single producer/multiple consumer."""
 
@@ -165,8 +166,8 @@ class WorkerPoolAsync(object):
     async def _do_work(self, message):
         """process a single message."""
         try:
-            await self._semaphore.acquire() # wait until "there's a free worker"
-            if self._aborted: # check in case the pool was shutdown while we were waiting for a worker
+            await self._semaphore.acquire()  # wait until "there's a free worker"
+            if self._aborted:  # check in case the pool was shutdown while we were waiting for a worker
                 return
             await self._handler(message._message)
         except Exception:
@@ -174,7 +175,7 @@ class WorkerPoolAsync(object):
             _LOGGER.debug('Original traceback: ', exc_info=True)
             message._failed = True
         message._complete.set()
-        self._semaphore.release() # signal worker is idle
+        self._semaphore.release()  # signal worker is idle
 
     def start(self):
         """Start the workers."""
@@ -206,6 +207,7 @@ class WorkerPoolAsync(object):
 
 class TaskCompletionWraper:
     """Task completion class"""
+
     def __init__(self, message):
         self._message = message
         self._complete = asyncio.Event()
@@ -221,6 +223,7 @@ class TaskCompletionWraper:
 
 class BatchCompletionWrapper:
     """Batch completion class"""
+
     def __init__(self, tasks):
         self._tasks = tasks
 

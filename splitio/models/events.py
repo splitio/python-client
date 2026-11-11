@@ -20,11 +20,13 @@ EventWrapper = namedtuple('EventWrapper', [
     'size',
 ])
 
+
 class SdkEvent(Enum):
     """Public SDK events"""
 
     SDK_READY = 'SDK_READY'
     SDK_UPDATE = 'SDK_UPDATE'
+
 
 class SdkInternalEvent(Enum):
     """Internal SDK events"""
@@ -35,5 +37,3 @@ class SdkInternalEvent(Enum):
     SEGMENTS_UPDATED = 'SEGMENTS_UPDATED'
     RB_SEGMENTS_UPDATED = 'RB_SEGMENTS_UPDATED'
     LARGE_SEGMENTS_UPDATED = 'LARGE_SEGMENTS_UPDATED'
-    
-

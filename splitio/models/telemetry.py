@@ -21,6 +21,7 @@ MAX_LATENCY_BUCKET_COUNT = 23
 MAX_STREAMING_EVENTS = 20
 MAX_TAGS = 10
 
+
 class CounterConstants(Enum):
     """Impressions and events counters constants"""
     IMPRESSIONS_QUEUED = 'impressionsQueued'
@@ -28,6 +29,7 @@ class CounterConstants(Enum):
     IMPRESSIONS_DROPPED = 'impressionsDropped'
     EVENTS_QUEUED = 'eventsQueued'
     EVENTS_DROPPED = 'eventsDropped'
+
 
 class _ConfigParams(Enum):
     """Config parameters constants"""
@@ -44,6 +46,7 @@ class _ConfigParams(Enum):
     IMPRESSIONS_MODE = 'impressionsMode'
     IMPRESSIONS_LISTENER = 'impressionListener'
 
+
 class _ExtraConfig(Enum):
     """Extra config constants"""
     ACTIVE_FACTORY_COUNT = 'activeFactoryCount'
@@ -55,6 +58,7 @@ class _ExtraConfig(Enum):
     HTTP_PROXY = 'httpProxy'
     HTTPS_PROXY_ENV = 'HTTPS_PROXY'
 
+
 class _ApiURLs(Enum):
     """Api URL constants"""
     SDK_URL = 'sdk_url'
@@ -63,6 +67,7 @@ class _ApiURLs(Enum):
     STREAMING_URL = 'streaming_url'
     TELEMETRY_URL = 'telemetry_url'
     URL_OVERRIDE = 'urlOverride'
+
 
 class HTTPExceptionsAndLatencies(Enum):
     """Sync exceptions and latencies constants"""
@@ -75,6 +80,7 @@ class HTTPExceptionsAndLatencies(Enum):
     EVENT = 'event'
     TELEMETRY = 'telemetry'
     TOKEN = 'token'
+
 
 class MethodExceptionsAndLatencies(Enum):
     """Method exceptions and latencies constants"""
@@ -90,9 +96,11 @@ class MethodExceptionsAndLatencies(Enum):
     TREATMENTS_WITH_CONFIG_BY_FLAG_SETS = 'treatments_with_config_by_flag_sets'
     TRACK = 'track'
 
+
 class _LastSynchronizationConstants(Enum):
     """Last sync constants"""
     LAST_SYNCHRONIZATIONS = 'lastSynchronizations'
+
 
 class SSEStreamingStatus(Enum):
     """SSE streaming status enums"""
@@ -100,19 +108,23 @@ class SSEStreamingStatus(Enum):
     DISABLED = 1
     PAUSED = 2
 
+
 class SSEConnectionError(Enum):
     """SSE Connection Error enums"""
     REQUESTED = 0
     NON_REQUESTED = 1
+
 
 class SSESyncMode(Enum):
     """SSE sync mode enums"""
     STREAMING = 0
     POLLING = 1
 
+
 class _StreamingEventsConstant(Enum):
     """Storage types constant"""
     STREAMING_EVENTS = 'streamingEvents'
+
 
 class StreamingEventTypes(Enum):
     """Streaming event types constants"""
@@ -121,9 +133,10 @@ class StreamingEventTypes(Enum):
     OCCUPANCY_SEC = 20
     STREAMING_STATUS = 30
     SSE_CONNECTION_ERROR = 40
-    TOKEN_REFRESH =  50
+    TOKEN_REFRESH = 50
     ABLY_ERROR = 60
     SYNC_MODE_UPDATE = 70
+
 
 class StorageType(Enum):
     """Storage types constants"""
@@ -131,16 +144,19 @@ class StorageType(Enum):
     REDIS = 'redis'
     PLUGGABLE = 'pluggable'
 
+
 class OperationMode(Enum):
     """Storage modes constants"""
     STANDALONE = 'standalone'
     CONSUMER = 'consumer'
     PARTIAL_CONSUMER = 'partial_consumer'
 
+
 class UpdateFromSSE(Enum):
     """Update from sse constants"""
     SPLIT_UPDATE = 'sp'
     RBS_UPDATE = 'rbs'
+
 
 def get_latency_bucket_index(micros):
     """
@@ -156,11 +172,13 @@ def get_latency_bucket_index(micros):
 
     return bisect_left(BUCKETS, micros)
 
+
 class MethodLatenciesBase(object, metaclass=abc.ABCMeta):
     """
     Method Latency base class
 
     """
+
     def _reset_all(self):
         """Reset variables"""
         self._treatment = [0] * MAX_LATENCY_BUCKET_COUNT
@@ -185,11 +203,13 @@ class MethodLatenciesBase(object, metaclass=abc.ABCMeta):
         Pop all latencies
         """
 
+
 class MethodLatencies(MethodLatenciesBase):
     """
     Method Latency class
 
     """
+
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
@@ -325,6 +345,7 @@ class HTTPLatenciesBase(object, metaclass=abc.ABCMeta):
     HTTP Latency class
 
     """
+
     def _reset_all(self):
         """Reset variables"""
         self._split = [0] * MAX_LATENCY_BUCKET_COUNT
@@ -353,6 +374,7 @@ class HTTPLatencies(HTTPLatenciesBase):
     HTTP Latency class
 
     """
+
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
@@ -396,9 +418,9 @@ class HTTPLatencies(HTTPLatenciesBase):
         """
         with self._lock:
             latencies = {HTTPExceptionsAndLatencies.HTTP_LATENCIES.value: {HTTPExceptionsAndLatencies.SPLIT.value: self._split, HTTPExceptionsAndLatencies.SEGMENT.value: self._segment, HTTPExceptionsAndLatencies.IMPRESSION.value: self._impression,
-                                        HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count, HTTPExceptionsAndLatencies.EVENT.value: self._event,
-                                        HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry, HTTPExceptionsAndLatencies.TOKEN.value: self._token}
-                    }
+                                                                           HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count, HTTPExceptionsAndLatencies.EVENT.value: self._event,
+                                                                           HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry, HTTPExceptionsAndLatencies.TOKEN.value: self._token}
+                         }
             self._reset_all()
             return latencies
 
@@ -454,9 +476,9 @@ class HTTPLatenciesAsync(HTTPLatenciesBase):
         """
         async with self._lock:
             latencies = {HTTPExceptionsAndLatencies.HTTP_LATENCIES.value: {HTTPExceptionsAndLatencies.SPLIT.value: self._split, HTTPExceptionsAndLatencies.SEGMENT.value: self._segment, HTTPExceptionsAndLatencies.IMPRESSION.value: self._impression,
-                                        HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count, HTTPExceptionsAndLatencies.EVENT.value: self._event,
-                                        HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry, HTTPExceptionsAndLatencies.TOKEN.value: self._token}
-                    }
+                                                                           HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count, HTTPExceptionsAndLatencies.EVENT.value: self._event,
+                                                                           HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry, HTTPExceptionsAndLatencies.TOKEN.value: self._token}
+                         }
             self._reset_all()
             return latencies
 
@@ -466,6 +488,7 @@ class MethodExceptionsBase(object, metaclass=abc.ABCMeta):
     Method exceptions base class
 
     """
+
     def _reset_all(self):
         """Reset variables"""
         self._treatment = 0
@@ -496,6 +519,7 @@ class MethodExceptions(MethodExceptionsBase):
     Method exceptions class
 
     """
+
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
@@ -541,15 +565,15 @@ class MethodExceptions(MethodExceptionsBase):
         with self._lock:
             exceptions = {
                 MethodExceptionsAndLatencies.METHOD_EXCEPTIONS.value: {
-                MethodExceptionsAndLatencies.TREATMENT.value: self._treatment,
-                MethodExceptionsAndLatencies.TREATMENTS.value: self._treatments,
-                MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value: self._treatment_with_config,
-                MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value: self._treatments_with_config,
-                MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET.value: self._treatments_by_flag_set,
-                MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS.value: self._treatments_by_flag_sets,
-                MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET.value: self._treatments_with_config_by_flag_set,
-                MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS.value: self._treatments_with_config_by_flag_sets,
-                MethodExceptionsAndLatencies.TRACK.value: self._track}
+                    MethodExceptionsAndLatencies.TREATMENT.value: self._treatment,
+                    MethodExceptionsAndLatencies.TREATMENTS.value: self._treatments,
+                    MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value: self._treatment_with_config,
+                    MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value: self._treatments_with_config,
+                    MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET.value: self._treatments_by_flag_set,
+                    MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS.value: self._treatments_by_flag_sets,
+                    MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET.value: self._treatments_with_config_by_flag_set,
+                    MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS.value: self._treatments_with_config_by_flag_sets,
+                    MethodExceptionsAndLatencies.TRACK.value: self._track}
             }
             self._reset_all()
             return exceptions
@@ -608,15 +632,15 @@ class MethodExceptionsAsync(MethodExceptionsBase):
         async with self._lock:
             exceptions = {
                 MethodExceptionsAndLatencies.METHOD_EXCEPTIONS.value: {
-                MethodExceptionsAndLatencies.TREATMENT.value: self._treatment,
-                MethodExceptionsAndLatencies.TREATMENTS.value: self._treatments,
-                MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value: self._treatment_with_config,
-                MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value: self._treatments_with_config,
-                MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET.value: self._treatments_by_flag_set,
-                MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS.value: self._treatments_by_flag_sets,
-                MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET.value: self._treatments_with_config_by_flag_set,
-                MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS.value: self._treatments_with_config_by_flag_sets,
-                MethodExceptionsAndLatencies.TRACK.value: self._track}
+                    MethodExceptionsAndLatencies.TREATMENT.value: self._treatment,
+                    MethodExceptionsAndLatencies.TREATMENTS.value: self._treatments,
+                    MethodExceptionsAndLatencies.TREATMENT_WITH_CONFIG.value: self._treatment_with_config,
+                    MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG.value: self._treatments_with_config,
+                    MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET.value: self._treatments_by_flag_set,
+                    MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS.value: self._treatments_by_flag_sets,
+                    MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET.value: self._treatments_with_config_by_flag_set,
+                    MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS.value: self._treatments_with_config_by_flag_sets,
+                    MethodExceptionsAndLatencies.TRACK.value: self._track}
             }
             self._reset_all()
             return exceptions
@@ -627,6 +651,7 @@ class LastSynchronizationBase(object, metaclass=abc.ABCMeta):
     Last Synchronization info base class
 
     """
+
     def _reset_all(self):
         """Reset variables"""
         self._split = 0
@@ -649,11 +674,13 @@ class LastSynchronizationBase(object, metaclass=abc.ABCMeta):
         get all exceptions
         """
 
+
 class LastSynchronization(LastSynchronizationBase):
     """
     Last Synchronization info class
 
     """
+
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
@@ -697,14 +724,15 @@ class LastSynchronization(LastSynchronizationBase):
         with self._lock:
             return {
                 _LastSynchronizationConstants.LAST_SYNCHRONIZATIONS.value: {
-                HTTPExceptionsAndLatencies.SPLIT.value: self._split,
-                HTTPExceptionsAndLatencies.SEGMENT.value: self._segment,
-                HTTPExceptionsAndLatencies.IMPRESSION.value: self._impression,
-                HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count,
-                HTTPExceptionsAndLatencies.EVENT.value: self._event,
-                HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry,
-                HTTPExceptionsAndLatencies.TOKEN.value: self._token}
+                    HTTPExceptionsAndLatencies.SPLIT.value: self._split,
+                    HTTPExceptionsAndLatencies.SEGMENT.value: self._segment,
+                    HTTPExceptionsAndLatencies.IMPRESSION.value: self._impression,
+                    HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count,
+                    HTTPExceptionsAndLatencies.EVENT.value: self._event,
+                    HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry,
+                    HTTPExceptionsAndLatencies.TOKEN.value: self._token}
             }
+
 
 class LastSynchronizationAsync(LastSynchronizationBase):
     """
@@ -757,13 +785,13 @@ class LastSynchronizationAsync(LastSynchronizationBase):
         async with self._lock:
             return {
                 _LastSynchronizationConstants.LAST_SYNCHRONIZATIONS.value: {
-                HTTPExceptionsAndLatencies.SPLIT.value: self._split,
-                HTTPExceptionsAndLatencies.SEGMENT.value: self._segment,
-                HTTPExceptionsAndLatencies.IMPRESSION.value: self._impression,
-                HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count,
-                HTTPExceptionsAndLatencies.EVENT.value: self._event,
-                HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry,
-                HTTPExceptionsAndLatencies.TOKEN.value: self._token}
+                    HTTPExceptionsAndLatencies.SPLIT.value: self._split,
+                    HTTPExceptionsAndLatencies.SEGMENT.value: self._segment,
+                    HTTPExceptionsAndLatencies.IMPRESSION.value: self._impression,
+                    HTTPExceptionsAndLatencies.IMPRESSION_COUNT.value: self._impression_count,
+                    HTTPExceptionsAndLatencies.EVENT.value: self._event,
+                    HTTPExceptionsAndLatencies.TELEMETRY.value: self._telemetry,
+                    HTTPExceptionsAndLatencies.TOKEN.value: self._token}
             }
 
 
@@ -772,6 +800,7 @@ class HTTPErrorsBase(object, metaclass=abc.ABCMeta):
     Http errors base class
 
     """
+
     def _reset_all(self):
         """Reset variables"""
         self._split = {}
@@ -800,6 +829,7 @@ class HTTPErrors(HTTPErrorsBase):
     Http errors class
 
     """
+
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
@@ -951,6 +981,7 @@ class TelemetryCountersBase(object, metaclass=abc.ABCMeta):
     Counters base class
 
     """
+
     def _reset_all(self):
         """Reset variables"""
         self._impressions_queued = 0
@@ -1023,6 +1054,7 @@ class TelemetryCounters(TelemetryCountersBase):
     Counters class
 
     """
+
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
@@ -1177,6 +1209,7 @@ class TelemetryCounters(TelemetryCountersBase):
             token_refreshes = self._token_refreshes
             self._token_refreshes = 0
             return token_refreshes
+
 
 class TelemetryCountersAsync(TelemetryCountersBase):
     """
@@ -1346,6 +1379,7 @@ class StreamingEvent(object):
     Streaming event class
 
     """
+
     def __init__(self, streaming_event):
         """
         Constructor
@@ -1387,6 +1421,7 @@ class StreamingEvent(object):
         """
         return self._time
 
+
 class StreamingEventsAsync(object):
     """
     Streaming events async class
@@ -1427,13 +1462,15 @@ class StreamingEventsAsync(object):
             self._streaming_events = []
             return {_StreamingEventsConstant.STREAMING_EVENTS.value: [
                 {'e': streaming_event.type, 'd': streaming_event.data,
-                't': streaming_event.time} for streaming_event in streaming_events]}
+                 't': streaming_event.time} for streaming_event in streaming_events]}
+
 
 class StreamingEvents(object):
     """
     Streaming events class
 
     """
+
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
@@ -1467,7 +1504,7 @@ class StreamingEvents(object):
             self._streaming_events = []
             return {_StreamingEventsConstant.STREAMING_EVENTS.value: [
                 {'e': streaming_event.type, 'd': streaming_event.data,
-                't': streaming_event.time} for streaming_event in streaming_events]}
+                 't': streaming_event.time} for streaming_event in streaming_events]}
 
 
 class TelemetryConfigBase(object, metaclass=abc.ABCMeta):
@@ -1475,6 +1512,7 @@ class TelemetryConfigBase(object, metaclass=abc.ABCMeta):
     Telemetry init config base class
 
     """
+
     def _reset_all(self):
         """Reset variables"""
         self._block_until_ready_timeout = 0
@@ -1619,7 +1657,7 @@ class TelemetryConfigBase(object, metaclass=abc.ABCMeta):
         :return: URL overrides dict
         :rtype: URLOverrides object
         """
-        return  {
+        return {
             _ApiURLs.SDK_URL.value: True if _ApiURLs.SDK_URL.value in config else False,
             _ApiURLs.EVENTS_URL.value: True if _ApiURLs.EVENTS_URL.value in config else False,
             _ApiURLs.AUTH_URL.value: True if _ApiURLs.AUTH_URL.value in config else False,
@@ -1665,6 +1703,7 @@ class TelemetryConfig(TelemetryConfigBase):
     Telemetry init config class
 
     """
+
     def __init__(self):
         """Constructor"""
         self._lock = threading.RLock()
@@ -1694,14 +1733,17 @@ class TelemetryConfig(TelemetryConfigBase):
         :type config: dict
         """
         with self._lock:
-            self._operation_mode = self._get_operation_mode(config[_ConfigParams.OPERATION_MODE.value])
-            self._storage_type = self._get_storage_type(config[_ConfigParams.OPERATION_MODE.value], config[_ConfigParams.STORAGE_TYPE.value])
+            self._operation_mode = self._get_operation_mode(
+                config[_ConfigParams.OPERATION_MODE.value])
+            self._storage_type = self._get_storage_type(
+                config[_ConfigParams.OPERATION_MODE.value], config[_ConfigParams.STORAGE_TYPE.value])
             self._streaming_enabled = config[_ConfigParams.STREAMING_ENABLED.value]
             self._refresh_rate = self._get_refresh_rates(config)
             self._url_override = self._get_url_overrides(extra_config)
             self._impressions_queue_size = config[_ConfigParams.IMPRESSIONS_QUEUE_SIZE.value]
             self._events_queue_size = config[_ConfigParams.EVENTS_QUEUE_SIZE.value]
-            self._impressions_mode = self._get_impressions_mode(config[_ConfigParams.IMPRESSIONS_MODE.value])
+            self._impressions_mode = self._get_impressions_mode(
+                config[_ConfigParams.IMPRESSIONS_MODE.value])
             self._impression_listener = True if config[_ConfigParams.IMPRESSIONS_LISTENER.value] is not None else False
             self._http_proxy = self._check_if_proxy_detected()
             self._flag_sets = total_flag_sets
@@ -1843,14 +1885,17 @@ class TelemetryConfigAsync(TelemetryConfigBase):
         :type config: dict
         """
         async with self._lock:
-            self._operation_mode = self._get_operation_mode(config[_ConfigParams.OPERATION_MODE.value])
-            self._storage_type = self._get_storage_type(config[_ConfigParams.OPERATION_MODE.value], config[_ConfigParams.STORAGE_TYPE.value])
+            self._operation_mode = self._get_operation_mode(
+                config[_ConfigParams.OPERATION_MODE.value])
+            self._storage_type = self._get_storage_type(
+                config[_ConfigParams.OPERATION_MODE.value], config[_ConfigParams.STORAGE_TYPE.value])
             self._streaming_enabled = config[_ConfigParams.STREAMING_ENABLED.value]
             self._refresh_rate = self._get_refresh_rates(config)
             self._url_override = self._get_url_overrides(extra_config)
             self._impressions_queue_size = config[_ConfigParams.IMPRESSIONS_QUEUE_SIZE.value]
             self._events_queue_size = config[_ConfigParams.EVENTS_QUEUE_SIZE.value]
-            self._impressions_mode = self._get_impressions_mode(config[_ConfigParams.IMPRESSIONS_MODE.value])
+            self._impressions_mode = self._get_impressions_mode(
+                config[_ConfigParams.IMPRESSIONS_MODE.value])
             self._impression_listener = True if config[_ConfigParams.IMPRESSIONS_LISTENER.value] is not None else False
             self._http_proxy = self._check_if_proxy_detected()
             self._flag_sets = total_flag_sets

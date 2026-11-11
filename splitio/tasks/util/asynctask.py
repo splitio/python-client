@@ -9,6 +9,7 @@ __TASK_FORCE_RUN__ = 1
 
 _LOGGER = logging.getLogger(__name__)
 
+
 def _safe_run(func):
     """
     Execute a function wrapped in a try-except block.
@@ -28,6 +29,7 @@ def _safe_run(func):
         _LOGGER.error('Something went wrong when running passed function.')
         _LOGGER.debug('Original traceback:', exc_info=True)
         return False
+
 
 async def _safe_run_async(func):
     """
@@ -197,7 +199,6 @@ class AsyncTaskAsync(object):  # pylint: disable=too-many-instance-attributes
     object.
     It also allows for "on init" and "on stop" functions to be passed.
     """
-
 
     def __init__(self, main, period, on_init=None, on_stop=None):
         """

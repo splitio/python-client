@@ -1,5 +1,6 @@
 _UNIQUE_KEYS_MAX_BULK_SIZE = 5000
 
+
 class UniqueKeysSynchronizerBase(object):
     """Unique Keys Synchronizer base class."""
 
@@ -123,6 +124,7 @@ class ClearFilterSynchronizer(object):
 
         """
         self._unique_keys_tracker.clear_filter()
+
 
 class ClearFilterSynchronizerAsync(object):
     """Clear filter async class."""
