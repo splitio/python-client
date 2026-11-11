@@ -247,7 +247,7 @@ class SSEClientAsync(object):
                 event_builder = EventBuilder()
                 async for line in response.content:
                     if line.startswith(b':'):
-                        _LOGGER.debug("skipping emtpy line / comment")
+                        _LOGGER.debug("skipping empty line / comment")
                         continue
                     elif line in _EVENT_SEPARATORS:
                         _LOGGER.debug("dispatching event: %s", event_builder.build())

@@ -522,8 +522,8 @@ class LocalSegmentSynchronizer(LocalSegmentSynchronizerBase):
         try:
             with open(os.path.join(self._segment_folder, "%s.json" % filename), 'r') as flo:
                 parsed = json.load(flo)
-            santitized_segment = self._sanitize_segment(parsed)
-            return santitized_segment
+            sanitized_segment = self._sanitize_segment(parsed)
+            return sanitized_segment
         except Exception as exc:
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
 
@@ -633,8 +633,8 @@ class LocalSegmentSynchronizerAsync(LocalSegmentSynchronizerBase):
         try:
             async with aiofiles.open(os.path.join(self._segment_folder, "%s.json" % filename), 'r') as flo:
                 parsed = json.loads(await flo.read())
-            santitized_segment = self._sanitize_segment(parsed)
-            return santitized_segment
+            sanitized_segment = self._sanitize_segment(parsed)
+            return sanitized_segment
         except Exception as exc:
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
 

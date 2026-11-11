@@ -186,7 +186,7 @@ class InMemoryRuleBasedSegmentStorage(RuleBasedSegmentsStorage):
             rule_based_segment = self._rule_based_segments.get(segment_name)
             if not rule_based_segment:
                 _LOGGER.warning(
-                    "Tried to delete nonexistant Rule based segment %s. Skipping", segment_name)
+                    "Tried to delete nonexistent Rule based segment %s. Skipping", segment_name)
                 return False
 
             self._rule_based_segments.pop(segment_name)
@@ -321,7 +321,7 @@ class InMemoryRuleBasedSegmentStorageAsync(RuleBasedSegmentsStorage):
             rule_based_segment = self._rule_based_segments.get(segment_name)
             if not rule_based_segment:
                 _LOGGER.warning(
-                    "Tried to delete nonexistant Rule based segment %s. Skipping", segment_name)
+                    "Tried to delete nonexistent Rule based segment %s. Skipping", segment_name)
                 return False
 
             self._rule_based_segments.pop(segment_name)
@@ -599,7 +599,7 @@ class InMemorySplitStorage(InMemorySplitStorageBase):
             feature_flag = self._feature_flags.get(feature_flag_name)
             if not feature_flag:
                 _LOGGER.warning(
-                    "Tried to delete nonexistant feature flag %s. Skipping", feature_flag_name)
+                    "Tried to delete nonexistent feature flag %s. Skipping", feature_flag_name)
                 return False
 
             self._feature_flags.pop(feature_flag_name)
@@ -834,7 +834,7 @@ class InMemorySplitStorageAsync(InMemorySplitStorageBase):
             feature_flag = self._feature_flags.get(feature_flag_name)
             if not feature_flag:
                 _LOGGER.warning(
-                    "Tried to delete nonexistant feature flag %s. Skipping", feature_flag_name)
+                    "Tried to delete nonexistent feature flag %s. Skipping", feature_flag_name)
                 return False
 
             self._feature_flags.pop(feature_flag_name)
@@ -1000,7 +1000,7 @@ class InMemorySegmentStorage(SegmentStorage):
             fetched = self._segments.get(segment_name)
             if fetched is None:
                 _LOGGER.debug(
-                    "Tried to retrieve nonexistant segment %s. Skipping",
+                    "Tried to retrieve nonexistent segment %s. Skipping",
                     segment_name
                 )
             return fetched
@@ -1090,7 +1090,7 @@ class InMemorySegmentStorage(SegmentStorage):
         with self._lock:
             if segment_name not in self._segments:
                 _LOGGER.warning(
-                    "Tried to query members for nonexistant segment %s. Returning False",
+                    "Tried to query members for nonexistent segment %s. Returning False",
                     segment_name
                 )
                 return False
@@ -1142,7 +1142,7 @@ class InMemorySegmentStorageAsync(SegmentStorage):
             fetched = self._segments.get(segment_name)
             if fetched is None:
                 _LOGGER.debug(
-                    "Tried to retrieve nonexistant segment %s. Skipping",
+                    "Tried to retrieve nonexistent segment %s. Skipping",
                     segment_name
                 )
             return fetched
@@ -1230,7 +1230,7 @@ class InMemorySegmentStorageAsync(SegmentStorage):
         async with self._lock:
             if segment_name not in self._segments:
                 _LOGGER.warning(
-                    "Tried to query members for nonexistant segment %s. Returning False",
+                    "Tried to query members for nonexistent segment %s. Returning False",
                     segment_name
                 )
                 return False

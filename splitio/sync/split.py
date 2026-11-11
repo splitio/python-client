@@ -856,10 +856,10 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
             if parsed.get('splits'):
                 parsed = util.convert_to_new_spec(parsed)
 
-            santitized = self._sanitize_json_elements(parsed)
-            santitized['ff']['d'] = self._sanitize_feature_flag_elements(santitized['ff']['d'])
-            santitized['rbs']['d'] = self._sanitize_rb_segment_elements(santitized['rbs']['d'])
-            return santitized
+            sanitized = self._sanitize_json_elements(parsed)
+            sanitized['ff']['d'] = self._sanitize_feature_flag_elements(sanitized['ff']['d'])
+            sanitized['rbs']['d'] = self._sanitize_rb_segment_elements(sanitized['rbs']['d'])
+            return sanitized
 
         except Exception as exc:
             _LOGGER.debug('Exception: ', exc_info=True)
@@ -1022,10 +1022,10 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
             if parsed.get('splits'):
                 parsed = util.convert_to_new_spec(parsed)
 
-            santitized = self._sanitize_json_elements(parsed)
-            santitized['ff']['d'] = self._sanitize_feature_flag_elements(santitized['ff']['d'])
-            santitized['rbs']['d'] = self._sanitize_rb_segment_elements(santitized['rbs']['d'])
-            return santitized
+            sanitized = self._sanitize_json_elements(parsed)
+            sanitized['ff']['d'] = self._sanitize_feature_flag_elements(sanitized['ff']['d'])
+            sanitized['rbs']['d'] = self._sanitize_rb_segment_elements(sanitized['rbs']['d'])
+            return sanitized
         except Exception as exc:
             _LOGGER.debug('Exception: ', exc_info=True)
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc

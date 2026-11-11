@@ -77,12 +77,12 @@ class SynchronizerTests(object):
         split_sync = SplitSynchronizer(api, storage, mocker.Mock())
         split_synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
                                                  mocker.Mock(), mocker.Mock())
-        sychronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
+        synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
 
-        sychronizer.synchronize_splits(None)  # APIExceptions are handled locally and should not be propagated!
+        synchronizer.synchronize_splits(None)  # APIExceptions are handled locally and should not be propagated!
 
         # test forcing to have only one retry attempt and then exit
-        sychronizer.sync_all(1)  # sync_all should not throw!
+        synchronizer.sync_all(1)  # sync_all should not throw!
 
     def test_sync_all_failed_splits_with_flagsets(self, mocker):
         api = mocker.Mock()
@@ -128,10 +128,10 @@ class SynchronizerTests(object):
         segment_sync = SegmentSynchronizer(api, split_storage, storage, rbs_storage)
         split_synchronizers = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
                                                  mocker.Mock(), mocker.Mock())
-        sychronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
+        synchronizer = Synchronizer(split_synchronizers, mocker.Mock(spec=SplitTasks))
 
-        sychronizer.sync_all(1)  # SyncAll should not throw!
-        assert not sychronizer._synchronize_segments()
+        synchronizer.sync_all(1)  # SyncAll should not throw!
+        assert not synchronizer._synchronize_segments()
 
     def test_synchronize_splits(self, mocker):
         events_queue = queue.Queue()
@@ -443,12 +443,12 @@ class SynchronizerAsyncTests(object):
         split_sync = SplitSynchronizerAsync(api, storage, rbs_storage)
         split_synchronizers = SplitSynchronizers(split_sync, mocker.Mock(), mocker.Mock(),
                                                  mocker.Mock(), mocker.Mock())
-        sychronizer = SynchronizerAsync(split_synchronizers, mocker.Mock(spec=SplitTasks))
+        synchronizer = SynchronizerAsync(split_synchronizers, mocker.Mock(spec=SplitTasks))
 
-        await sychronizer.synchronize_splits(None)  # APIExceptions are handled locally and should not be propagated!
+        await synchronizer.synchronize_splits(None)  # APIExceptions are handled locally and should not be propagated!
 
         # test forcing to have only one retry attempt and then exit
-        await sychronizer.sync_all(1)  # sync_all should not throw!
+        await synchronizer.sync_all(1)  # sync_all should not throw!
 
     @pytest.mark.asyncio
     async def test_sync_all_failed_splits_with_flagsets(self, mocker):
@@ -510,10 +510,10 @@ class SynchronizerAsyncTests(object):
         segment_sync = SegmentSynchronizerAsync(api, split_storage, storage, rbs_storage)
         split_synchronizers = SplitSynchronizers(split_sync, segment_sync, mocker.Mock(),
                                                  mocker.Mock(), mocker.Mock())
-        sychronizer = SynchronizerAsync(split_synchronizers, mocker.Mock(spec=SplitTasks))
+        synchronizer = SynchronizerAsync(split_synchronizers, mocker.Mock(spec=SplitTasks))
 
-        await sychronizer.sync_all(1)  # SyncAll should not throw!
-        assert not await sychronizer._synchronize_segments()
+        await synchronizer.sync_all(1)  # SyncAll should not throw!
+        assert not await synchronizer._synchronize_segments()
         await segment_sync.shutdown()
 
     @pytest.mark.asyncio

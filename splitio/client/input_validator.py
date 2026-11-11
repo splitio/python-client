@@ -678,7 +678,7 @@ def validate_pluggable_adapter(config):
 
     pluggable_adapter = config.get('storageWrapper')
     if not isinstance(pluggable_adapter, object):
-        _LOGGER.error("Pluggable storage instance is not inherted from object class")
+        _LOGGER.error("Pluggable storage instance is not inherited from object class")
         return False
 
     expected_methods = {'get': 1, 'get_items': 1, 'get_many': 1, 'set': 2, 'push_items': 2,
