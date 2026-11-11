@@ -17,7 +17,7 @@ _LOGGER = logging.getLogger(__name__)
 EvaluationOptions = namedtuple('EvaluationOptions', ['properties'])
 
 
-class ClientBase(object):  # pylint: disable=too-many-instance-attributes
+class ClientBase(object):
     """Entry point for the split sdk."""
 
     _FAILED_EVAL_RESULT = {
@@ -60,9 +60,9 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         self._recorder = recorder
         self._splitter = Splitter()
         self._feature_flag_storage = factory._get_storage(
-            'splits')  # pylint: disable=protected-access
-        self._segment_storage = factory._get_storage('segments')  # pylint: disable=protected-access
-        self._events_storage = factory._get_storage('events')  # pylint: disable=protected-access
+            'splits')
+        self._segment_storage = factory._get_storage('segments')
+        self._events_storage = factory._get_storage('events')
         self._evaluator = Evaluator(self._splitter, fallback_treatment_calculator)
         self._telemetry_evaluation_producer = self._factory._telemetry_evaluation_producer
         self._telemetry_init_producer = self._factory._telemetry_init_producer
@@ -249,7 +249,7 @@ class ClientBase(object):  # pylint: disable=too-many-instance-attributes
         return True
 
 
-class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
+class Client(ClientBase):
     """Entry point for the split sdk."""
 
     def __init__(self, factory, recorder, events_manager, labels_enabled=True, fallback_treatment_calculator=None):
@@ -678,11 +678,11 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
             self._telemetry_init_producer.record_not_ready_usage()
 
         start = get_current_epoch_time_ms()
-        should_validate_existance = self.ready and self._factory._sdk_key != 'localhost'  # pylint: disable=protected-access
+        should_validate_existance = self.ready and self._factory._sdk_key != 'localhost'
         traffic_type = input_validator.validate_traffic_type(
             traffic_type,
             should_validate_existance,
-            self._factory._get_storage('splits'),  # pylint: disable=protected-access
+            self._factory._get_storage('splits'),
         )
         is_valid, event, size = self._validate_track(
             key, traffic_type, event_type, value, properties)
@@ -696,14 +696,14 @@ class Client(ClientBase):  # pylint: disable=too-many-instance-attributes
             )], get_latency_bucket_index(get_current_epoch_time_ms() - start))
             return return_flag
 
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             self._telemetry_evaluation_producer.record_exception(MethodExceptionsAndLatencies.TRACK)
             _LOGGER.error('Error processing track event')
             _LOGGER.debug('Error: ', exc_info=True)
             return False
 
 
-class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
+class ClientAsync(ClientBase):
     """Entry point for the split sdk."""
 
     def __init__(self, factory, recorder, events_manager, labels_enabled=True, fallback_treatment_calculator=None):
@@ -1111,11 +1111,11 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
             await self._telemetry_init_producer.record_not_ready_usage()
 
         start = get_current_epoch_time_ms()
-        should_validate_existance = self.ready and self._factory._sdk_key != 'localhost'  # pylint: disable=protected-access
+        should_validate_existance = self.ready and self._factory._sdk_key != 'localhost'
         traffic_type = await input_validator.validate_traffic_type_async(
             traffic_type,
             should_validate_existance,
-            self._factory._get_storage('splits'),  # pylint: disable=protected-access
+            self._factory._get_storage('splits'),
         )
         is_valid, event, size = self._validate_track(
             key, traffic_type, event_type, value, properties)
@@ -1129,7 +1129,7 @@ class ClientAsync(ClientBase):  # pylint: disable=too-many-instance-attributes
             )], get_latency_bucket_index(get_current_epoch_time_ms() - start))
             return return_flag
 
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             await self._telemetry_evaluation_producer.record_exception(MethodExceptionsAndLatencies.TRACK)
             _LOGGER.error('Error processing track event')
             _LOGGER.debug('Error: ', exc_info=True)

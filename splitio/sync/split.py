@@ -770,7 +770,7 @@ class LocalSplitSynchronizer(LocalSplitSynchronizerBase):
         except IOError as exc:
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
 
-    def synchronize_splits(self, till=None):  # pylint:disable=unused-argument
+    def synchronize_splits(self, till=None):
         """Update feature flags in storage."""
         _LOGGER.info('Synchronizing feature flags now.')
         try:
@@ -937,7 +937,7 @@ class LocalSplitSynchronizerAsync(LocalSplitSynchronizerBase):
         except IOError as exc:
             raise ValueError("Error parsing file %s. Make sure it's readable." % filename) from exc
 
-    async def synchronize_splits(self, till=None):  # pylint:disable=unused-argument
+    async def synchronize_splits(self, till=None):
         """Update feature flags in storage."""
         _LOGGER.info('Synchronizing feature flags now.')
         try:

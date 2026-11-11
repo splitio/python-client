@@ -51,7 +51,7 @@ class WorkerPool(object):
         try:
             func(message)
             return True
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             _LOGGER.error("Something went wrong when processing message %s", message)
             _LOGGER.debug('Original traceback: ', exc_info=True)
             return False
@@ -80,7 +80,7 @@ class WorkerPool(object):
                 # If the task is successfully executed, the ack is done AFTERWARDS,
                 # to avoid race conditions on SDK initialization.
                 _LOGGER.debug("processing message '%s'", message)
-                ok = self._safe_run(func, message)  # pylint: disable=invalid-name
+                ok = self._safe_run(func, message)
                 if not ok:
                     self._failed = True
                     _LOGGER.error(

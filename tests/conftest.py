@@ -148,5 +148,5 @@ def _destroy_leaked_factories():
                 done = threading.Event()
                 factory.destroy(done)
                 done.wait(5)
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             pass  # factories built from mocks may not be destroyable; threads are daemons anyway

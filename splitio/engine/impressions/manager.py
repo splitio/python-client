@@ -39,7 +39,7 @@ def truncate_impressions_time(imps, counter=None):
         else [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour]
 
 
-class Hasher(object):  # pylint:disable=too-few-public-methods
+class Hasher(object):
     """Impression hasher."""
 
     _PATTERN = "%s:%s:%s:%s:%d"
@@ -86,7 +86,7 @@ class Hasher(object):  # pylint:disable=too-few-public-methods
         return self._hash_fn(self._stringify(impression), self._seed)
 
 
-class Observer(object):  # pylint:disable=too-few-public-methods
+class Observer(object):
     """Observe impression and add a previous time if applicable."""
 
     def __init__(self, size):

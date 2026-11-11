@@ -29,7 +29,7 @@ ImpressionDecorated = namedtuple(
 Impression.__new__.__defaults__ = (None,)
 
 
-class Label(object):  # pylint: disable=too-few-public-methods
+class Label(object):
     """Impressions labels."""
 
     # Condition: Split Was Killed

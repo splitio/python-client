@@ -10,7 +10,7 @@ class ImpressionsMode(Enum):
     NONE = "NONE"
 
 
-class Manager(object):  # pylint:disable=too-few-public-methods
+class Manager(object):
     """Impression manager."""
 
     def __init__(self, strategy, none_strategy, telemetry_runtime_producer):

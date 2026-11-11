@@ -12,7 +12,7 @@ from splitio.models.telemetry import HTTPExceptionsAndLatencies
 _LOGGER = logging.getLogger(__name__)
 
 
-class AuthAPI(object):  # pylint: disable=too-few-public-methods
+class AuthAPI(object):
     """Class that uses an httpClient to communicate with the SDK Auth Service API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):
@@ -61,7 +61,7 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
             raise APIException('Could not perform authentication.') from exc
 
 
-class AuthAPIAsync(object):  # pylint: disable=too-few-public-methods
+class AuthAPIAsync(object):
     """Async Class that uses an httpClient to communicate with the SDK Auth Service API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):

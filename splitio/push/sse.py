@@ -95,7 +95,7 @@ class SSEClient(object):
                     event_builder = EventBuilder()
                 else:
                     event_builder.process_line(line)
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             _LOGGER.debug('sse connection ended.')
             if not self._shutdown_requested:
                 _LOGGER.debug('stack trace: ', exc_info=True)
@@ -108,7 +108,7 @@ class SSEClient(object):
 
         return self._shutdown_requested
 
-    def start(self, url, extra_headers=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, proxy_url=None):  # pylint:disable=protected-access
+    def start(self, url, extra_headers=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, proxy_url=None):
         """
         Connect and start listening for events.
 
@@ -215,9 +215,9 @@ class SSEClientAsync(object):
         # aiohttp silently re-sends an idempotent request once if the server drops the connection,
         # which would hide a failed attempt from the push manager's retry/backoff logic.
         if hasattr(self._sess, '_retry_connection'):
-            self._sess._retry_connection = False  # pylint: disable=protected-access
+            self._sess._retry_connection = False
 
-    async def start(self, url, extra_headers=None, proxy_url=None):  # pylint:disable=protected-access
+    async def start(self, url, extra_headers=None, proxy_url=None):
         """
         Connect and start listening for events.
 
@@ -256,7 +256,7 @@ class SSEClientAsync(object):
                     else:
                         event_builder.process_line(line)
 
-        except Exception as exc:  # pylint:disable=broad-except
+        except Exception as exc:
             if self._is_conn_closed_error(exc):
                 _LOGGER.debug('sse connection ended.')
                 return

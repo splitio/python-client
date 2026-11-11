@@ -16,7 +16,7 @@ _SPEC_1_1 = "1.1"
 _PROXY_CHECK_INTERVAL_MILLISECONDS_SS = 24 * 60 * 60 * 1000
 
 
-class SplitsAPIBase(object):  # pylint: disable=too-few-public-methods
+class SplitsAPIBase(object):
     """Class that uses an httpClient to communicate with the splits API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):
@@ -55,7 +55,7 @@ class SplitsAPIBase(object):  # pylint: disable=too-few-public-methods
         return change_number
 
 
-class SplitsAPI(SplitsAPIBase):  # pylint: disable=too-few-public-methods
+class SplitsAPI(SplitsAPIBase):
     """Class that uses an httpClient to communicate with the splits API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):
@@ -137,7 +137,7 @@ class SplitsAPI(SplitsAPIBase):  # pylint: disable=too-few-public-methods
             raise APIException('Feature flags not fetched correctly.') from exc
 
 
-class SplitsAPIAsync(SplitsAPIBase):  # pylint: disable=too-few-public-methods
+class SplitsAPIAsync(SplitsAPIBase):
     """Class that uses an httpClient to communicate with the splits API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):

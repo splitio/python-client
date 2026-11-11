@@ -20,7 +20,7 @@ class ConditionType(Enum):
 class Condition(object):
     """Condition object class."""
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
             self,
             matcher_list,
             combiner, parts, label,
@@ -81,7 +81,7 @@ class Condition(object):
         :rtype: list(str)
         """
         return [
-            matcher._segment_name for matcher in self.matchers  # pylint: disable=protected-access
+            matcher._segment_name for matcher in self.matchers
             if isinstance(matcher, matchers.UserDefinedSegmentMatcher)
         ]
 

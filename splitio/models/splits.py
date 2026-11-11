@@ -82,10 +82,10 @@ class HashAlgorithm(Enum):
     MURMUR = 2
 
 
-class Split(object):  # pylint: disable=too-many-instance-attributes
+class Split(object):
     """Split model object."""
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
             self,
             name,
             seed,

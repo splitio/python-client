@@ -18,7 +18,7 @@ EvaluationContext = namedtuple(
 _LOGGER = logging.getLogger(__name__)
 
 
-class Evaluator(object):  # pylint: disable=too-few-public-methods
+class Evaluator(object):
     """Split Evaluator class."""
 
     def __init__(self, splitter, fallback_treatment_calculator=None):

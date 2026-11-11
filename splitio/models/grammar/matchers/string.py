@@ -9,7 +9,7 @@ from splitio.models.grammar.matchers.base import Matcher
 _LOGGER = logging.getLogger(__name__)
 
 
-class Sanitizer(object):  # pylint: disable=too-few-public-methods
+class Sanitizer(object):
     """Numeric input sanitizer."""
 
     @classmethod

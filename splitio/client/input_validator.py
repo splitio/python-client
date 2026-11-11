@@ -484,7 +484,7 @@ def _get_filtered_feature_flag(feature_flags, method_name):
     )
 
 
-def validate_feature_flags_get_treatments(  # pylint: disable=invalid-name
+def validate_feature_flags_get_treatments(
     method_name,
     feature_flag_names,
 ):
@@ -567,7 +567,7 @@ def validate_evaluation_options(evaluation_options, method_name):
     return evaluation_options
 
 
-class _ApiLogFilter(logging.Filter):  # pylint: disable=too-few-public-methods
+class _ApiLogFilter(logging.Filter):
     def filter(self, record):
         return record.name not in ('SegmentsAPI', 'HttpClient')
 

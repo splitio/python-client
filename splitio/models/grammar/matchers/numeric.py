@@ -9,7 +9,7 @@ from splitio.models import datatypes
 _LOGGER = logging.getLogger(__name__)
 
 
-class Sanitizer(object):  # pylint: disable=too-few-public-methods
+class Sanitizer(object):
     """Numeric input sanitizer."""
 
     @classmethod
@@ -45,7 +45,7 @@ class Sanitizer(object):  # pylint: disable=too-few-public-methods
             return None
 
 
-class ZeroSecondDataMatcher(object):  # pylint: disable=too-few-public-methods
+class ZeroSecondDataMatcher(object):
     """Mixin to use in matchers that when dealing with datetimes, truncate seconds."""
 
     data_parsers = {
@@ -59,7 +59,7 @@ class ZeroSecondDataMatcher(object):  # pylint: disable=too-few-public-methods
     }
 
 
-class ZeroTimeDataMatcher(object):  # pylint: disable=no-init,too-few-public-methods
+class ZeroTimeDataMatcher(object):
     """Mixin to use in matchers that when dealing with datetimes, truncate time."""
 
     input_parsers = {

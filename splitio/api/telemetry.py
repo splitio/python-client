@@ -8,7 +8,7 @@ from splitio.models.telemetry import HTTPExceptionsAndLatencies
 _LOGGER = logging.getLogger(__name__)
 
 
-class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
+class TelemetryAPI(object):
     """Class that uses an httpClient to communicate with the Telemetry API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):
@@ -99,7 +99,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             raise APIException('Runtime stats not flushed properly.') from exc
 
 
-class TelemetryAPIAsync(object):  # pylint: disable=too-few-public-methods
+class TelemetryAPIAsync(object):
     """Async Class that uses an httpClient to communicate with the Telemetry API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):

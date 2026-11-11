@@ -357,7 +357,7 @@ class RedisSplitStorageBase(SplitStorage):
         """
         return self._FLAG_SET_KEY.format(flag_set=flag_set)
 
-    def get(self, feature_flag_name):  # pylint: disable=method-hidden
+    def get(self, feature_flag_name):
         """
         Retrieve a feature flag.
 
@@ -381,7 +381,7 @@ class RedisSplitStorageBase(SplitStorage):
         """
         pass
 
-    def is_valid_traffic_type(self, traffic_type_name):  # pylint: disable=method-hidden
+    def is_valid_traffic_type(self, traffic_type_name):
         """
         Return whether the traffic type exists in at least one feature flag in cache.
 
@@ -469,10 +469,10 @@ class RedisSplitStorage(RedisSplitStorageBase):
         if enable_caching:
             self.get = add_cache(lambda *p, **_: p[0], max_age)(self.get)
             self.is_valid_traffic_type = add_cache(
-                lambda *p, **_: p[0], max_age)(self.is_valid_traffic_type)  # pylint: disable=line-too-long
+                lambda *p, **_: p[0], max_age)(self.is_valid_traffic_type)
             self.fetch_many = add_cache(lambda *p, **_: frozenset(p[0]), max_age)(self.fetch_many)
 
-    def get(self, feature_flag_name):  # pylint: disable=method-hidden
+    def get(self, feature_flag_name):
         """
         Retrieve a feature flag.
 
@@ -550,7 +550,7 @@ class RedisSplitStorage(RedisSplitStorageBase):
             _LOGGER.debug('Error: ', exc_info=True)
         return to_return
 
-    def is_valid_traffic_type(self, traffic_type_name):  # pylint: disable=method-hidden
+    def is_valid_traffic_type(self, traffic_type_name):
         """
         Return whether the traffic type exists in at least one feature flag in cache.
 
@@ -644,7 +644,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
             self._feature_flag_cache = LocalMemoryCacheAsync(None, None, max_age)
             self._traffic_type_cache = LocalMemoryCacheAsync(None, None, max_age)
 
-    async def get(self, feature_flag_name):  # pylint: disable=method-hidden
+    async def get(self, feature_flag_name):
         """
         Retrieve a feature flag.
         :param feature_flag_name: Name of the feature to fetch.
@@ -732,7 +732,7 @@ class RedisSplitStorageAsync(RedisSplitStorage):
             _LOGGER.debug('Error: ', exc_info=True)
         return to_return
 
-    async def is_valid_traffic_type(self, traffic_type_name):  # pylint: disable=method-hidden
+    async def is_valid_traffic_type(self, traffic_type_name):
         """
         Return whether the traffic type exists in at least one feature flag in cache.
         :param traffic_type_name: Traffic type to validate.

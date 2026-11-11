@@ -12,7 +12,7 @@ from splitio.models.telemetry import HTTPExceptionsAndLatencies
 _LOGGER = logging.getLogger(__name__)
 
 
-class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
+class SegmentsAPI(object):
     """Class that uses an httpClient to communicate with the segments API."""
 
     def __init__(self, http_client, sdk_key, sdk_metadata, telemetry_runtime_producer):
@@ -72,7 +72,7 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
             raise APIException('Segments not fetched properly.') from exc
 
 
-class SegmentsAPIAsync(object):  # pylint: disable=too-few-public-methods
+class SegmentsAPIAsync(object):
     """Async Class that uses an httpClient to communicate with the segments API."""
 
     def __init__(self, http_client, sdk_key, sdk_metadata, telemetry_runtime_producer):

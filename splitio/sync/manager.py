@@ -14,7 +14,7 @@ from splitio.sync.synchronizer import _SYNC_ALL_NO_RETRIES
 _LOGGER = logging.getLogger(__name__)
 
 
-class Manager(object):  # pylint:disable=too-many-instance-attributes
+class Manager(object):
     """Manager Class."""
 
     _CENTINEL_EVENT = object()
@@ -144,7 +144,7 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
                     self._telemetry_runtime_producer.record_streaming_event(
                         (StreamingEventTypes.SYNC_MODE_UPDATE, SSESyncMode.POLLING.value,  get_current_epoch_time_ms()))
                     return
-            except Exception:  # pylint:disable=broad-except
+            except Exception:
                 # Keep this thread alive: if it dies, no further streaming status change is
                 # handled and the SDK can be left without streaming and without polling.
                 _LOGGER.error('unexpected error handling streaming status %s. '
@@ -167,12 +167,12 @@ class Manager(object):  # pylint:disable=too-many-instance-attributes
         """Start periodic fetching after an unexpected error in the streaming status handler."""
         try:
             self._synchronizer.start_periodic_fetching()
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             _LOGGER.error('could not start periodic fetching.')
             _LOGGER.debug('Exception information: ', exc_info=True)
 
 
-class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
+class ManagerAsync(object):
     """Manager Class."""
 
     _CENTINEL_EVENT = object()
@@ -289,7 +289,7 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
                     return
             except asyncio.CancelledError:  # subclass of Exception in python 3.7
                 raise
-            except Exception:  # pylint:disable=broad-except
+            except Exception:
                 # Keep this task alive: if it ends, no further streaming status change is
                 # handled and the SDK can be left without streaming and without polling.
                 _LOGGER.error('unexpected error handling streaming status %s. '
@@ -313,12 +313,12 @@ class ManagerAsync(object):  # pylint:disable=too-many-instance-attributes
         """Start periodic fetching after an unexpected error in the streaming status handler."""
         try:
             self._synchronizer.start_periodic_fetching()
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             _LOGGER.error('could not start periodic fetching.')
             _LOGGER.debug('Exception information: ', exc_info=True)
 
 
-class RedisManagerBase(object):  # pylint:disable=too-many-instance-attributes
+class RedisManagerBase(object):
     """Manager base Class."""
 
     def __init__(self, synchronizer):
@@ -346,7 +346,7 @@ class RedisManagerBase(object):  # pylint:disable=too-many-instance-attributes
             raise
 
 
-class RedisManager(RedisManagerBase):  # pylint:disable=too-many-instance-attributes
+class RedisManager(RedisManagerBase):
     """Manager Class."""
 
     def __init__(self, synchronizer):
@@ -369,7 +369,7 @@ class RedisManager(RedisManagerBase):  # pylint:disable=too-many-instance-attrib
         self._synchronizer.shutdown(blocking)
 
 
-class RedisManagerAsync(RedisManagerBase):  # pylint:disable=too-many-instance-attributes
+class RedisManagerAsync(RedisManagerBase):
     """Manager async Class."""
 
     def __init__(self, synchronizer):

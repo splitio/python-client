@@ -42,7 +42,7 @@ class PushManagerBase(object, metaclass=abc.ABCMeta):
         return (token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD
 
 
-class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attributes
+class PushManager(PushManagerBase):
     """Push notifications susbsytem manager."""
 
     def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_url=None):
@@ -167,7 +167,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
 
         try:
             handle(parsed)
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             _LOGGER.error('something went wrong when processing message of type %s',
                           parsed.event_type)
             _LOGGER.debug(str(parsed), exc_info=True)
@@ -178,7 +178,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         try:
             self._stop_connection(True)
             self._trigger_connection_flow()
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             # This runs in the TokenRefresh timer thread. If it dies here, streaming stays
             # stopped and polling is never started, so the SDK would stop receiving updates.
             _LOGGER.error('unexpected error refreshing streaming token.')
@@ -194,7 +194,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
             _LOGGER.debug('stack trace: ', exc_info=True)
             self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
             return
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             # e.g. a non-JSON 200 response or a malformed token.
             _LOGGER.error('unexpected error performing sse auth request.')
             _LOGGER.debug('stack trace: ', exc_info=True)
@@ -213,7 +213,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         self._status_tracker.reset()
         try:
             connected = self._sse_client.start(token)
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             _LOGGER.error('unexpected error connecting to streaming.')
             _LOGGER.debug('stack trace: ', exc_info=True)
             self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
@@ -324,7 +324,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
             self._feedback_loop.put(feedback)
 
 
-class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-attributes
+class PushManagerAsync(PushManagerBase):
     """Push notifications susbsytem manager."""
 
     def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy=None):
@@ -436,7 +436,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
 
         try:
             await handle(parsed)
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             event_type = "unknown" if parsed is None else parsed.event_type
             _LOGGER.error('something went wrong when processing message of type %s', event_type)
             _LOGGER.debug(str(parsed), exc_info=True)
@@ -464,7 +464,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
                 self._trigger_connection_flow())
         except asyncio.CancelledError:  # subclass of Exception in python 3.7
             raise
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             # If this task ends here, streaming stays stopped and polling is never started.
             _LOGGER.error('unexpected error refreshing streaming token.')
             _LOGGER.debug('stack trace: ', exc_info=True)
@@ -520,7 +520,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             await self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
         except asyncio.CancelledError:  # subclass of Exception in python 3.7
             raise
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             # e.g. a non-JSON 200 auth response, a malformed token or an sse client error.
             # Without this the task ends silently and polling is never started.
             _LOGGER.error('unexpected error in streaming connection flow.')

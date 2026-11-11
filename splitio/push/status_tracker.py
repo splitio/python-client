@@ -18,7 +18,7 @@ class Status(Enum):
     PUSH_NONRETRYABLE_ERROR = 3
 
 
-class LastEventTimestamps(object):  # pylint:disable=too-few-public-methods
+class LastEventTimestamps(object):
     """Simple class to keep track of the last time multiple events occurred."""
 
     def __init__(self):

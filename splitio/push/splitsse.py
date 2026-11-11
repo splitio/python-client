@@ -77,7 +77,7 @@ class SplitSSEClientBase(object, metaclass=abc.ABCMeta):
         """Abort the ongoing connection."""
 
 
-class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-attributes
+class SplitSSEClient(SplitSSEClientBase):
     """Split streaming endpoint SSE client."""
 
     def __init__(self, event_callback, sdk_metadata, first_event_callback=None,
@@ -181,7 +181,7 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
             self._sse_connection_closed.wait(timeout)
 
 
-class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-instance-attributes
+class SplitSSEClientAsync(SplitSSEClientBase):
     """Split streaming endpoint SSE client."""
 
     def __init__(self, sdk_metadata, client_key=None, base_url='https://streaming.split.io', proxy=None):
@@ -232,7 +232,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
             async for event in self._event_source:
                 if event.data is not None:
                     yield event
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             _LOGGER.error('SplitSSE Client Exception')
             _LOGGER.debug('stack trace: ', exc_info=True)
         finally:

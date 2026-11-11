@@ -211,7 +211,7 @@ class RedisAdapterBase(object, metaclass=abc.ABCMeta):
         """Mimic original redis pipeline."""
 
 
-class RedisAdapter(RedisAdapterBase):  # pylint: disable=too-many-public-methods
+class RedisAdapter(RedisAdapterBase):
     """
     Instance decorator for Redis clients such as StrictRedis.
 
@@ -412,7 +412,7 @@ class RedisAdapter(RedisAdapterBase):  # pylint: disable=too-many-public-methods
             raise RedisAdapterException('Error executing ttl operation') from exc
 
 
-class RedisAdapterAsync(RedisAdapterBase):  # pylint: disable=too-many-public-methods
+class RedisAdapterAsync(RedisAdapterBase):
     """
     Instance decorator for asyncio Redis clients such as StrictRedis.
 
@@ -704,7 +704,7 @@ class RedisPipelineAdapterAsync(RedisPipelineAdapterBase):
             raise RedisAdapterException('Error executing pipeline operation') from exc
 
 
-def _build_default_client(config):  # pylint: disable=too-many-locals
+def _build_default_client(config):
     """
     Build a redis adapter.
 
@@ -763,7 +763,7 @@ def _build_default_client(config):  # pylint: disable=too-many-locals
     return RedisAdapter(redis, prefix=prefix)
 
 
-async def _build_default_client_async(config):  # pylint: disable=too-many-locals
+async def _build_default_client_async(config):
     """
     Build a redis asyncio adapter.
 
@@ -824,7 +824,7 @@ async def _build_default_client_async(config):  # pylint: disable=too-many-local
     return RedisAdapterAsync(redis, prefix=prefix)
 
 
-def _build_sentinel_client(config):  # pylint: disable=too-many-locals
+def _build_sentinel_client(config):
     """
     Build a redis client with sentinel replication.
 
@@ -891,7 +891,7 @@ def _build_sentinel_client(config):  # pylint: disable=too-many-locals
     return RedisAdapter(redis, prefix=prefix)
 
 
-async def _build_sentinel_client_async(config):  # pylint: disable=too-many-locals
+async def _build_sentinel_client_async(config):
     """
     Build a redis client with sentinel replication.
 

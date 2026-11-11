@@ -10,7 +10,7 @@ DEFAULT_MAX_AGE = 5
 DEFAULT_MAX_SIZE = 100
 
 
-class LocalMemoryCacheBase(object):  # pylint: disable=too-many-instance-attributes
+class LocalMemoryCacheBase(object):
     """
     Key/Value local memory cache. with expiration & LRU eviction.
 
@@ -26,10 +26,10 @@ class LocalMemoryCacheBase(object):  # pylint: disable=too-many-instance-attribu
     None <---next--- || node ||  <---next--- || node || ... <---next--- || node ||
     """
 
-    class _Node(object):  # pylint: disable=too-few-public-methods
+    class _Node(object):
         """Links to previous an next items in the circular list."""
 
-        def __init__(self, key, value, last_update, previous_element, next_element):  # pylint: disable=too-many-arguments
+        def __init__(self, key, value, last_update, previous_element, next_element):
             """Class constructor."""
             self.key = key  # we also keep the key for O(1) access when removing the LRU.
             self.value = value
@@ -117,7 +117,7 @@ class LocalMemoryCacheBase(object):  # pylint: disable=too-many-instance-attribu
         return '<MRU>\n' + '\n'.join(nodes) + '\n<LRU>'
 
 
-class LocalMemoryCache(LocalMemoryCacheBase):  # pylint: disable=too-many-instance-attributes
+class LocalMemoryCache(LocalMemoryCacheBase):
     """Local cache for threading"""
 
     def __init__(
@@ -167,7 +167,7 @@ class LocalMemoryCache(LocalMemoryCacheBase):  # pylint: disable=too-many-instan
             }
 
 
-class LocalMemoryCacheAsync(LocalMemoryCacheBase):  # pylint: disable=too-many-instance-attributes
+class LocalMemoryCacheAsync(LocalMemoryCacheBase):
     """Local cache for asyncio"""
 
     def __init__(

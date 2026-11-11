@@ -189,7 +189,7 @@ class HttpClient(HttpClientBase):
         HttpClientBase.__init__(self, timeout, sdk_url, events_url,
                                 auth_url, telemetry_url, proxies)
 
-    def get(self, server, path, sdk_key, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
+    def get(self, server, path, sdk_key, query=None, extra_headers=None):
         """
         Issue a get request.
 
@@ -225,10 +225,10 @@ class HttpClient(HttpClientBase):
             _LOGGER.error("IncompleteRead exception detected: %s", exc)
             return HttpResponse(400, "", {})
 
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             raise HttpClientException(_EXC_MSG.format(source='request')) from exc
 
-    def post(self, server, path, sdk_key, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
+    def post(self, server, path, sdk_key, body, query=None, extra_headers=None):
         """
         Issue a POST request.
 
@@ -260,7 +260,7 @@ class HttpClient(HttpClientBase):
             )
             self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
             return HttpResponse(response.status_code, response.text, response.headers)
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             raise HttpClientException(_EXC_MSG.format(source='request')) from exc
 
 
@@ -287,13 +287,13 @@ class HttpClientAsync(HttpClientBase):
         # aiohttp silently re-sends an idempotent request once if the server drops a persistent
         # connection: disable it so that failures are retried with the SDK backoff
         if hasattr(self._session, '_retry_connection'):
-            self._session._retry_connection = False  # pylint: disable=protected-access
+            self._session._retry_connection = False
         self._proxy = None
         if len(self._proxies) > 0:
             http_key = next(iter(self._proxies))
             self._proxy = self._proxies[http_key]
 
-    async def get(self, server, path, apikey, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
+    async def get(self, server, path, apikey, query=None, extra_headers=None):
         """
         Issue a get request.
         :param server: Whether the request is for SDK server, Events server or Auth server.
@@ -335,10 +335,10 @@ class HttpClientAsync(HttpClientBase):
             _LOGGER.error("ContentLengthError exception detected: %s", exc)
             return HttpResponse(400, "", {})
 
-        except aiohttp.ClientError as exc:  # pylint: disable=broad-except
+        except aiohttp.ClientError as exc:
             raise HttpClientException(_EXC_MSG.format(source='aiohttp')) from exc
 
-    async def post(self, server, path, apikey, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
+    async def post(self, server, path, apikey, body, query=None, extra_headers=None):
         """
         Issue a POST request.
         :param server: Whether the request is for SDK server or Events server.
@@ -380,7 +380,7 @@ class HttpClientAsync(HttpClientBase):
                 await self._record_telemetry(response.status, get_current_epoch_time_ms() - start)
                 return HttpResponse(response.status, body, response.headers)
 
-        except aiohttp.ClientError as exc:  # pylint: disable=broad-except
+        except aiohttp.ClientError as exc:
             raise HttpClientException(_EXC_MSG.format(source='aiohttp')) from exc
 
     async def _record_telemetry(self, status_code, elapsed):
@@ -439,7 +439,7 @@ class HttpClientKerberos(HttpClientBase):
                           'telemetry': requests.Session()}
         self._set_authentication()
 
-    def get(self, server, path, sdk_key, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
+    def get(self, server, path, sdk_key, query=None, extra_headers=None):
         """
         Issue a get request.
         :param server: Whether the request is for SDK server, Events server or Auth server.
@@ -472,7 +472,7 @@ class HttpClientKerberos(HttpClientBase):
                 except Exception as exc:
                     raise HttpClientException(_EXC_MSG.format(source='request')) from exc
 
-            except Exception as exc:  # pylint: disable=broad-except
+            except Exception as exc:
                 raise HttpClientException(_EXC_MSG.format(source='request')) from exc
 
     def _do_get(self, server, path, sdk_key, query, extra_headers, start):
@@ -501,7 +501,7 @@ class HttpClientKerberos(HttpClientBase):
             self._record_telemetry(response.status_code, get_current_epoch_time_ms() - start)
             return HttpResponse(response.status_code, response.text, response.headers)
 
-    def post(self, server, path, sdk_key, body, query=None, extra_headers=None):  # pylint: disable=too-many-arguments
+    def post(self, server, path, sdk_key, body, query=None, extra_headers=None):
         """
         Issue a POST request.
 
@@ -537,7 +537,7 @@ class HttpClientKerberos(HttpClientBase):
                 except Exception as exc:
                     raise HttpClientException(_EXC_MSG.format(source='request')) from exc
 
-            except Exception as exc:  # pylint: disable=broad-except
+            except Exception as exc:
                 raise HttpClientException(_EXC_MSG.format(source='request')) from exc
 
     def _do_post(self, server, path, sdk_key, query, extra_headers, body, start):

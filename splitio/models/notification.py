@@ -22,7 +22,7 @@ class Control(Enum):
     STREAMING_DISABLED = 'STREAMING_DISABLED'
 
 
-class ControlNotification(object):  # pylint: disable=too-many-instance-attributes
+class ControlNotification(object):
     """ControlNotification model object."""
 
     def __init__(self, channel, notification_type, control_type):
@@ -54,7 +54,7 @@ class ControlNotification(object):  # pylint: disable=too-many-instance-attribut
         return self._notification_type
 
 
-class SegmentChangeNotification(object):  # pylint: disable=too-many-instance-attributes
+class SegmentChangeNotification(object):
     """SegmentChangeNotification model object."""
 
     def __init__(self, channel, notification_type, change_number, segment_name):
@@ -93,7 +93,7 @@ class SegmentChangeNotification(object):  # pylint: disable=too-many-instance-at
         return self._segment_name
 
 
-class SplitChangeNotification(object):  # pylint: disable=too-many-instance-attributes
+class SplitChangeNotification(object):
     """SplitChangeNotification model object."""
 
     def __init__(self, channel, notification_type, change_number):
@@ -125,7 +125,7 @@ class SplitChangeNotification(object):  # pylint: disable=too-many-instance-attr
         return self._notification_type
 
 
-class SplitKillNotification(object):  # pylint: disable=too-many-instance-attributes
+class SplitKillNotification(object):
     """SplitKillNotification model object."""
 
     def __init__(self, channel, notification_type, change_number, default_treatment, split_name):
@@ -171,7 +171,7 @@ class SplitKillNotification(object):  # pylint: disable=too-many-instance-attrib
         return self._split_name
 
 
-class SdkInternalEventNotification(object):  # pylint: disable=too-many-instance-attributes
+class SdkInternalEventNotification(object):
     """SdkInternalEventNotification model object."""
 
     def __init__(self, internal_event, metadata):

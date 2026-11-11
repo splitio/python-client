@@ -107,7 +107,7 @@ class TimeoutException(Exception):
     pass
 
 
-class SplitFactoryBase(object):  # pylint: disable=too-many-instance-attributes
+class SplitFactoryBase(object):
     """Split Factory/Container class."""
 
     def __init__(self, sdk_key, storages):
@@ -162,10 +162,10 @@ class SplitFactoryBase(object):  # pylint: disable=too-many-instance-attributes
         return self._status == Status.WAITING_FORK
 
 
-class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attributes
+class SplitFactory(SplitFactoryBase):
     """Split Factory/Container class."""
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
             self,
             sdk_key,
             storages,
@@ -345,10 +345,10 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         self._start_status_updater()
 
 
-class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-attributes
+class SplitFactoryAsync(SplitFactoryBase):
     """Split Factory/Container async class."""
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
             self,
             sdk_key,
             storages,

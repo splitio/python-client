@@ -12,7 +12,7 @@ from splitio.models.telemetry import HTTPExceptionsAndLatencies
 _LOGGER = logging.getLogger(__name__)
 
 
-class ImpressionsAPIBase(object):  # pylint: disable=too-few-public-methods
+class ImpressionsAPIBase(object):
     """Base Class that uses an httpClient to communicate with the impressions API."""
 
     @staticmethod
@@ -86,7 +86,7 @@ class ImpressionsAPIBase(object):  # pylint: disable=too-few-public-methods
         }
 
 
-class ImpressionsAPI(ImpressionsAPIBase):  # pylint: disable=too-few-public-methods
+class ImpressionsAPI(ImpressionsAPIBase):
     """Class that uses an httpClient to communicate with the impressions API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer, mode=ImpressionsMode.OPTIMIZED):
@@ -160,7 +160,7 @@ class ImpressionsAPI(ImpressionsAPIBase):  # pylint: disable=too-few-public-meth
             raise APIException('Impressions not flushed properly.') from exc
 
 
-class ImpressionsAPIAsync(ImpressionsAPIBase):  # pylint: disable=too-few-public-methods
+class ImpressionsAPIAsync(ImpressionsAPIBase):
     """Async Class that uses an httpClient to communicate with the impressions API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer, mode=ImpressionsMode.OPTIMIZED):

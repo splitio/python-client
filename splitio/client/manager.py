@@ -18,7 +18,7 @@ class SplitManager(object):
         :type factory: splitio.client.factory.SplitFactory
         """
         self._factory = factory
-        self._storage = factory._get_storage('splits')  # pylint: disable=protected-access
+        self._storage = factory._get_storage('splits')
         self._telemetry_init_producer = factory._telemetry_init_producer
 
     def split_names(self):
@@ -114,7 +114,7 @@ class SplitManagerAsync(object):
         :type factory: splitio.client.factory.SplitFactory
         """
         self._factory = factory
-        self._storage = factory._get_storage('splits')  # pylint: disable=protected-access
+        self._storage = factory._get_storage('splits')
         self._telemetry_init_producer = factory._telemetry_init_producer
 
     async def split_names(self):

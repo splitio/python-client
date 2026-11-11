@@ -83,7 +83,7 @@ def from_raw(raw_token):
         decoded_token = json.loads(base64.b64decode(to_decode + '='*(-len(to_decode) % 4)))
         channels = json.loads(decoded_token['x-ably-capability'])
         exp, iat = decoded_token['exp'], decoded_token['iat']
-    except Exception as exc:  # pylint:disable=broad-except
+    except Exception as exc:
         raise ValueError('Invalid auth token') from exc
 
     return Token(push_enabled, token, channels, exp, iat)

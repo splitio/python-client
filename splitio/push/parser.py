@@ -53,7 +53,7 @@ class BaseEvent(object, metaclass=abc.ABCMeta):
     """Base event that reqiures subclasses tu have a type."""
 
     @abstract_property
-    def event_type(self):  # pylint:disable=no-self-use
+    def event_type(self):
         """
         Return the event type.
 
@@ -89,7 +89,7 @@ class AblyError(BaseEvent):
         self._timestamp = utctime_ms()
 
     @property
-    def event_type(self):  # pylint:disable=no-self-use
+    def event_type(self):
         """
         Return the event type.
 
@@ -206,7 +206,7 @@ class BaseMessage(BaseEvent, metaclass=abc.ABCMeta):
         return self._timestamp
 
     @property
-    def event_type(self):  # pylint:disable=no-self-use
+    def event_type(self):
         """
         Return the event type.
 
@@ -216,7 +216,7 @@ class BaseMessage(BaseEvent, metaclass=abc.ABCMeta):
         return EventType.MESSAGE
 
     @abstract_property
-    def message_type(self):  # pylint:disable=no-self-use
+    def message_type(self):
         """
         Return the message type.
 
@@ -243,7 +243,7 @@ class OccupancyMessage(BaseMessage):
         self._publishers = publishers
 
     @property
-    def message_type(self):  # pylint:disable=no-self-use
+    def message_type(self):
         """
         Return the message type.
 
@@ -294,7 +294,7 @@ class BaseUpdate(BaseMessage, metaclass=abc.ABCMeta):
         self._change_number = change_number
 
     @abstract_property
-    def update_type(self):  # pylint:disable=no-self-use
+    def update_type(self):
         """
         Return the message type.
 
@@ -304,7 +304,7 @@ class BaseUpdate(BaseMessage, metaclass=abc.ABCMeta):
         pass
 
     @property
-    def message_type(self):  # pylint:disable=no-self-use
+    def message_type(self):
         """
         Return the message type.
 
@@ -335,7 +335,7 @@ class SplitChangeUpdate(BaseUpdate):
         self._compression = compression
 
     @property
-    def update_type(self):  # pylint:disable=no-self-use
+    def update_type(self):
         """
         Return the message type.
 
@@ -345,7 +345,7 @@ class SplitChangeUpdate(BaseUpdate):
         return UpdateType.SPLIT_UPDATE
 
     @property
-    def previous_change_number(self):  # pylint:disable=no-self-use
+    def previous_change_number(self):
         """
         Return previous change number
         :returns: The previous change number
@@ -354,7 +354,7 @@ class SplitChangeUpdate(BaseUpdate):
         return self._previous_change_number
 
     @property
-    def object_definition(self):  # pylint:disable=no-self-use
+    def object_definition(self):
         """
         Return feature flag definition
         :returns: The new feature flag definition
@@ -363,7 +363,7 @@ class SplitChangeUpdate(BaseUpdate):
         return self._object_definition
 
     @property
-    def compression(self):  # pylint:disable=no-self-use
+    def compression(self):
         """
         Return previous compression type
         :returns: The compression type
@@ -386,7 +386,7 @@ class SplitKillUpdate(BaseUpdate):
         self._default_treatment = default_treatment
 
     @property
-    def update_type(self):  # pylint:disable=no-self-use
+    def update_type(self):
         """
         Return the message type.
 
@@ -430,7 +430,7 @@ class SegmentChangeUpdate(BaseUpdate):
         self._segment_name = segment_name
 
     @property
-    def update_type(self):  # pylint:disable=no-self-use
+    def update_type(self):
         """
         Return the message type.
 
@@ -465,7 +465,7 @@ class RBSChangeUpdate(BaseUpdate):
         self._compression = compression
 
     @property
-    def update_type(self):  # pylint:disable=no-self-use
+    def update_type(self):
         """
         Return the message type.
 
@@ -475,7 +475,7 @@ class RBSChangeUpdate(BaseUpdate):
         return UpdateType.RB_SEGMENT_UPDATE
 
     @property
-    def previous_change_number(self):  # pylint:disable=no-self-use
+    def previous_change_number(self):
         """
         Return previous change number
         :returns: The previous change number
@@ -484,7 +484,7 @@ class RBSChangeUpdate(BaseUpdate):
         return self._previous_change_number
 
     @property
-    def object_definition(self):  # pylint:disable=no-self-use
+    def object_definition(self):
         """
         Return rbs definition
         :returns: The new rbs definition
@@ -493,7 +493,7 @@ class RBSChangeUpdate(BaseUpdate):
         return self._object_definition
 
     @property
-    def compression(self):  # pylint:disable=no-self-use
+    def compression(self):
         """
         Return previous compression type
         :returns: The compression type
@@ -515,7 +515,7 @@ class ControlMessage(BaseMessage):
         self._control_type = ControlType(control_type)
 
     @property
-    def message_type(self):  # pylint:disable=no-self-use
+    def message_type(self):
         """
         Return the message type.
 
@@ -627,7 +627,7 @@ def parse_incoming_event(raw_event):
 
     try:
         parsed_data = json.loads(raw_event.data)
-    except Exception as exc:  # pylint:disable=broad-except
+    except Exception as exc:
         raise EventParsingException('Error parsing json') from exc
 
     try:

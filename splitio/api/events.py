@@ -9,7 +9,7 @@ from splitio.models.telemetry import HTTPExceptionsAndLatencies
 _LOGGER = logging.getLogger(__name__)
 
 
-class EventsAPIBase(object):  # pylint: disable=too-few-public-methods
+class EventsAPIBase(object):
     """Base Class that uses an httpClient to communicate with the events API."""
 
     @staticmethod
@@ -36,7 +36,7 @@ class EventsAPIBase(object):  # pylint: disable=too-few-public-methods
         ]
 
 
-class EventsAPI(EventsAPIBase):  # pylint: disable=too-few-public-methods
+class EventsAPI(EventsAPIBase):
     """Class that uses an httpClient to communicate with the events API."""
 
     def __init__(self, http_client, sdk_key, sdk_metadata, telemetry_runtime_producer):
@@ -84,7 +84,7 @@ class EventsAPI(EventsAPIBase):  # pylint: disable=too-few-public-methods
             raise APIException('Events not flushed properly.') from exc
 
 
-class EventsAPIAsync(EventsAPIBase):  # pylint: disable=too-few-public-methods
+class EventsAPIAsync(EventsAPIBase):
     """Async Class that uses an httpClient to communicate with the events API."""
 
     def __init__(self, http_client, sdk_key, sdk_metadata, telemetry_runtime_producer):

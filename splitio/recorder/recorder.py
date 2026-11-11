@@ -183,7 +183,7 @@ class StandardRecorder(StatsRecorderThreadingBase):
             if len(for_unique_keys_tracker) > 0:
                 [self._unique_keys_tracker.track(item[0], item[1])
                  for item in for_unique_keys_tracker]
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             _LOGGER.error('Error recording impressions')
             _LOGGER.debug('Error: ', exc_info=True)
 
@@ -249,7 +249,7 @@ class StandardRecorderAsync(StatsRecorderAsyncBase):
                 unique_keys_coros = [self._unique_keys_tracker.track(
                     item[0], item[1]) for item in for_unique_keys_tracker]
                 await asyncio.gather(*unique_keys_coros)
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             _LOGGER.error('Error recording impressions')
             _LOGGER.debug('Error: ', exc_info=True)
 
@@ -328,7 +328,7 @@ class PipelinedRecorder(StatsRecorderThreadingBase):
             if len(for_unique_keys_tracker) > 0:
                 [self._unique_keys_tracker.track(item[0], item[1])
                  for item in for_unique_keys_tracker]
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             _LOGGER.error('Error recording impressions')
             _LOGGER.debug('Error: ', exc_info=True)
 
@@ -353,7 +353,7 @@ class PipelinedRecorder(StatsRecorderThreadingBase):
 
             return False
 
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             _LOGGER.error('Error recording events')
             _LOGGER.debug('Error: ', exc_info=True)
             return False
@@ -424,7 +424,7 @@ class PipelinedRecorderAsync(StatsRecorderAsyncBase):
                 unique_keys_coros = [self._unique_keys_tracker.track(
                     item[0], item[1]) for item in for_unique_keys_tracker]
                 await asyncio.gather(*unique_keys_coros)
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             _LOGGER.error('Error recording impressions')
             _LOGGER.debug('Error: ', exc_info=True)
 
@@ -449,7 +449,7 @@ class PipelinedRecorderAsync(StatsRecorderAsyncBase):
 
             return False
 
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             _LOGGER.error('Error recording events')
             _LOGGER.debug('Error: ', exc_info=True)
             return False
