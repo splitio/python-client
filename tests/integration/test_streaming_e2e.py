@@ -497,7 +497,7 @@ class StreamingIntegrationTests(object):
         split_backend.stop()
 
     def test_start_without_occupancy(self):
-        """Test an SDK starting with occupancy on 0 and switching to streamin afterwards."""
+        """Test an SDK starting with occupancy on 0 and switching to streaming afterwards."""
         auth_server_response = {
             'pushEnabled': True,
             'token': ('eyJhbGciOiJIUzI1NiIsImtpZCI6IjVZOU05US45QnJtR0EiLCJ0eXAiOiJKV1QifQ.'
@@ -1822,7 +1822,7 @@ class StreamingIntegrationAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_start_without_occupancy(self):
-        """Test an SDK starting with occupancy on 0 and switching to streamin afterwards."""
+        """Test an SDK starting with occupancy on 0 and switching to streaming afterwards."""
         auth_server_response = {
             'pushEnabled': True,
             'token': ('eyJhbGciOiJIUzI1NiIsImtpZCI6IjVZOU05US45QnJtR0EiLCJ0eXAiOiJKV1QifQ.'

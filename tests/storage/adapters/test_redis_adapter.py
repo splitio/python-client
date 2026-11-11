@@ -79,7 +79,7 @@ class RedisStorageAdapterTests(object):
         assert redis_mock.ttl.mock_calls[0] == mocker.call('some_prefix.key1')
 
     def test_adapter_building(self, mocker):
-        """Test buildin different types of client according to parameters received."""
+        """Test building different types of client according to parameters received."""
         strict_redis_mock = mocker.Mock(spec=StrictRedis)
         sentinel_mock = mocker.Mock(spec=Sentinel)
         mocker.patch('splitio.storage.adapters.redis.StrictRedis', new=strict_redis_mock)
@@ -424,7 +424,7 @@ class RedisStorageAdapterAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_adapter_building(self, mocker):
-        """Test buildin different types of client according to parameters received."""
+        """Test building different types of client according to parameters received."""
 
         config = {
             'redisHost': 'some_host',

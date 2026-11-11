@@ -92,7 +92,7 @@
 9.4.0 (Mar 1, 2023)
 - Added support to use JSON files in localhost mode.
 - Updated default periodic telemetry post time to one hour.
-- Fixed unhandeled exception in push.manager.py class when SDK is connected to split proxy
+- Fixed unhandled exception in push.manager.py class when SDK is connected to split proxy
 
 9.3.0 (Jan 30, 2023)
 - Updated SDK telemetry storage, metrics and updater to be more effective and send less often.
@@ -110,7 +110,7 @@
 - Added a new impressions mode for the SDK called NONE , to be used in factory when there is no desire to capture impressions on an SDK factory to feed Split's analytics engine. Running NONE mode, the SDK will only capture unique keys evaluated for a particular feature flag instead of full blown impressions
 
 9.1.3 (July 25, 2022)
-- Fixed synching missed segment(s) after receiving split update
+- Fixed syncing missed segment(s) after receiving split update
 
 9.1.2 (April 6, 2022)
 - Updated pyyaml dependency for vulnerability CVE-2020-14343.
@@ -204,7 +204,7 @@
 
 6.2.1 (Dec 6, 2018)
  - Fixed traffic allocation issue on 1%.
- - Allowed hypens in 'localhost mode' file values.
+ - Allowed hyphens in 'localhost mode' file values.
 
 6.2.0 (Oct 5, 2018)
  - Added get_treatments method.

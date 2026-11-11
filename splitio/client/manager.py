@@ -73,7 +73,7 @@ class SplitManager(object):
         """
         Get the splitView of feature_name. Subclasses need to override this method.
 
-        :param feature_name: Name of the feture to retrieve.
+        :param feature_name: Name of the feature to retrieve.
         :type feature_name: str
 
         :return: The SplitView instance.
@@ -169,7 +169,7 @@ class SplitManagerAsync(object):
         """
         Get the splitView of feature_name. Subclasses need to override this method.
 
-        :param feature_name: Name of the feture to retrieve.
+        :param feature_name: Name of the feature to retrieve.
         :type feature_name: str
 
         :return: The SplitView instance.

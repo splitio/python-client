@@ -39,7 +39,7 @@ class TelemetrySubmitter(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def synchronize_config(self):
-        """synchronize initial config data classe."""
+        """synchronize initial config data class."""
 
     @abc.abstractmethod
     def synchronize_stats(self):
@@ -59,7 +59,7 @@ class InMemoryTelemetrySubmitter(TelemetrySubmitter):
         self._segment_storage = segment_storage
 
     def synchronize_config(self):
-        """synchronize initial config data classe."""
+        """synchronize initial config data class."""
         self._telemetry_api.record_init(self._telemetry_init_consumer.get_config_stats())
 
     def synchronize_stats(self):
@@ -96,7 +96,7 @@ class InMemoryTelemetrySubmitterAsync(TelemetrySubmitter):
         self._segment_storage = segment_storage
 
     async def synchronize_config(self):
-        """synchronize initial config data classe."""
+        """synchronize initial config data class."""
         await self._telemetry_api.record_init(await self._telemetry_init_consumer.get_config_stats())
 
     async def synchronize_stats(self):
@@ -128,7 +128,7 @@ class RedisTelemetrySubmitter(object):
         self._telemetry_storage = telemetry_storage
 
     def synchronize_config(self):
-        """synchronize initial config data classe."""
+        """synchronize initial config data class."""
         self._telemetry_storage.push_config_stats()
 
     def synchronize_stats(self):
@@ -144,7 +144,7 @@ class RedisTelemetrySubmitterAsync(object):
         self._telemetry_storage = telemetry_storage
 
     async def synchronize_config(self):
-        """synchronize initial config data classe."""
+        """synchronize initial config data class."""
         await self._telemetry_storage.push_config_stats()
 
     async def synchronize_stats(self):

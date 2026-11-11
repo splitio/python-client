@@ -75,7 +75,7 @@ class TelemetryInitProducer(TelemetryInitProducerBase):
             config, extra_config, total_flag_sets, invalid_flag_sets)
         current_app, app_worker_id = self._get_app_worker_id()
         if current_app is not None:
-            self.add_config_tag("initilization:" + current_app)
+            self.add_config_tag("initialization:" + current_app)
             self.add_config_tag("worker:#" + app_worker_id)
 
     def record_ready_time(self, ready_time):
@@ -120,7 +120,7 @@ class TelemetryInitProducerAsync(TelemetryInitProducerBase):
         await self._telemetry_storage.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)
         current_app, app_worker_id = self._get_app_worker_id()
         if current_app is not None:
-            await self.add_config_tag("initilization:" + current_app)
+            await self.add_config_tag("initialization:" + current_app)
             await self.add_config_tag("worker:#" + app_worker_id)
 
     async def record_ready_time(self, ready_time):

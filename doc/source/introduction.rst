@@ -249,7 +249,7 @@ Let's assume that the configuration file is called ``splitio-config.json`` and t
 
   $ /home/user/venv/bin/python -m splitio.update_scripts.update_splits splitio-config.json
 
-and similarily the segment update script is run with: ::
+and similarly the segment update script is run with: ::
 
   $ /home/user/venv/bin/python -m splitio.update_scripts.update_segments splitio-config.json
 
@@ -264,7 +264,7 @@ All these scripts need to run periodically, and one way to do that is through ``
 
 There are other scheduling solutions like ``anacron`` or ``fcron`` that can serve this purpose as well.
 
-On the other hand, there is available a python script named ``splitio.bin.synchronizer`` in order to run as a service instead of a ``cron-job``. For production environment we recomend run it via ``supervisord`` ::
+On the other hand, there is available a python script named ``splitio.bin.synchronizer`` in order to run as a service instead of a ``cron-job``. For production environment we recommend run it via ``supervisord`` ::
 
     $ /home/user/venv/bin/python -m splitio.bin.synchronizer --help
 

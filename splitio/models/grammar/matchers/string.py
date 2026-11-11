@@ -15,7 +15,7 @@ class Sanitizer(object):
     @classmethod
     def ensure_string(cls, data):
         """
-        Do a best effort attempt to conver input to a string.
+        Do a best effort attempt to convert input to a string.
 
         :param input: user supplied input.
         :type input: mixed.

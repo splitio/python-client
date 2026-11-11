@@ -15,7 +15,7 @@ class Sanitizer(object):
     @classmethod
     def ensure_int(cls, data):
         """
-        Do a best effort attempt to conver input to a int.
+        Do a best effort attempt to convert input to a int.
 
         :param input: user supplied input.
         :type input: mixed.
