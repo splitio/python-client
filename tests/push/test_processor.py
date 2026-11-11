@@ -5,7 +5,6 @@ import pytest
 from splitio.push.processor import MessageProcessor, MessageProcessorAsync
 from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync
 from splitio.push.parser import SplitChangeUpdate, SegmentChangeUpdate, SplitKillUpdate
-from splitio.optional.loaders import asyncio
 
 
 class ProcessorTests(object):
@@ -60,6 +59,7 @@ class ProcessorTests(object):
         """Fix previous tests so that we validate WHICH queue the update is pushed into."""
         assert NotImplementedError("DO THAT")
 
+
 class ProcessorAsyncTests(object):
     """Message processor test cases."""
 
@@ -68,6 +68,7 @@ class ProcessorAsyncTests(object):
         """Test split change is properly handled."""
         sync_mock = mocker.Mock(spec=Synchronizer)
         self._update = None
+
         async def put_mock(first, event):
             self._update = event
 
@@ -82,6 +83,7 @@ class ProcessorAsyncTests(object):
         """Test split kill is properly handled."""
 
         self._killed_split = None
+
         async def kill_mock(split_name, default_treatment, change_number):
             self._killed_split = (split_name, default_treatment, change_number)
 
@@ -89,6 +91,7 @@ class ProcessorAsyncTests(object):
         sync_mock.kill_split = kill_mock
 
         self._update = None
+
         async def put_mock(first, event):
             self._update = event
 
@@ -104,9 +107,9 @@ class ProcessorAsyncTests(object):
         """Test segment change is properly handled."""
 
         sync_mock = mocker.Mock(spec=SynchronizerAsync)
-        queue_mock = mocker.Mock(spec=asyncio.Queue)
 
         self._update = None
+
         async def put_mock(first, event):
             self._update = event
 

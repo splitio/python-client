@@ -28,9 +28,8 @@ class InMemorySenderAdapterTests(object):
         ]
 
         sender_adapter = InMemorySenderAdapter(mocker.Mock())
-        for i in range(0,1):
-            assert(sorted(sender_adapter._uniques_formatter(uniques)[i]["ks"]) == sorted(formatted[i]["ks"]))
-
+        for i in range(0, 1):
+            assert (sorted(sender_adapter._uniques_formatter(uniques)[i]["ks"]) == sorted(formatted[i]["ks"]))
 
     @mock.patch('splitio.api.telemetry.TelemetryAPI.record_unique_keys')
     def test_record_unique_keys(self, mocker):
@@ -42,7 +41,8 @@ class InMemorySenderAdapterTests(object):
         telemetry_api = TelemetryAPI(mocker.Mock(), 'some_api_key', mocker.Mock(), mocker.Mock())
         sender_adapter = InMemorySenderAdapter(telemetry_api)
         sender_adapter.record_unique_keys(uniques)
-        assert(mocker.called)
+        assert (mocker.called)
+
 
 class InMemorySenderAdapterAsyncTests(object):
     """In memory sender adapter test."""
@@ -56,13 +56,15 @@ class InMemorySenderAdapterAsyncTests(object):
                    }
         telemetry_api = TelemetryAPIAsync(mocker.Mock(), 'some_api_key', mocker.Mock(), mocker.Mock())
         self.called = False
+
         async def record_unique_keys(*args):
             self.called = True
 
         telemetry_api.record_unique_keys = record_unique_keys
         sender_adapter = InMemorySenderAdapterAsync(telemetry_api)
         await sender_adapter.record_unique_keys(uniques)
-        assert(self.called)
+        assert (self.called)
+
 
 class RedisSenderAdapterTests(object):
     """Redis sender adapter test."""
@@ -78,8 +80,8 @@ class RedisSenderAdapterTests(object):
             {'f': 'feature2', 'ks': ['key6', 'key1', 'key10']},
         ]
 
-        for i in range(0,1):
-            assert(sorted(ast.literal_eval(adapters._uniques_formatter(uniques)[i])["ks"]) == sorted(formatted[i]["ks"]))
+        for i in range(0, 1):
+            assert (sorted(ast.literal_eval(adapters._uniques_formatter(uniques)[i])["ks"]) == sorted(formatted[i]["ks"]))
 
     @mock.patch('splitio.storage.adapters.redis.RedisAdapter.rpush')
     def test_record_unique_keys(self, mocker):
@@ -91,11 +93,11 @@ class RedisSenderAdapterTests(object):
         redis_client = RedisAdapter(mocker.Mock(), mocker.Mock())
         sender_adapter = RedisSenderAdapter(redis_client)
         sender_adapter.record_unique_keys(uniques)
-        assert(mocker.called)
+        assert (mocker.called)
 
         mocker.reset_mock()
         sender_adapter.record_unique_keys({})
-        assert(not mocker.called)
+        assert (not mocker.called)
 
     @mock.patch('splitio.storage.adapters.redis.RedisPipelineAdapter.hincrby')
     def test_flush_counters(self, mocker):
@@ -108,11 +110,11 @@ class RedisSenderAdapterTests(object):
         redis_client = RedisAdapter(mocker.Mock(), mocker.Mock())
         sender_adapter = RedisSenderAdapter(redis_client)
         sender_adapter.flush_counters(counters)
-        assert(mocker.called)
+        assert (mocker.called)
 
         mocker.reset_mock()
         sender_adapter.flush_counters({})
-        assert(not mocker.called)
+        assert (not mocker.called)
 
     @mock.patch('splitio.storage.adapters.redis.RedisAdapter.expire')
     def test_expire_keys(self, mocker):
@@ -123,12 +125,12 @@ class RedisSenderAdapterTests(object):
         redis_client = RedisAdapter(mocker.Mock(), mocker.Mock())
         sender_adapter = RedisSenderAdapter(redis_client)
         sender_adapter._expire_keys(mocker.Mock(), mocker.Mock(), total_keys, inserted)
-        assert(not mocker.called)
+        assert (not mocker.called)
 
         total_keys = 100
         inserted = 100
         sender_adapter._expire_keys(mocker.Mock(), mocker.Mock(), total_keys, inserted)
-        assert(mocker.called)
+        assert (mocker.called)
 
 
 class RedisSenderAdapterAsyncTests(object):
@@ -145,12 +147,13 @@ class RedisSenderAdapterAsyncTests(object):
         sender_adapter = RedisSenderAdapterAsync(redis_client)
 
         self.called = False
+
         async def rpush(*args):
             self.called = True
 
         redis_client.rpush = rpush
         await sender_adapter.record_unique_keys(uniques)
-        assert(self.called)
+        assert (self.called)
 
     @pytest.mark.asyncio
     async def test_flush_counters(self, mocker):
@@ -163,9 +166,11 @@ class RedisSenderAdapterAsyncTests(object):
         redis_client = await aioredis.from_url("redis://localhost")
         sender_adapter = RedisSenderAdapterAsync(redis_client)
         self.called = False
+
         def hincrby(*args):
             self.called = True
         self.called2 = False
+
         async def execute(*args):
             self.called2 = True
             return [1]
@@ -173,8 +178,8 @@ class RedisSenderAdapterAsyncTests(object):
         with mock.patch('redis.asyncio.client.Pipeline.hincrby', hincrby):
             with mock.patch('redis.asyncio.client.Pipeline.execute', execute):
                 await sender_adapter.flush_counters(counters)
-                assert(self.called)
-                assert(self.called2)
+                assert (self.called)
+                assert (self.called2)
 
     @pytest.mark.asyncio
     async def test_expire_keys(self, mocker):
@@ -185,17 +190,18 @@ class RedisSenderAdapterAsyncTests(object):
         redis_client = RedisAdapterAsync(mocker.Mock(), mocker.Mock())
         sender_adapter = RedisSenderAdapterAsync(redis_client)
         self.called = False
+
         async def expire(*args):
             self.called = True
         redis_client.expire = expire
 
         await sender_adapter._expire_keys(mocker.Mock(), mocker.Mock(), total_keys, inserted)
-        assert(not self.called)
+        assert (not self.called)
 
         total_keys = 100
         inserted = 100
         await sender_adapter._expire_keys(mocker.Mock(), mocker.Mock(), total_keys, inserted)
-        assert(self.called)
+        assert (self.called)
 
 
 class PluggableSenderAdapterTests(object):
@@ -215,17 +221,17 @@ class PluggableSenderAdapterTests(object):
         ]
 
         sender_adapter.record_unique_keys(uniques)
-        assert(sorted(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][0])["ks"]) == sorted(json.loads(formatted[0])["ks"]))
-        assert(sorted(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][1])["ks"]) == sorted(json.loads(formatted[1])["ks"]))
-        assert(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][0])["f"] == "feature1")
-        assert(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][1])["f"] == "feature2")
-        assert(adapter._expire[adapters._MTK_QUEUE_KEY] == adapters._MTK_KEY_DEFAULT_TTL)
+        assert (sorted(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][0])["ks"]) == sorted(json.loads(formatted[0])["ks"]))
+        assert (sorted(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][1])["ks"]) == sorted(json.loads(formatted[1])["ks"]))
+        assert (json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][0])["f"] == "feature1")
+        assert (json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][1])["f"] == "feature2")
+        assert (adapter._expire[adapters._MTK_QUEUE_KEY] == adapters._MTK_KEY_DEFAULT_TTL)
         sender_adapter.record_unique_keys(uniques)
-        assert(adapter._expire[adapters._MTK_QUEUE_KEY] != -1)
+        assert (adapter._expire[adapters._MTK_QUEUE_KEY] != -1)
 
         adapter._keys[adapters._MTK_QUEUE_KEY] = {}
         sender_adapter.record_unique_keys({})
-        assert(adapter._keys[adapters._MTK_QUEUE_KEY] == {})
+        assert (adapter._keys[adapters._MTK_QUEUE_KEY] == {})
 
     def test_flush_counters(self, mocker):
         """Test sending counters."""
@@ -238,11 +244,12 @@ class PluggableSenderAdapterTests(object):
         ]
 
         sender_adapter.flush_counters(counters)
-        assert(adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == 2)
-        assert(adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == 123)
-        assert(adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
+        assert (adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == 2)
+        assert (adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == 123)
+        assert (adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
         sender_adapter.flush_counters(counters)
-        assert(adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
+        assert (adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
+
 
 class PluggableSenderAdapterAsyncTests(object):
     """Pluggable sender adapter test."""
@@ -262,13 +269,13 @@ class PluggableSenderAdapterAsyncTests(object):
         ]
 
         await sender_adapter.record_unique_keys(uniques)
-        assert(sorted(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][0])["ks"]) == sorted(json.loads(formatted[0])["ks"]))
-        assert(sorted(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][1])["ks"]) == sorted(json.loads(formatted[1])["ks"]))
-        assert(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][0])["f"] == "feature1")
-        assert(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][1])["f"] == "feature2")
-        assert(adapter._expire[adapters._MTK_QUEUE_KEY] == adapters._MTK_KEY_DEFAULT_TTL)
+        assert (sorted(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][0])["ks"]) == sorted(json.loads(formatted[0])["ks"]))
+        assert (sorted(json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][1])["ks"]) == sorted(json.loads(formatted[1])["ks"]))
+        assert (json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][0])["f"] == "feature1")
+        assert (json.loads(adapter._keys[adapters._MTK_QUEUE_KEY][1])["f"] == "feature2")
+        assert (adapter._expire[adapters._MTK_QUEUE_KEY] == adapters._MTK_KEY_DEFAULT_TTL)
         await sender_adapter.record_unique_keys(uniques)
-        assert(adapter._expire[adapters._MTK_QUEUE_KEY] != -1)
+        assert (adapter._expire[adapters._MTK_QUEUE_KEY] != -1)
 
     @pytest.mark.asyncio
     async def test_flush_counters(self, mocker):
@@ -282,8 +289,8 @@ class PluggableSenderAdapterAsyncTests(object):
         ]
 
         await sender_adapter.flush_counters(counters)
-        assert(adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == 2)
-        assert(adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == 123)
-        assert(adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
+        assert (adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == 2)
+        assert (adapter._keys[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == 123)
+        assert (adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f1::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
         await sender_adapter.flush_counters(counters)
-        assert(adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)
+        assert (adapter._expire[adapters._IMP_COUNT_QUEUE_KEY + "." + 'f2::123'] == adapters._IMP_COUNT_KEY_DEFAULT_TTL)

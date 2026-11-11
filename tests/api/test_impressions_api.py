@@ -1,7 +1,6 @@
 """Impressions API tests module."""
 
 import pytest
-import unittest.mock as mock
 
 from splitio.api import impressions, client, APIException
 from splitio.models.impressions import Impression
@@ -47,6 +46,7 @@ expected_counters = {
     ]
 }
 
+
 class ImpressionsAPITests(object):
     """Impressions API test cases."""
 
@@ -61,7 +61,7 @@ class ImpressionsAPITests(object):
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         impressions_api = impressions.ImpressionsAPI(httpclient, 'some_api_key', sdk_metadata, telemetry_runtime_producer)
-        response = impressions_api.flush_impressions(impressions_mock)
+        impressions_api.flush_impressions(impressions_mock)
 
         call_made = httpclient.post.mock_calls[0]
 
@@ -80,6 +80,7 @@ class ImpressionsAPITests(object):
         assert call_made[2]['body'] == expectedImpressions
 
         httpclient.reset_mock()
+
         def raise_exception(*args, **kwargs):
             raise client.HttpClientException('some_message')
         httpclient.post.side_effect = raise_exception
@@ -95,7 +96,7 @@ class ImpressionsAPITests(object):
         cfg.update({'IPAddressesEnabled': False})
         sdk_metadata = get_metadata(cfg)
         impressions_api = impressions.ImpressionsAPI(httpclient, 'some_api_key', sdk_metadata, mocker.Mock(), ImpressionsMode.DEBUG)
-        response = impressions_api.flush_impressions(impressions_mock)
+        impressions_api.flush_impressions(impressions_mock)
 
         call_made = httpclient.post.mock_calls[0]
 
@@ -119,7 +120,7 @@ class ImpressionsAPITests(object):
         cfg.update({'IPAddressesEnabled': True, 'machineName': 'some_machine_name', 'machineIp': '123.123.123.123'})
         sdk_metadata = get_metadata(cfg)
         impressions_api = impressions.ImpressionsAPI(httpclient, 'some_api_key', sdk_metadata, mocker.Mock())
-        response = impressions_api.flush_counters(counters)
+        impressions_api.flush_counters(counters)
 
         call_made = httpclient.post.mock_calls[0]
 
@@ -138,6 +139,7 @@ class ImpressionsAPITests(object):
         assert call_made[2]['body'] == expected_counters
 
         httpclient.reset_mock()
+
         def raise_exception(*args, **kwargs):
             raise client.HttpClientException('some_message')
         httpclient.post.side_effect = raise_exception
@@ -166,6 +168,7 @@ class ImpressionsAPIAsyncTests(object):
         self.key = None
         self.headers = None
         self.body = None
+
         async def post(verb, url, key, body, extra_headers):
             self.url = url
             self.verb = verb
@@ -175,7 +178,7 @@ class ImpressionsAPIAsyncTests(object):
             return client.HttpResponse(200, '', {})
         httpclient.post = post
 
-        response = await impressions_api.flush_impressions(impressions_mock)
+        await impressions_api.flush_impressions(impressions_mock)
 
         # validate positional arguments
         assert self.verb == 'events'
@@ -194,6 +197,7 @@ class ImpressionsAPIAsyncTests(object):
         assert self.body == expectedImpressions
 
         httpclient.reset_mock()
+
         def raise_exception(*args, **kwargs):
             raise client.HttpClientException('some_message')
         httpclient.post = raise_exception
@@ -215,6 +219,7 @@ class ImpressionsAPIAsyncTests(object):
         self.key = None
         self.headers = None
         self.body = None
+
         async def post(verb, url, key, body, extra_headers):
             self.url = url
             self.verb = verb
@@ -224,7 +229,7 @@ class ImpressionsAPIAsyncTests(object):
             return client.HttpResponse(200, '', {})
         httpclient.post = post
 
-        response = await impressions_api.flush_impressions(impressions_mock)
+        await impressions_api.flush_impressions(impressions_mock)
 
         # validate positional arguments
         assert self.verb == 'events'
@@ -254,6 +259,7 @@ class ImpressionsAPIAsyncTests(object):
         self.key = None
         self.headers = None
         self.body = None
+
         async def post(verb, url, key, body, extra_headers):
             self.url = url
             self.verb = verb
@@ -263,7 +269,7 @@ class ImpressionsAPIAsyncTests(object):
             return client.HttpResponse(200, '', {})
         httpclient.post = post
 
-        response = await impressions_api.flush_counters(counters)
+        await impressions_api.flush_counters(counters)
 
         # validate positional arguments
         assert self.verb == 'events'
@@ -282,6 +288,7 @@ class ImpressionsAPIAsyncTests(object):
         assert self.body == expected_counters
 
         httpclient.reset_mock()
+
         def raise_exception(*args, **kwargs):
             raise client.HttpClientException('some_message')
         httpclient.post = raise_exception

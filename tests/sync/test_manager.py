@@ -6,26 +6,16 @@ import time
 import pytest
 
 from splitio.optional.loaders import asyncio
-from splitio.api.auth import AuthAPI
-from splitio.api import auth, client, APIException
-from splitio.client.util import get_metadata
-from splitio.client.config import DEFAULT_CONFIG
-from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync
-from splitio.tasks.segment_sync import SegmentSynchronizationTask
-from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask
-from splitio.tasks.events_sync import EventsSyncTask
+from splitio.api import APIException
+from splitio.tasks.split_sync import SplitSynchronizationTask
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
 from splitio.models.telemetry import SSESyncMode, StreamingEventTypes
 from splitio.push.manager import Status
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync
-from splitio.sync.segment import SegmentSynchronizer
-from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer
-from splitio.sync.event import EventSynchronizer
 from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitTasks, SplitSynchronizers, RedisSynchronizer, RedisSynchronizerAsync
 from splitio.sync.manager import Manager, ManagerAsync, RedisManager, RedisManagerAsync
 from splitio.storage import SplitStorage, RuleBasedSegmentsStorage
-from splitio.api import APIException
 from splitio.client.util import SdkMetadata
 
 
@@ -58,7 +48,7 @@ class SyncManagerTests(object):
                                            mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         synchronizer = Synchronizer(synchronizers, split_tasks)
-        manager = Manager(threading.Event(), synchronizer,  mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+        manager = Manager(threading.Event(), synchronizer, mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
 
         manager._SYNC_ALL_ATTEMPTS = 1
         manager.start(2)  # should not throw!
@@ -69,7 +59,7 @@ class SyncManagerTests(object):
         manager = Manager(splits_ready_event, synchronizer, mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
         try:
             manager.start()
-        except:
+        except Exception:
             pass
         splits_ready_event.wait(2)
         assert splits_ready_event.is_set()
@@ -87,17 +77,17 @@ class SyncManagerTests(object):
         manager._push = mocker.Mock()  # don't open a real streaming connection
         try:
             manager.start()
-        except:
+        except Exception:
             pass
         splits_ready_event.wait(2)
 
         manager._queue.put(Status.PUSH_SUBSYSTEM_UP)
         manager._queue.put(Status.PUSH_NONRETRYABLE_ERROR)
         time.sleep(1)
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-2]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-2]._data == SSESyncMode.STREAMING.value)
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._data == SSESyncMode.POLLING.value)
+        assert (telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events) - 2]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
+        assert (telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events) - 2]._data == SSESyncMode.STREAMING.value)
+        assert (telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events) - 1]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
+        assert (telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events) - 1]._data == SSESyncMode.POLLING.value)
 
     def _wait_for(self, condition, timeout=2):
         deadline = time.time() + timeout
@@ -124,6 +114,7 @@ class SyncManagerTests(object):
         """Test the status handler falls back to polling, retries streaming and keeps running."""
         manager, synchronizer, push_mock = self._build_streaming_manager(mocker)
         worker_calls = []
+
         def update_workers_status(enabled):
             worker_calls.append(enabled)
             if len(worker_calls) == 1:
@@ -214,7 +205,7 @@ class SyncManagerAsyncTests(object):
                                            mocker.Mock(), mocker.Mock(), mocker.Mock())
 
         synchronizer = SynchronizerAsync(synchronizers, split_tasks)
-        manager = ManagerAsync(synchronizer,  mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
+        manager = ManagerAsync(synchronizer, mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
 
         manager._SYNC_ALL_ATTEMPTS = 1
         await manager.start(2)  # should not throw!
@@ -223,16 +214,19 @@ class SyncManagerAsyncTests(object):
     async def test_start_streaming_false(self, mocker):
         synchronizer = mocker.Mock(spec=SynchronizerAsync)
         self.sync_all_called = 0
+
         async def sync_all(retry):
             self.sync_all_called += 1
         synchronizer.sync_all = sync_all
 
         self.fetching_called = 0
+
         def start_periodic_fetching():
             self.fetching_called += 1
         synchronizer.start_periodic_fetching = start_periodic_fetching
 
         self.rcording_called = 0
+
         def start_periodic_data_recording():
             self.rcording_called += 1
         synchronizer.start_periodic_data_recording = start_periodic_data_recording
@@ -240,7 +234,7 @@ class SyncManagerAsyncTests(object):
         manager = ManagerAsync(synchronizer, mocker.Mock(), False, SdkMetadata('1.0', 'some', '1.2.3.4'), mocker.Mock())
         try:
             await manager.start()
-        except:
+        except Exception:
             pass
         assert self.sync_all_called == 1
         assert self.fetching_called == 1
@@ -249,6 +243,7 @@ class SyncManagerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_telemetry(self, mocker):
         synchronizer = mocker.Mock(spec=SynchronizerAsync)
+
         async def sync_all(retry=1):
             pass
         synchronizer.sync_all = sync_all
@@ -263,25 +258,27 @@ class SyncManagerAsyncTests(object):
         manager = ManagerAsync(synchronizer, mocker.Mock(), True, SdkMetadata('1.0', 'some', '1.2.3.4'), telemetry_runtime_producer)
         try:
             await manager.start()
-        except:
+        except Exception:
             pass
 
         await manager._queue.put(Status.PUSH_SUBSYSTEM_UP)
         await manager._queue.put(Status.PUSH_NONRETRYABLE_ERROR)
         await asyncio.sleep(1)
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-2]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-2]._data == SSESyncMode.STREAMING.value)
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
-        assert(telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events)-1]._data == SSESyncMode.POLLING.value)
+        assert (telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events) - 2]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
+        assert (telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events) - 2]._data == SSESyncMode.STREAMING.value)
+        assert (telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events) - 1]._type == StreamingEventTypes.SYNC_MODE_UPDATE.value)
+        assert (telemetry_storage._streaming_events._streaming_events[len(telemetry_storage._streaming_events._streaming_events) - 1]._data == SSESyncMode.POLLING.value)
 
     @pytest.mark.asyncio
     async def test_streaming_handler_survives_unexpected_exception(self, mocker):
         """Test the status handler falls back to polling, retries streaming and keeps running."""
         synchronizer = mocker.Mock(spec=SynchronizerAsync)
         calls = {'sync_all': 0, 'stop_periodic_fetching': 0}
+
         async def sync_all(retry=1):
             calls['sync_all'] += 1
         synchronizer.sync_all = sync_all
+
         async def stop_periodic_fetching():
             calls['stop_periodic_fetching'] += 1
         synchronizer.stop_periodic_fetching = stop_periodic_fetching
@@ -295,12 +292,14 @@ class SyncManagerAsyncTests(object):
         manager._backoff.get.return_value = 0
         push_mock = mocker.Mock()
         worker_calls = []
+
         async def update_workers_status(enabled):
             worker_calls.append(enabled)
             if len(worker_calls) == 1:
                 raise RuntimeError('worker failure')
         push_mock.update_workers_status = update_workers_status
         stop_calls = []
+
         async def stop(blocking=False):
             stop_calls.append(blocking)
         push_mock.stop = stop
@@ -331,6 +330,7 @@ class SyncManagerAsyncTests(object):
     async def test_stop_while_backing_off(self, mocker):
         """Test streaming is not restarted when the manager is stopped during the retry backoff."""
         synchronizer = mocker.Mock(spec=SynchronizerAsync)
+
         async def noop(*_args, **_kwargs):
             pass
         synchronizer.sync_all = noop
@@ -362,22 +362,22 @@ class RedisSyncManagerTests(object):
     @mock.patch('splitio.sync.synchronizer.RedisSynchronizer.start_periodic_data_recording')
     def test_recreate_and_start(self, mocker):
 
-        assert(isinstance(self.manager._synchronizer, RedisSynchronizer))
+        assert (isinstance(self.manager._synchronizer, RedisSynchronizer))
 
         self.manager.recreate()
-        assert(not mocker.called)
+        assert (not mocker.called)
 
         self.manager.start()
-        assert(mocker.called)
+        assert (mocker.called)
 
     @mock.patch('splitio.sync.synchronizer.RedisSynchronizer.shutdown')
     def test_recreate_and_stop(self, mocker):
 
         self.manager.recreate()
-        assert(not mocker.called)
+        assert (not mocker.called)
 
         self.manager.stop(True)
-        assert(mocker.called)
+        assert (mocker.called)
 
 
 class RedisSyncManagerAsyncTests(object):
@@ -390,22 +390,23 @@ class RedisSyncManagerAsyncTests(object):
 
     @mock.patch('splitio.sync.synchronizer.RedisSynchronizerAsync.start_periodic_data_recording')
     def test_recreate_and_start(self, mocker):
-        assert(isinstance(self.manager._synchronizer, RedisSynchronizerAsync))
+        assert (isinstance(self.manager._synchronizer, RedisSynchronizerAsync))
 
         self.manager.recreate()
-        assert(not mocker.called)
+        assert (not mocker.called)
 
         self.manager.start()
-        assert(mocker.called)
+        assert (mocker.called)
 
     @pytest.mark.asyncio
     async def test_recreate_and_stop(self, mocker):
         self.called = False
+
         async def shutdown(block):
             self.called = True
         self.manager._synchronizer.shutdown = shutdown
         self.manager.recreate()
-        assert(not self.called)
+        assert (not self.called)
 
         await self.manager.stop(True)
-        assert(self.called)
+        assert (self.called)

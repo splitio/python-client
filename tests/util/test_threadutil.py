@@ -12,7 +12,7 @@ class EventGroupTests(object):
     def test_basic_functionality(self):
         """Test basic functionality."""
 
-        def fun(event):  #pylint:disable=missing-docstring
+        def fun(event):
             time.sleep(1)
             event.set()
 

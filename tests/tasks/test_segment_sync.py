@@ -7,12 +7,10 @@ import pytest
 from splitio.api.commons import FetchOptions
 from splitio.tasks import segment_sync
 from splitio.storage import SegmentStorage, SplitStorage, RuleBasedSegmentsStorage
-from splitio.models.splits import Split
 from splitio.models.segments import Segment
-from splitio.models.grammar.condition import Condition
-from splitio.models.grammar.matchers import UserDefinedSegmentMatcher
 from splitio.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync
 from splitio.optional.loaders import asyncio
+
 
 class SegmentSynchronizationTests(object):
     """Split synchronization task test cases."""
@@ -183,11 +181,13 @@ class SegmentSynchronizationAsyncTests(object):
     async def test_normal_operation(self, mocker):
         """Test the normal operation flow."""
         split_storage = mocker.Mock(spec=SplitStorage)
+
         async def get_segment_names():
             return ['segmentA', 'segmentB', 'segmentC']
         split_storage.get_segment_names = get_segment_names
 
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
+
         async def get_segment_names_rbs():
             return []
         rbs_storage.get_segment_names = get_segment_names_rbs
@@ -213,6 +213,7 @@ class SegmentSynchronizationAsyncTests(object):
         storage.get_change_number = change_number_mock
 
         self.segments = []
+
         async def put(segment):
             self.segments.append(segment)
         storage.put = put
@@ -225,6 +226,7 @@ class SegmentSynchronizationAsyncTests(object):
         self.segment_name = []
         self.change_number = []
         self.fetch_options = []
+
         async def fetch_segment_mock(segment_name, change_number, fetch_options):
             self.segment_name.append(segment_name)
             self.change_number.append(change_number)
@@ -247,12 +249,11 @@ class SegmentSynchronizationAsyncTests(object):
         fetch_segment_mock._count_c = 0
 
         api = mocker.Mock()
-        fetch_options = FetchOptions(True, None, None, None, None)
         api.fetch_segment = fetch_segment_mock
 
         segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage, rbs_storage)
         task = segment_sync.SegmentSynchronizationTaskAsync(segments_synchronizer.synchronize_segments,
-                                                       0.5)
+                                                            0.5)
         task.start()
         await asyncio.sleep(0.7)
         assert task.is_running()
@@ -263,7 +264,7 @@ class SegmentSynchronizationAsyncTests(object):
         api_calls = []
         for i in range(6):
             api_calls.append((self.segment_name[i], self.change_number[i], self.fetch_options[i]))
-        
+
         assert ('segmentA', -1, FetchOptions(True, None, None, None, None)) in api_calls
         assert ('segmentA', 123, FetchOptions(True, None, None, None, None)) in api_calls
         assert ('segmentB', -1, FetchOptions(True, None, None, None, None)) in api_calls
@@ -281,11 +282,13 @@ class SegmentSynchronizationAsyncTests(object):
     async def test_that_errors_dont_stop_task(self, mocker):
         """Test that if fetching segments fails at some_point, the task will continue running."""
         split_storage = mocker.Mock(spec=SplitStorage)
+
         async def get_segment_names():
             return ['segmentA', 'segmentB', 'segmentC']
         split_storage.get_segment_names = get_segment_names
 
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
+
         async def get_segment_names_rbs():
             return []
         rbs_storage.get_segment_names = get_segment_names_rbs
@@ -311,6 +314,7 @@ class SegmentSynchronizationAsyncTests(object):
         storage.get_change_number = change_number_mock
 
         self.segments = []
+
         async def put(segment):
             self.segments.append(segment)
         storage.put = put
@@ -323,6 +327,7 @@ class SegmentSynchronizationAsyncTests(object):
         self.segment_name = []
         self.change_number = []
         self.fetch_options = []
+
         async def fetch_segment_mock(segment_name, change_number, fetch_options):
             self.segment_name.append(segment_name)
             self.change_number.append(change_number)
@@ -344,23 +349,22 @@ class SegmentSynchronizationAsyncTests(object):
         fetch_segment_mock._count_c = 0
 
         api = mocker.Mock()
-        fetch_options = FetchOptions(True, None, None, None, None)
         api.fetch_segment = fetch_segment_mock
 
         segments_synchronizer = SegmentSynchronizerAsync(api, split_storage, storage, rbs_storage)
         task = segment_sync.SegmentSynchronizationTaskAsync(segments_synchronizer.synchronize_segments,
-                                                       0.5)
+                                                            0.5)
         task.start()
         await asyncio.sleep(0.7)
         assert task.is_running()
 
         await task.stop()
         assert not task.is_running()
-        
+
         api_calls = []
         for i in range(5):
             api_calls.append((self.segment_name[i], self.change_number[i], self.fetch_options[i]))
-        
+
         assert ('segmentA', -1, FetchOptions(True, None, None, None, None)) in api_calls
         assert ('segmentA', 123, FetchOptions(True, None, None, None, None)) in api_calls
         assert ('segmentB', -1, FetchOptions(True, None, None, None, None)) in api_calls

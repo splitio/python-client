@@ -2,6 +2,7 @@
 
 from splitio.models.grammar import partitions
 
+
 class PartitionTests(object):
     """Partition model tests."""
 

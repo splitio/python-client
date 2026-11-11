@@ -1,5 +1,4 @@
 """Localhost mode test module."""
-# pylint: disable=no-self-use,line-too-long,protected-access
 import os
 
 from splitio.client import localhost
@@ -112,7 +111,7 @@ class SplitFetchingTaskTests(object):
         parse_yaml.return_value = {}
         storage_mock = mocker.Mock(spec=SplitStorage)
         storage_mock.get_split_names.return_value = []
-        rbs =  mocker.Mock(spec=RuleBasedSegmentsStorage)
+        rbs = mocker.Mock(spec=RuleBasedSegmentsStorage)
         parse_legacy.reset_mock()
         parse_yaml.reset_mock()
         sync = LocalSplitSynchronizer('something', storage_mock, rbs)

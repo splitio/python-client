@@ -1,10 +1,8 @@
 """Hash function test module."""
-#pylint: disable=no-self-use,protected-access
 import io
 import json
 import os
 
-import pytest
 from splitio.engine import hashfns, splitters
 from splitio.engine.hashfns.murmur3py import hash128_x64 as murmur3_128_py
 from splitio.models import splits

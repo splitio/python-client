@@ -1,18 +1,19 @@
-import pytest
 
 from splitio.storage import FlagSetsFilter
 from splitio.storage.inmemmory import FlagSets
 
+
 class FlagSetsFilterTests(object):
     """Flag sets filter storage tests."""
+
     def test_without_initial_set(self):
         flag_set = FlagSets()
         assert flag_set.sets_feature_flag_map == {}
 
         flag_set._add_flag_set('set1')
         assert flag_set.get_flag_set('set1') == set({})
-        assert flag_set.flag_set_exist('set1') == True
-        assert flag_set.flag_set_exist('set2') == False
+        assert flag_set.flag_set_exist('set1') is True
+        assert flag_set.flag_set_exist('set2') is False
 
         flag_set.add_feature_flag_to_flag_set('set1', 'split1')
         assert flag_set.get_flag_set('set1') == {'split1'}
@@ -24,7 +25,7 @@ class FlagSetsFilterTests(object):
         assert flag_set.sets_feature_flag_map == {'set1': set({'split2'})}
         flag_set._remove_flag_set('set1')
         assert flag_set.sets_feature_flag_map == {}
-        assert flag_set.flag_set_exist('set1') == False
+        assert flag_set.flag_set_exist('set1') is False
 
     def test_with_initial_set(self):
         flag_set = FlagSets(['set1', 'set2'])
@@ -32,8 +33,8 @@ class FlagSetsFilterTests(object):
 
         flag_set._add_flag_set('set1')
         assert flag_set.get_flag_set('set1') == set({})
-        assert flag_set.flag_set_exist('set1') == True
-        assert flag_set.flag_set_exist('set2') == True
+        assert flag_set.flag_set_exist('set1') is True
+        assert flag_set.flag_set_exist('set2') is True
 
         flag_set.add_feature_flag_to_flag_set('set1', 'split1')
         assert flag_set.get_flag_set('set1') == {'split1'}
@@ -45,7 +46,7 @@ class FlagSetsFilterTests(object):
         assert flag_set.sets_feature_flag_map == {'set1': set({'split2'})}
         flag_set._remove_flag_set('set1')
         assert flag_set.sets_feature_flag_map == {}
-        assert flag_set.flag_set_exist('set1') == False
+        assert flag_set.flag_set_exist('set1') is False
 
     def test_flag_set_filter(self):
         flag_set_filter = FlagSetsFilter()

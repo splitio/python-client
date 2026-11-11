@@ -1,5 +1,4 @@
 """Pluggable storage end to end tests."""
-#pylint: disable=no-self-use,protected-access,line-too-long,too-few-public-methods
 import pytest
 import json
 import os
@@ -7,10 +6,10 @@ import os
 from splitio.client.util import get_metadata
 from splitio.models import splits, impressions, events
 from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressionsStorage, PluggableSegmentStorage, \
-    PluggableSplitStorage, PluggableEventsStorageAsync, PluggableImpressionsStorageAsync, PluggableSegmentStorageAsync,\
-    PluggableSplitStorageAsync
+    PluggableSplitStorage, PluggableEventsStorageAsync, PluggableSegmentStorageAsync, PluggableSplitStorageAsync
 from splitio.client.config import DEFAULT_CONFIG
 from tests.storage.test_pluggable import StorageMockAdapter, StorageMockAdapterAsync
+
 
 class PluggableSplitStorageIntegrationTests(object):
     """Pluggable Split storage e2e tests."""
@@ -30,7 +29,7 @@ class PluggableSplitStorageIntegrationTests(object):
 
             split_objects = [splits.from_raw(raw) for raw in data['ff']['d']]
             for split_object in split_objects:
-                raw = split_object.to_json()
+                split_object.to_json()
 
             original_splits = {split.name: split for split in split_objects}
             fetched_splits = {name: storage.get(name) for name in original_splits.keys()}
@@ -117,14 +116,14 @@ class PluggableSplitStorageIntegrationTests(object):
                     assert len(original_condition.partitions) == len(fetched_condition.partitions)
         finally:
             [adapter.delete(key) for key in ['SPLITIO.split.sample_feature',
-                'SPLITIO.splits.till',
-                'SPLITIO.split.all_feature',
-                'SPLITIO.split.killed_feature',
-                'SPLITIO.split.Risk_Max_Deductible',
-                'SPLITIO.split.whitelist_feature',
-                'SPLITIO.split.regex_test',
-                'SPLITIO.split.boolean_test',
-                'SPLITIO.split.dependency_test']]
+                                             'SPLITIO.splits.till',
+                                             'SPLITIO.split.all_feature',
+                                             'SPLITIO.split.killed_feature',
+                                             'SPLITIO.split.Risk_Max_Deductible',
+                                             'SPLITIO.split.whitelist_feature',
+                                             'SPLITIO.split.regex_test',
+                                             'SPLITIO.split.boolean_test',
+                                             'SPLITIO.split.dependency_test']]
 
 
 class PluggableSegmentStorageIntegrationTests(object):
@@ -163,7 +162,6 @@ class PluggableImpressionsStorageIntegrationTests(object):
             impressions.Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ])
 
-
     def test_put_fetch_contains(self):
         """Test storing and retrieving splits in pluggable."""
         adapter = StorageMockAdapter()
@@ -199,6 +197,7 @@ class PluggableImpressionsStorageIntegrationTests(object):
 
 class PluggableEventsStorageIntegrationTests(object):
     """Pluggable Events storage e2e tests."""
+
     def _put_events(self, adapter, metadata):
         storage = PluggableEventsStorage(adapter, metadata)
         storage.put([
@@ -267,7 +266,7 @@ class PluggableSplitStorageIntegrationAsyncTests(object):
 
             split_objects = [splits.from_raw(raw) for raw in data['ff']['d']]
             for split_object in split_objects:
-                raw = split_object.to_json()
+                split_object.to_json()
 
             original_splits = {split.name: split for split in split_objects}
             fetched_splits = {name: await storage.get(name) for name in original_splits.keys()}
@@ -355,14 +354,14 @@ class PluggableSplitStorageIntegrationAsyncTests(object):
                     assert len(original_condition.partitions) == len(fetched_condition.partitions)
         finally:
             [await adapter.delete(key) for key in ['SPLITIO.split.sample_feature',
-                'SPLITIO.splits.till',
-                'SPLITIO.split.all_feature',
-                'SPLITIO.split.killed_feature',
-                'SPLITIO.split.Risk_Max_Deductible',
-                'SPLITIO.split.whitelist_feature',
-                'SPLITIO.split.regex_test',
-                'SPLITIO.split.boolean_test',
-                'SPLITIO.split.dependency_test']]
+                                                   'SPLITIO.splits.till',
+                                                   'SPLITIO.split.all_feature',
+                                                   'SPLITIO.split.killed_feature',
+                                                   'SPLITIO.split.Risk_Max_Deductible',
+                                                   'SPLITIO.split.whitelist_feature',
+                                                   'SPLITIO.split.regex_test',
+                                                   'SPLITIO.split.boolean_test',
+                                                   'SPLITIO.split.dependency_test']]
 
 
 class PluggableSegmentStorageIntegrationAsyncTests(object):
@@ -390,8 +389,10 @@ class PluggableSegmentStorageIntegrationAsyncTests(object):
             await adapter.delete('SPLITIO.segment.some_segment')
             await adapter.delete('SPLITIO.segment.some_segment.till')
 
+
 class PluggableEventsStorageIntegrationAsyncTests(object):
     """Pluggable Events storage e2e tests."""
+
     async def _put_events(self, adapter, metadata):
         storage = PluggableEventsStorageAsync(adapter, metadata)
         await storage.put([

@@ -1,6 +1,7 @@
 """Split Worker tests."""
 
 import os
+import queue
 
 from splitio.util.backoff import Backoff
 from splitio.api import APIException
@@ -13,6 +14,7 @@ from splitio.models import rule_based_segments
 from splitio.optional.loaders import aiofiles, asyncio
 
 import pytest
+
 
 class SegmentsSynchronizerTests(object):
     """Segments synchronizer test cases."""
@@ -169,7 +171,7 @@ class SegmentsSynchronizerTests(object):
                 return 123
             elif change_number_mock._count_a <= 7:
                 return 1234
-            return 12345 # Return proper cn for CDN Bypass
+            return 12345  # Return proper cn for CDN Bypass
 
         change_number_mock._count_a = 0
         storage.get_change_number.side_effect = change_number_mock
@@ -202,7 +204,7 @@ class SegmentsSynchronizerTests(object):
         segments_synchronizer._backoff = Backoff(1, 0.1)
         segments_synchronizer.synchronize_segment('segmentA', 12345)
         assert mocker.call('segmentA', 12345, FetchOptions(True, 1234, None, None, None)) in api.fetch_segment.mock_calls
-        assert len(api.fetch_segment.mock_calls) == 8 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
+        assert len(api.fetch_segment.mock_calls) == 8  # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
 
     def test_recreate(self, mocker):
         """Test recreate logic."""
@@ -230,6 +232,7 @@ class SegmentsSynchronizerAsyncTests(object):
         split_storage.get_segment_names = get_segment_names
 
         storage = mocker.Mock(spec=SegmentStorage)
+
         async def get_change_number(*args):
             return -1
         storage.get_change_number = get_change_number
@@ -239,6 +242,7 @@ class SegmentsSynchronizerAsyncTests(object):
         storage.put = put
 
         api = mocker.Mock()
+
         async def run(*args):
             raise APIException("something broke")
         api.fetch_segment = run
@@ -251,15 +255,17 @@ class SegmentsSynchronizerAsyncTests(object):
     async def test_synchronize_segments(self, mocker):
         """Test the normal operation flow."""
         split_storage = mocker.Mock(spec=SplitStorage)
+
         async def get_segment_names():
             return ['segmentA', 'segmentB', 'segmentC']
         split_storage.get_segment_names = get_segment_names
 
         rbs_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
+
         async def get_segment_names_rbs():
             return ['rbs']
         rbs_storage.get_segment_names = get_segment_names_rbs
-        
+
         async def get_rbs(segment_name):
             return rule_based_segments.from_raw({'name': 'rbs', 'conditions': [], 'trafficTypeName': 'user', 'changeNumber': 123, 'status': 'ACTIVE', 'excluded': {'keys': [], 'segments': [{'type': 'standard', 'name': 'segmentD'}]}})
         rbs_storage.get = get_rbs
@@ -289,6 +295,7 @@ class SegmentsSynchronizerAsyncTests(object):
         storage.get_change_number = change_number_mock
 
         self.segment_put = []
+
         async def put(segment):
             self.segment_put.append(segment)
         storage.put = put
@@ -301,6 +308,7 @@ class SegmentsSynchronizerAsyncTests(object):
         self.options = []
         self.segment = []
         self.change = []
+
         async def fetch_segment_mock(segment_name, change_number, fetch_options):
             self.segment.append(segment_name)
             self.options.append(fetch_options)
@@ -336,7 +344,7 @@ class SegmentsSynchronizerAsyncTests(object):
         api_calls = []
         for i in range(8):
             api_calls.append((self.segment[i], self.change[i], self.options[i]))
-        
+
         assert ('segmentD', -1, FetchOptions(True, None, None, None, None)) in api_calls
         assert ('segmentD', 123, FetchOptions(True, None, None, None, None)) in api_calls
         assert ('segmentA', -1, FetchOptions(True, None, None, None, None)) in api_calls
@@ -372,6 +380,7 @@ class SegmentsSynchronizerAsyncTests(object):
             return 123
         change_number_mock._count_a = 0
         storage.get_change_number = change_number_mock
+
         async def put(segment):
             pass
         storage.put = put
@@ -383,6 +392,7 @@ class SegmentsSynchronizerAsyncTests(object):
         self.options = []
         self.segment = []
         self.change = []
+
         async def fetch_segment_mock(segment_name, change_number, fetch_options):
             self.segment.append(segment_name)
             self.options.append(fetch_options)
@@ -426,9 +436,10 @@ class SegmentsSynchronizerAsyncTests(object):
                 return 123
             elif change_number_mock._count_a <= 7:
                 return 1234
-            return 12345 # Return proper cn for CDN Bypass
+            return 12345  # Return proper cn for CDN Bypass
         change_number_mock._count_a = 0
         storage.get_change_number = change_number_mock
+
         async def put(segment):
             pass
         storage.put = put
@@ -440,6 +451,7 @@ class SegmentsSynchronizerAsyncTests(object):
         self.options = []
         self.segment = []
         self.change = []
+
         async def fetch_segment_mock(segment_name, change_number, fetch_options):
             self.segment.append(segment_name)
             self.options.append(fetch_options)
@@ -471,7 +483,7 @@ class SegmentsSynchronizerAsyncTests(object):
         segments_synchronizer._backoff = Backoff(1, 0.1)
         await segments_synchronizer.synchronize_segment('segmentA', 12345)
         assert (self.segment[7], self.change[7], self.options[7]) == ('segmentA', 12345, FetchOptions(True, 1234, None, None, None))
-        assert len(self.segment) == 8 # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
+        assert len(self.segment) == 8  # 2 ok + BACKOFF(2 since==till + 2 re-attempts) + CDN(2 since==till)
         await segments_synchronizer.shutdown()
 
     @pytest.mark.asyncio
@@ -508,11 +520,11 @@ class LocalSegmentsSynchronizerTests(object):
         storage = InMemorySegmentStorage(events_queue)
 
         segment_a = {'name': 'segmentA', 'added': ['key1', 'key2', 'key3'], 'removed': [],
-                        'since': -1, 'till': 123}
+                     'since': -1, 'till': 123}
         segment_b = {'name': 'segmentB', 'added': ['key4', 'key5', 'key6'], 'removed': [],
-                        'since': -1, 'till': 123}
+                     'since': -1, 'till': 123}
         segment_c = {'name': 'segmentC', 'added': ['key7', 'key8', 'key9'], 'removed': [],
-                        'since': -1, 'till': 123}
+                     'since': -1, 'till': 123}
         blank = {'added': [], 'removed': [], 'since': 123, 'till': 123}
 
         def read_segment_from_json_file(*args, **kwargs):
@@ -609,68 +621,70 @@ class LocalSegmentsSynchronizerTests(object):
         exception_called = False
         try:
             segment_synchronizer._sanitize_segment(segment2)
-        except:
+        except Exception:
             exception_called = True
-        assert(exception_called)
+        assert (exception_called)
 
         # should reject segment if 'name' does not exist
         segment2 = {"added": [], "removed": [], "since": -1, "till": 12}
         exception_called = False
         try:
             segment_synchronizer._sanitize_segment(segment2)
-        except:
+        except Exception:
             exception_called = True
-        assert(exception_called)
+        assert (exception_called)
 
         # should add missing 'added' element
         segment2 = {"name": 'seg', "removed": [], "since": -1, "till": 12}
-        assert(segment_synchronizer._sanitize_segment(segment2) == segment1)
+        assert (segment_synchronizer._sanitize_segment(segment2) == segment1)
 
         # should add missing 'removed' element
         segment2 = {"name": 'seg', "added": [], "since": -1, "till": 12}
-        assert(segment_synchronizer._sanitize_segment(segment2) == segment1)
+        assert (segment_synchronizer._sanitize_segment(segment2) == segment1)
 
         # should reset added and remved to array if values are None
         segment2 = {"name": 'seg', "added": None, "removed": None, "since": -1, "till": 12}
-        assert(segment_synchronizer._sanitize_segment(segment2) == segment1)
+        assert (segment_synchronizer._sanitize_segment(segment2) == segment1)
 
         # should reset since and till to -1 if values are None
         segment3 = segment1.copy()
         segment3["till"] = -1
         segment2 = {"name": 'seg', "added": [], "removed": [], "since": None, "till": None}
-        assert(segment_synchronizer._sanitize_segment(segment2) == segment3)
+        assert (segment_synchronizer._sanitize_segment(segment2) == segment3)
 
         # should add since and till with -1 if they are missing
         segment2 = {"name": 'seg', "added": [], "removed": []}
-        assert(segment_synchronizer._sanitize_segment(segment2) == segment3)
+        assert (segment_synchronizer._sanitize_segment(segment2) == segment3)
 
         # should reset since and till to -1 if values are 0
         segment2 = {"name": 'seg', "added": [], "removed": [], "since": 0, "till": 0}
-        assert(segment_synchronizer._sanitize_segment(segment2) == segment3)
+        assert (segment_synchronizer._sanitize_segment(segment2) == segment3)
 
         # should reset till and since to -1 if values below -1
         segment2 = {"name": 'seg', "added": [], "removed": [], "since": -2, "till": -2}
-        assert(segment_synchronizer._sanitize_segment(segment2) == segment3)
+        assert (segment_synchronizer._sanitize_segment(segment2) == segment3)
 
         # should reset since to till if value above till
         segment3["since"] = 12
         segment3["till"] = 12
         segment2 = {"name": 'seg', "added": [], "removed": [], "since": 20, "till": 12}
-        assert(segment_synchronizer._sanitize_segment(segment2) == segment3)
+        assert (segment_synchronizer._sanitize_segment(segment2) == segment3)
 
 
-class LocalSegmentsSynchronizerTests(object):
+class LocalSegmentsSynchronizerAsyncTests(object):
     """Segments synchronizer test cases."""
 
     @pytest.mark.asyncio
     async def test_synchronize_segments_error(self, mocker):
         """On error."""
         split_storage = mocker.Mock(spec=SplitStorage)
+
         async def get_segment_names():
             return ['segmentA', 'segmentB', 'segmentC']
         split_storage.get_segment_names = get_segment_names
 
         storage = mocker.Mock(spec=SegmentStorage)
+
         async def get_change_number():
             return -1
         storage.get_change_number = get_change_number
@@ -682,6 +696,7 @@ class LocalSegmentsSynchronizerTests(object):
     async def test_synchronize_segments(self, mocker):
         """Test the normal operation flow."""
         split_storage = mocker.Mock(spec=InMemorySplitStorage)
+
         async def get_segment_names():
             return ['segmentA', 'segmentB', 'segmentC']
         split_storage.get_segment_names = get_segment_names
@@ -689,11 +704,11 @@ class LocalSegmentsSynchronizerTests(object):
         storage = InMemorySegmentStorageAsync(asyncio.Queue())
 
         segment_a = {'name': 'segmentA', 'added': ['key1', 'key2', 'key3'], 'removed': [],
-                        'since': -1, 'till': 123}
+                     'since': -1, 'till': 123}
         segment_b = {'name': 'segmentB', 'added': ['key4', 'key5', 'key6'], 'removed': [],
-                        'since': -1, 'till': 123}
+                     'since': -1, 'till': 123}
         segment_c = {'name': 'segmentC', 'added': ['key7', 'key8', 'key9'], 'removed': [],
-                        'since': -1, 'till': 123}
+                     'since': -1, 'till': 123}
         blank = {'added': [], 'removed': [], 'since': 123, 'till': 123}
 
         async def read_segment_from_json_file(*args, **kwargs):

@@ -60,6 +60,7 @@ class EventsSyncAsyncTests(object):
         ]
         storage = mocker.Mock(spec=EventStorage)
         self.called = False
+
         async def pop_many(*args):
             self.called = True
             return self.events
@@ -68,6 +69,7 @@ class EventsSyncAsyncTests(object):
         api = mocker.Mock(spec=EventsAPI)
         self.flushed_events = None
         self.count = 0
+
         async def flush_events(events):
             self.count += 1
             self.flushed_events = events

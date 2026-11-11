@@ -1,10 +1,9 @@
 """Impressions API tests module."""
 
 import pytest
-import unittest.mock as mock
 
 from splitio.api import telemetry, client, APIException
-#from splitio.models.telemetry import
+# from splitio.models.telemetry import
 from splitio.client.util import get_metadata
 from splitio.client.config import DEFAULT_CONFIG
 from splitio.version import __version__
@@ -27,7 +26,7 @@ class TelemetryAPITests(object):
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         telemetry_api = telemetry.TelemetryAPI(httpclient, 'some_api_key', sdk_metadata, telemetry_runtime_producer)
-        response = telemetry_api.record_unique_keys(uniques)
+        telemetry_api.record_unique_keys(uniques)
 
         call_made = httpclient.post.mock_calls[0]
 
@@ -45,6 +44,7 @@ class TelemetryAPITests(object):
         assert call_made[2]['body'] == uniques
 
         httpclient.reset_mock()
+
         def raise_exception(*args, **kwargs):
             raise client.HttpClientException('some_message')
         httpclient.post.side_effect = raise_exception
@@ -64,7 +64,7 @@ class TelemetryAPITests(object):
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         telemetry_api = telemetry.TelemetryAPI(httpclient, 'some_api_key', sdk_metadata, telemetry_runtime_producer)
-        response = telemetry_api.record_init(uniques)
+        telemetry_api.record_init(uniques)
 
         call_made = httpclient.post.mock_calls[0]
 
@@ -93,7 +93,7 @@ class TelemetryAPITests(object):
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         telemetry_api = telemetry.TelemetryAPI(httpclient, 'some_api_key', sdk_metadata, telemetry_runtime_producer)
-        response = telemetry_api.record_stats(uniques)
+        telemetry_api.record_stats(uniques)
 
         call_made = httpclient.post.mock_calls[0]
 
@@ -111,6 +111,7 @@ class TelemetryAPITests(object):
         assert call_made[2]['body'] == uniques
 
         httpclient.reset_mock()
+
         def raise_exception(*args, **kwargs):
             raise client.HttpClientException('some_message')
         httpclient.post.side_effect = raise_exception
@@ -139,6 +140,7 @@ class TelemetryAPIAsyncTests(object):
         self.key = None
         self.headers = None
         self.body = None
+
         async def post(verb, url, key, body, extra_headers):
             self.url = url
             self.verb = verb
@@ -148,7 +150,7 @@ class TelemetryAPIAsyncTests(object):
             return client.HttpResponse(200, '', {})
         httpclient.post = post
 
-        response = await telemetry_api.record_unique_keys(uniques)
+        await telemetry_api.record_unique_keys(uniques)
         assert self.verb == 'telemetry'
         assert self.url == 'v1/keys/ss'
         assert self.key == 'some_api_key'
@@ -164,6 +166,7 @@ class TelemetryAPIAsyncTests(object):
         assert self.body == uniques
 
         httpclient.reset_mock()
+
         def raise_exception(*args, **kwargs):
             raise client.HttpClientException('some_message')
         httpclient.post = raise_exception
@@ -188,6 +191,7 @@ class TelemetryAPIAsyncTests(object):
         self.key = None
         self.headers = None
         self.body = None
+
         async def post(verb, url, key, body, extra_headers):
             self.url = url
             self.verb = verb
@@ -197,7 +201,7 @@ class TelemetryAPIAsyncTests(object):
             return client.HttpResponse(200, '', {})
         httpclient.post = post
 
-        response = await telemetry_api.record_init(uniques)
+        await telemetry_api.record_init(uniques)
         assert self.verb == 'telemetry'
         assert self.url == 'v1/metrics/config'
         assert self.key == 'some_api_key'
@@ -229,6 +233,7 @@ class TelemetryAPIAsyncTests(object):
         self.key = None
         self.headers = None
         self.body = None
+
         async def post(verb, url, key, body, extra_headers):
             self.url = url
             self.verb = verb
@@ -238,7 +243,7 @@ class TelemetryAPIAsyncTests(object):
             return client.HttpResponse(200, '', {})
         httpclient.post = post
 
-        response = await telemetry_api.record_stats(uniques)
+        await telemetry_api.record_stats(uniques)
         assert self.verb == 'telemetry'
         assert self.url == 'v1/metrics/usage'
         assert self.key == 'some_api_key'
@@ -254,6 +259,7 @@ class TelemetryAPIAsyncTests(object):
         assert self.body == uniques
 
         httpclient.reset_mock()
+
         def raise_exception(*args, **kwargs):
             raise client.HttpClientException('some_message')
         httpclient.post = raise_exception

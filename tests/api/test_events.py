@@ -1,7 +1,6 @@
 """Impressions API tests module."""
 
 import pytest
-import unittest.mock as mock
 
 from splitio.api import events, client, APIException
 from splitio.models.events import Event
@@ -38,7 +37,7 @@ class EventsAPITests(object):
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         events_api = events.EventsAPI(httpclient, 'some_api_key', sdk_metadata, telemetry_runtime_producer)
-        response = events_api.flush_events(self.events)
+        events_api.flush_events(self.events)
 
         call_made = httpclient.post.mock_calls[0]
 
@@ -56,6 +55,7 @@ class EventsAPITests(object):
         assert call_made[2]['body'] == self.eventsExpected
 
         httpclient.reset_mock()
+
         def raise_exception(*args, **kwargs):
             raise client.HttpClientException('some_message')
         httpclient.post.side_effect = raise_exception
@@ -71,7 +71,7 @@ class EventsAPITests(object):
         cfg.update({'IPAddressesEnabled': False})
         sdk_metadata = get_metadata(cfg)
         events_api = events.EventsAPI(httpclient, 'some_api_key', sdk_metadata, mocker.Mock())
-        response = events_api.flush_events(self.events)
+        events_api.flush_events(self.events)
 
         call_made = httpclient.post.mock_calls[0]
 
@@ -119,6 +119,7 @@ class EventsAPIAsyncTests(object):
         self.key = None
         self.headers = None
         self.body = None
+
         async def post(verb, url, key, body, extra_headers):
             self.url = url
             self.verb = verb
@@ -128,7 +129,7 @@ class EventsAPIAsyncTests(object):
             return client.HttpResponse(200, '', {})
         httpclient.post = post
 
-        response = await events_api.flush_events(self.events)
+        await events_api.flush_events(self.events)
         # validate positional arguments
         assert self.verb == 'events'
         assert self.url == 'events/bulk'
@@ -145,6 +146,7 @@ class EventsAPIAsyncTests(object):
         assert self.body == self.eventsExpected
 
         httpclient.reset_mock()
+
         def raise_exception(*args, **kwargs):
             raise client.HttpClientException('some_message')
         httpclient.post = raise_exception
@@ -166,6 +168,7 @@ class EventsAPIAsyncTests(object):
         self.key = None
         self.headers = None
         self.body = None
+
         async def post(verb, url, key, body, extra_headers):
             self.url = url
             self.verb = verb
@@ -175,7 +178,7 @@ class EventsAPIAsyncTests(object):
             return client.HttpResponse(200, '', {})
         httpclient.post = post
 
-        response = await events_api.flush_events(self.events)
+        await events_api.flush_events(self.events)
 
         # validate positional arguments
         assert self.verb == 'events'

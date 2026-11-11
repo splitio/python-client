@@ -1,7 +1,7 @@
 """Misc helpers for testing purposes."""
 
 
-class Any(object):  #pylint:disable=too-few-public-methods
+class Any(object):
     """Crap that matches anything."""
 
     def __eq__(self, other):

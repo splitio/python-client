@@ -3,13 +3,13 @@ import json
 from collections import namedtuple
 import queue
 import threading
-import pytest
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 
 Request = namedtuple('Request', ['method', 'path', 'headers', 'body'])
 OLD_SPEC = False
+
 
 class SSEMockServer(object):
     """SSE server for testing purposes."""
@@ -69,7 +69,7 @@ class SSEHandler(BaseHTTPRequestHandler):
         self._chunked = kwargs.get('chunked', True)
         BaseHTTPRequestHandler.__init__(self, *args)
 
-    def do_GET(self):  #pylint:disable=invalid-name
+    def do_GET(self):
         """Respond to a GET request."""
         self.send_response(200)
         self.send_header("Content-type", "text/event-stream")
@@ -84,7 +84,7 @@ class SSEHandler(BaseHTTPRequestHandler):
 
         def write_chunk(chunk):
             """Write an event/chunk."""
-            tosend = '%X\r\n%s\r\n'%(len(chunk), chunk) if self._chunked else chunk
+            tosend = '%X\r\n%s\r\n' % (len(chunk), chunk) if self._chunked else chunk
             self.wfile.write(tosend.encode('utf-8'))
 
         while True:
@@ -161,7 +161,7 @@ class SDKHandler(BaseHTTPRequestHandler):
         self._req_queue = kwargs.get('req_queue')
         self._auth_response = kwargs.get('auth_response')
         self._split_changes = split_changes
-        self._segment_changes = segment_changes      
+        self._segment_changes = segment_changes
         BaseHTTPRequestHandler.__init__(self, *args)
 
     def _parse_qs(self):
@@ -201,7 +201,7 @@ class SDKHandler(BaseHTTPRequestHandler):
             self.wfile.write('{}'.encode('utf-8'))
             OLD_SPEC = False
             return
-            
+
         qstring = self._parse_qs()
         since = int(qstring.get('since', -1))
         to_send = self._split_changes.get(since)
@@ -230,7 +230,7 @@ class SDKHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(self._auth_response).encode('utf-8'))
 
-    def do_GET(self):  #pylint:disable=invalid-name
+    def do_GET(self):
         """Respond to a GET request."""
         if self._req_queue is not None:
             headers = self._format_headers()
@@ -247,7 +247,7 @@ class SDKHandler(BaseHTTPRequestHandler):
             self.send_header("Content-type", "application/json")
             self.end_headers()
 
-    def do_POST(self):  #pylint:disable=invalid-name
+    def do_POST(self):
         """Respond to a GET request."""
         if self._req_queue is not None:
             headers = self._format_headers()

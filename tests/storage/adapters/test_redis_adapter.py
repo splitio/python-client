@@ -180,7 +180,7 @@ class RedisStorageAdapterTests(object):
 
     def test_sentinel_ssl_fails(self):
         """Test that SSL/TLS & Sentinel don't return a valid client."""
-        with pytest.raises(redis.SentinelConfigurationException) as exc:
+        with pytest.raises(redis.SentinelConfigurationException):
             redis.build({
                 'redisSentinels': ['a', 'b'],
                 'redisSsl': True,
@@ -197,6 +197,7 @@ class RedisStorageAdapterAsyncTests(object):
         adapter = redis.RedisAdapterAsync(redis_mock, 'some_prefix')
 
         self.arg = None
+
         async def keys(sel, args):
             self.arg = args
             return ['some_prefix.key1', 'some_prefix.key2']
@@ -206,6 +207,7 @@ class RedisStorageAdapterAsyncTests(object):
 
         self.key = None
         self.value = None
+
         async def set(sel, key, value):
             self.key = key
             self.value = value
@@ -215,6 +217,7 @@ class RedisStorageAdapterAsyncTests(object):
         assert self.value == 'value1'
 
         self.key = None
+
         async def get(sel, key):
             self.key = key
             return 'value1'
@@ -225,6 +228,7 @@ class RedisStorageAdapterAsyncTests(object):
         self.key = None
         self.value = None
         self.exp = None
+
         async def setex(sel, key, exp, value):
             self.key = key
             self.value = value
@@ -236,6 +240,7 @@ class RedisStorageAdapterAsyncTests(object):
         assert self.value == 'some_value'
 
         self.key = None
+
         async def delete(sel, key):
             self.key = key
         mocker.patch('redis.asyncio.client.Redis.delete', new=delete)
@@ -243,6 +248,7 @@ class RedisStorageAdapterAsyncTests(object):
         assert self.key == 'some_prefix.some_key'
 
         self.keys = None
+
         async def mget(sel, keys):
             self.keys = keys
             return ['value1', 'value2', 'value3']
@@ -253,6 +259,7 @@ class RedisStorageAdapterAsyncTests(object):
         self.key = None
         self.value = None
         self.value2 = None
+
         async def sadd(sel, key, value, value2):
             self.key = key
             self.value = value
@@ -266,6 +273,7 @@ class RedisStorageAdapterAsyncTests(object):
         self.key = None
         self.value = None
         self.value2 = None
+
         async def srem(sel, key, value, value2):
             self.key = key
             self.value = value
@@ -278,6 +286,7 @@ class RedisStorageAdapterAsyncTests(object):
 
         self.key = None
         self.value = None
+
         async def sismember(sel, key, value):
             self.key = key
             self.value = value
@@ -291,6 +300,7 @@ class RedisStorageAdapterAsyncTests(object):
         self.key3 = None
         self.script = None
         self.value = None
+
         async def eval(sel, script, value, key, key2, key3):
             self.key = key
             self.key2 = key2
@@ -308,6 +318,7 @@ class RedisStorageAdapterAsyncTests(object):
         self.key = None
         self.value = None
         self.name = None
+
         async def hset(sel, key, name, value):
             self.key = key
             self.value = value
@@ -320,6 +331,7 @@ class RedisStorageAdapterAsyncTests(object):
 
         self.key = None
         self.name = None
+
         async def hget(sel, key, name):
             self.key = key
             self.name = name
@@ -330,6 +342,7 @@ class RedisStorageAdapterAsyncTests(object):
 
         self.key = None
         self.value = None
+
         async def incr(sel, key, value):
             self.key = key
             self.value = value
@@ -341,6 +354,7 @@ class RedisStorageAdapterAsyncTests(object):
         self.key = None
         self.value = None
         self.name = None
+
         async def hincrby(sel, key, name, value):
             self.key = key
             self.value = value
@@ -358,6 +372,7 @@ class RedisStorageAdapterAsyncTests(object):
 
         self.key = None
         self.value = None
+
         async def getset(sel, key, value):
             self.key = key
             self.value = value
@@ -369,6 +384,7 @@ class RedisStorageAdapterAsyncTests(object):
         self.key = None
         self.value = None
         self.value2 = None
+
         async def rpush(sel, key, value, value2):
             self.key = key
             self.value = value
@@ -381,6 +397,7 @@ class RedisStorageAdapterAsyncTests(object):
 
         self.key = None
         self.exp = None
+
         async def expire(sel, key, exp):
             self.key = key
             self.exp = exp
@@ -390,6 +407,7 @@ class RedisStorageAdapterAsyncTests(object):
         assert self.exp == 10
 
         self.key = None
+
         async def rpop(sel, key):
             self.key = key
         mocker.patch('redis.asyncio.client.Redis.rpop', new=rpop)
@@ -397,6 +415,7 @@ class RedisStorageAdapterAsyncTests(object):
         assert self.key == 'some_prefix.key1'
 
         self.key = None
+
         async def ttl(sel, key):
             self.key = key
         mocker.patch('redis.asyncio.client.Redis.ttl', new=ttl)
@@ -430,80 +449,80 @@ class RedisStorageAdapterAsyncTests(object):
         }
 
         def redis_init(se, connection_pool,
-                socket_connect_timeout,
-                socket_keepalive,
-                socket_keepalive_options,
-                unix_socket_path,
-                encoding_errors,
-                retry_on_timeout,
-                ssl,
-                ssl_keyfile,
-                ssl_certfile,
-                ssl_cert_reqs,
-                ssl_ca_certs):
-            self.connection_pool=connection_pool
-            self.socket_connect_timeout=socket_connect_timeout
-            self.socket_keepalive=socket_keepalive
-            self.socket_keepalive_options=socket_keepalive_options
-            self.unix_socket_path=unix_socket_path
-            self.encoding_errors=encoding_errors
-            self.retry_on_timeout=retry_on_timeout
-            self.ssl=ssl
-            self.ssl_keyfile=ssl_keyfile
-            self.ssl_certfile=ssl_certfile
-            self.ssl_cert_reqs=ssl_cert_reqs
-            self.ssl_ca_certs=ssl_ca_certs
+                       socket_connect_timeout,
+                       socket_keepalive,
+                       socket_keepalive_options,
+                       unix_socket_path,
+                       encoding_errors,
+                       retry_on_timeout,
+                       ssl,
+                       ssl_keyfile,
+                       ssl_certfile,
+                       ssl_cert_reqs,
+                       ssl_ca_certs):
+            self.connection_pool = connection_pool
+            self.socket_connect_timeout = socket_connect_timeout
+            self.socket_keepalive = socket_keepalive
+            self.socket_keepalive_options = socket_keepalive_options
+            self.unix_socket_path = unix_socket_path
+            self.encoding_errors = encoding_errors
+            self.retry_on_timeout = retry_on_timeout
+            self.ssl = ssl
+            self.ssl_keyfile = ssl_keyfile
+            self.ssl_certfile = ssl_certfile
+            self.ssl_cert_reqs = ssl_cert_reqs
+            self.ssl_ca_certs = ssl_ca_certs
         mocker.patch('redis.asyncio.client.Redis.__init__', new=redis_init)
 
-        redis_mock = await _build_default_client_async(config)
+        await _build_default_client_async(config)
 
         assert self.connection_pool.connection_kwargs['host'] == 'some_host'
         assert self.connection_pool.connection_kwargs['port'] == 1234
         assert self.connection_pool.connection_kwargs['db'] == 0
         assert self.connection_pool.connection_kwargs['password'] == 'some_password'
         assert self.connection_pool.connection_kwargs['encoding'] == 'utf-8'
-        assert self.connection_pool.connection_kwargs['decode_responses'] == True
+        assert self.connection_pool.connection_kwargs['decode_responses'] is True
 
         assert self.socket_keepalive == 789
         assert self.socket_keepalive_options == 10
         assert self.unix_socket_path == '/tmp/socket'
         assert self.encoding_errors == 'strict'
-        assert self.retry_on_timeout == True
-        assert self.ssl == True
+        assert self.retry_on_timeout is True
+        assert self.ssl is True
         assert self.ssl_keyfile == '/ssl.cert'
         assert self.ssl_certfile == '/ssl2.cert'
         assert self.ssl_cert_reqs == 'abc'
         assert self.ssl_ca_certs == 'def'
 
         def create_sentinel(se,
-                sentinels,
-                db,
-                password,
-                encoding,
-                max_connections,
-                encoding_errors,
-                decode_responses,
-                connection_pool,
-                socket_connect_timeout):
-            self.sentinels=sentinels
-            self.db=db
-            self.password=password
-            self.encoding=encoding
-            self.max_connections=max_connections
-            self.encoding_errors=encoding_errors,
-            self.decode_responses=decode_responses,
-            self.connection_pool=connection_pool,
-            self.socket_connect_timeout=socket_connect_timeout
+                            sentinels,
+                            db,
+                            password,
+                            encoding,
+                            max_connections,
+                            encoding_errors,
+                            decode_responses,
+                            connection_pool,
+                            socket_connect_timeout):
+            self.sentinels = sentinels
+            self.db = db
+            self.password = password
+            self.encoding = encoding
+            self.max_connections = max_connections
+            self.encoding_errors = encoding_errors,
+            self.decode_responses = decode_responses,
+            self.connection_pool = connection_pool,
+            self.socket_connect_timeout = socket_connect_timeout
         mocker.patch('redis.asyncio.sentinel.Sentinel.__init__', new=create_sentinel)
 
         def master_for(se,
-            master_service,
-            socket_timeout,
-            socket_keepalive,
-            socket_keepalive_options,
-            encoding_errors,
-            retry_on_timeout,
-            ssl):
+                       master_service,
+                       socket_timeout,
+                       socket_keepalive,
+                       socket_keepalive_options,
+                       encoding_errors,
+                       retry_on_timeout,
+                       ssl):
             self.master_service = master_service,
             self.socket_timeout = socket_timeout,
             self.socket_keepalive = socket_keepalive,
@@ -538,7 +557,7 @@ class RedisStorageAdapterAsyncTests(object):
         assert self.password == 'some_password'
         assert self.encoding == 'utf-8'
         assert self.max_connections == 5
-        assert self.ssl == False
+        assert self.ssl is False
         assert self.master_service == ('some_master',)
         assert self.socket_timeout == (123,)
         assert self.socket_keepalive == (789,)
@@ -584,6 +603,7 @@ class RedisPipelineAdapterAsyncTests(object):
         self.key = None
         self.value = None
         self.value2 = None
+
         def rpush(sel, key, value, value2):
             self.key = key
             self.value = value
@@ -596,6 +616,7 @@ class RedisPipelineAdapterAsyncTests(object):
 
         self.key = None
         self.value = None
+
         def incr(sel, key, value):
             self.key = key
             self.value = value
@@ -607,6 +628,7 @@ class RedisPipelineAdapterAsyncTests(object):
         self.key = None
         self.value = None
         self.name = None
+
         def hincrby(sel, key, name, value):
             self.key = key
             self.value = value
@@ -623,6 +645,7 @@ class RedisPipelineAdapterAsyncTests(object):
         assert self.value == 5
 
         self.called = False
+
         async def execute(*_):
             self.called = True
         mocker.patch('redis.asyncio.client.Pipeline.execute', new=execute)

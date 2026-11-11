@@ -12,6 +12,7 @@ from splitio.models.segments import Segment
 from splitio.models.telemetry import StreamingEvents, StreamingEventsAsync
 from splitio.api.telemetry import TelemetryAPI
 
+
 class TelemetrySynchronizerTests(object):
     """Telemetry synchronizer test cases."""
 
@@ -19,13 +20,13 @@ class TelemetrySynchronizerTests(object):
     def test_synchronize_config(self, mocker):
         telemetry_synchronizer = TelemetrySynchronizer(InMemoryTelemetrySubmitter(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock()))
         telemetry_synchronizer.synchronize_config()
-        assert(mocker.called)
+        assert (mocker.called)
 
     @mock.patch('splitio.sync.telemetry.InMemoryTelemetrySubmitter.synchronize_stats')
     def test_synchronize_stats(self, mocker):
         telemetry_synchronizer = TelemetrySynchronizer(InMemoryTelemetrySubmitter(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock()))
         telemetry_synchronizer.synchronize_stats()
-        assert(mocker.called)
+        assert (mocker.called)
 
 
 class TelemetrySynchronizerAsyncTests(object):
@@ -35,21 +36,23 @@ class TelemetrySynchronizerAsyncTests(object):
     async def test_synchronize_config(self, mocker):
         telemetry_synchronizer = TelemetrySynchronizerAsync(InMemoryTelemetrySubmitterAsync(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock()))
         self.called = False
+
         async def synchronize_config():
             self.called = True
         telemetry_synchronizer.synchronize_config = synchronize_config
         await telemetry_synchronizer.synchronize_config()
-        assert(self.called)
+        assert (self.called)
 
     @pytest.mark.asyncio
     async def test_synchronize_stats(self, mocker):
         telemetry_synchronizer = TelemetrySynchronizer(InMemoryTelemetrySubmitter(mocker.Mock(), mocker.Mock(), mocker.Mock(), mocker.Mock()))
         self.called = False
+
         async def synchronize_stats():
             self.called = True
         telemetry_synchronizer.synchronize_stats = synchronize_stats
         await telemetry_synchronizer.synchronize_stats()
-        assert(self.called)
+        assert (self.called)
 
 
 class TelemetrySubmitterTests(object):
@@ -76,11 +79,11 @@ class TelemetrySubmitterTests(object):
         telemetry_storage._counters._session_length = 3
         telemetry_storage._counters._update_from_sse['sp'] = 3
 
-        telemetry_storage._method_exceptions._treatment =  10
+        telemetry_storage._method_exceptions._treatment = 10
         telemetry_storage._method_exceptions._treatments = 1
         telemetry_storage._method_exceptions._treatment_with_config = 5
         telemetry_storage._method_exceptions._treatments_with_config = 1
-        telemetry_storage._method_exceptions._treatments_by_flag_set =  2
+        telemetry_storage._method_exceptions._treatments_by_flag_set = 2
         telemetry_storage._method_exceptions._treatments_by_flag_sets = 3
         telemetry_storage._method_exceptions._treatments_with_config_by_flag_set = 4
         telemetry_storage._method_exceptions._treatments_with_config_by_flag_sets = 6
@@ -121,46 +124,47 @@ class TelemetrySubmitterTests(object):
         telemetry_storage._http_latencies._impression_count = [0] * 23
         telemetry_storage._http_latencies._event = [0] * 23
         telemetry_storage._http_latencies._telemetry = [0] * 23
-        telemetry_storage._http_latencies._token =  [0] * 23
+        telemetry_storage._http_latencies._token = [0] * 23
 
         telemetry_storage.record_config({'operationMode': 'inmemory',
                                          'storageType': None,
                                         'streamingEnabled': True,
-                                        'impressionsQueueSize': 100,
-                                        'eventsQueueSize': 200,
-                                        'impressionsMode': 'DEBUG',
-                                        'impressionListener': None,
-                                        'featuresRefreshRate': 30,
-                                        'segmentsRefreshRate': 30,
-                                        'impressionsRefreshRate': 60,
-                                        'eventsPushRate': 60,
-                                        'metricsRefreshRate': 10,
-                                        'activeFactoryCount': 1,
-                                        'notReady': 0,
-                                        'timeUntilReady': 1
-                                       }, {}, 0, 0
-        )
+                                         'impressionsQueueSize': 100,
+                                         'eventsQueueSize': 200,
+                                         'impressionsMode': 'DEBUG',
+                                         'impressionListener': None,
+                                         'featuresRefreshRate': 30,
+                                         'segmentsRefreshRate': 30,
+                                         'impressionsRefreshRate': 60,
+                                         'eventsPushRate': 60,
+                                         'metricsRefreshRate': 10,
+                                         'activeFactoryCount': 1,
+                                         'notReady': 0,
+                                         'timeUntilReady': 1
+                                         }, {}, 0, 0
+                                        )
         self.formatted_config = ""
+
         def record_init(*args, **kwargs):
             self.formatted_config = args[0]
 
         api.record_init.side_effect = record_init
         telemetry_submitter.synchronize_config()
-        assert(self.formatted_config == telemetry_submitter._telemetry_init_consumer.get_config_stats())
+        assert (self.formatted_config == telemetry_submitter._telemetry_init_consumer.get_config_stats())
 
         def record_stats(*args, **kwargs):
             self.formatted_stats = args[0]
 
         api.record_stats.side_effect = record_stats
         telemetry_submitter.synchronize_stats()
-        assert(self.formatted_stats == {
+        assert (self.formatted_stats == {
             "iQ": 100,
             "iDe": 30,
             "iDr": 0,
             "eQ": 20,
             "eD": 10,
             "lS": {"sp": 5, "se": 3, "im": 10, "ic": 0, "ev": 4, "te": 0, "to": 3},
-            "t": ["tag1"],
+            "t": ["tag1"],  # noqa: F601
             "hE": {"sp": {"500": 3, "501": 2}, "se": {"401": 1}, "im": {"500": 1}, "ic": {"401": 5}, "ev": {"404": 10}, "te": {"501": 3}, "to": {"505": 11}},
             "hL": {"sp": [1] + [0] * 22, "se": [0] * 23, "im": [0] * 23, "ic": [0] * 23, "ev": [0] * 23, "te": [0] * 23, "to": [0] * 23},
             "aR": 1,
@@ -173,7 +177,7 @@ class TelemetrySubmitterTests(object):
             "seC": 1,
             "skC": 0,
             "ufs": {"rbs": 0, "sp": 3},
-            "t": ['tag1']
+            "t": ['tag1']  # noqa: F601
         })
 
 
@@ -201,11 +205,11 @@ class TelemetrySubmitterAsyncTests(object):
         telemetry_storage._counters._session_length = 3
         telemetry_storage._counters._update_from_sse['sp'] = 3
 
-        telemetry_storage._method_exceptions._treatment =  10
+        telemetry_storage._method_exceptions._treatment = 10
         telemetry_storage._method_exceptions._treatments = 1
         telemetry_storage._method_exceptions._treatment_with_config = 5
         telemetry_storage._method_exceptions._treatments_with_config = 1
-        telemetry_storage._method_exceptions._treatments_by_flag_set =  2
+        telemetry_storage._method_exceptions._treatments_by_flag_set = 2
         telemetry_storage._method_exceptions._treatments_by_flag_sets = 3
         telemetry_storage._method_exceptions._treatments_with_config_by_flag_set = 4
         telemetry_storage._method_exceptions._treatments_with_config_by_flag_sets = 6
@@ -246,46 +250,47 @@ class TelemetrySubmitterAsyncTests(object):
         telemetry_storage._http_latencies._impression_count = [0] * 23
         telemetry_storage._http_latencies._event = [0] * 23
         telemetry_storage._http_latencies._telemetry = [0] * 23
-        telemetry_storage._http_latencies._token =  [0] * 23
+        telemetry_storage._http_latencies._token = [0] * 23
 
         await telemetry_storage.record_config({'operationMode': 'inmemory',
-                                         'storageType': None,
-                                        'streamingEnabled': True,
-                                        'impressionsQueueSize': 100,
-                                        'eventsQueueSize': 200,
-                                        'impressionsMode': 'DEBUG',
-                                        'impressionListener': None,
-                                        'featuresRefreshRate': 30,
-                                        'segmentsRefreshRate': 30,
-                                        'impressionsRefreshRate': 60,
-                                        'eventsPushRate': 60,
-                                        'metricsRefreshRate': 10,
-                                        'activeFactoryCount': 1,
-                                        'notReady': 0,
-                                        'timeUntilReady': 1
-                                       }, {}, 0, 0
-        )
+                                               'storageType': None,
+                                               'streamingEnabled': True,
+                                               'impressionsQueueSize': 100,
+                                               'eventsQueueSize': 200,
+                                               'impressionsMode': 'DEBUG',
+                                               'impressionListener': None,
+                                               'featuresRefreshRate': 30,
+                                               'segmentsRefreshRate': 30,
+                                               'impressionsRefreshRate': 60,
+                                               'eventsPushRate': 60,
+                                               'metricsRefreshRate': 10,
+                                               'activeFactoryCount': 1,
+                                               'notReady': 0,
+                                               'timeUntilReady': 1
+                                               }, {}, 0, 0
+                                              )
         self.formatted_config = ""
+
         async def record_init(*args, **kwargs):
             self.formatted_config = args[0]
         api.record_init = record_init
 
         await telemetry_submitter.synchronize_config()
-        assert(self.formatted_config == await telemetry_submitter._telemetry_init_consumer.get_config_stats())
+        assert (self.formatted_config == await telemetry_submitter._telemetry_init_consumer.get_config_stats())
 
         async def record_stats(*args, **kwargs):
             self.formatted_stats = args[0]
         api.record_stats = record_stats
 
         await telemetry_submitter.synchronize_stats()
-        assert(self.formatted_stats == {
+        assert (self.formatted_stats == {
             "iQ": 100,
             "iDe": 30,
             "iDr": 0,
             "eQ": 20,
             "eD": 10,
             "lS": {"sp": 5, "se": 3, "im": 10, "ic": 0, "ev": 4, "te": 0, "to": 3},
-            "t": ["tag1"],
+            "t": ["tag1"],  # noqa: F601
             "hE": {"sp": {"500": 3, "501": 2}, "se": {"401": 1}, "im": {"500": 1}, "ic": {"401": 5}, "ev": {"404": 10}, "te": {"501": 3}, "to": {"505": 11}},
             "hL": {"sp": [1] + [0] * 22, "se": [0] * 23, "im": [0] * 23, "ic": [0] * 23, "ev": [0] * 23, "te": [0] * 23, "to": [0] * 23},
             "aR": 1,
@@ -298,5 +303,5 @@ class TelemetrySubmitterAsyncTests(object):
             "seC": 1,
             "skC": 0,
             "ufs": {"rbs": 0, "sp": 3},
-            "t": ['tag1']
+            "t": ['tag1']  # noqa: F601
         })

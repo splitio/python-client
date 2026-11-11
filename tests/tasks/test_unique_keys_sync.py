@@ -5,10 +5,10 @@ import time
 import pytest
 
 from splitio.api.client import HttpResponse
-from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask,\
+from splitio.tasks.unique_keys_sync import UniqueKeysSyncTask, ClearFilterSyncTask, \
     ClearFilterSyncTaskAsync, UniqueKeysSyncTaskAsync
 from splitio.api.telemetry import TelemetryAPI
-from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer,\
+from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer, \
     UniqueKeysSynchronizerAsync, ClearFilterSynchronizerAsync
 from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
 
@@ -36,6 +36,7 @@ class UniqueKeysSyncTests(object):
         stop_event.wait(5)
         assert stop_event.is_set()
 
+
 class ClearFilterSyncTests(object):
     """Clear Filter Syncrhonization task test cases."""
 
@@ -57,6 +58,7 @@ class ClearFilterSyncTests(object):
         task.stop(stop_event)
         stop_event.wait(5)
         assert stop_event.is_set()
+
 
 class UniqueKeysSyncAsyncTests(object):
     """Unique Keys Syncrhonization task test cases."""
@@ -80,7 +82,8 @@ class UniqueKeysSyncAsyncTests(object):
         await task.stop()
         assert not task.is_running()
 
-class ClearFilterSyncTests(object):
+
+class ClearFilterSyncAsyncTests(object):
     """Clear Filter Syncrhonization task test cases."""
 
     @pytest.mark.asyncio

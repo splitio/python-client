@@ -16,7 +16,7 @@ class SplitterTests(object):
         # single partition returns that treatment
         assert splitter.get_treatment('key', 123, [Partition('on', 100)], 1) == 'on'
         # multiple partitions call hash_functions
-        splitter.get_treatment_for_bucket = lambda x,y: 'on'
+        splitter.get_treatment_for_bucket = lambda x, y: 'on'
         partitions = [Partition('on', 50), Partition('off', 50)]
         assert splitter.get_treatment('key', 123, partitions, 1) == 'on'
 
@@ -42,10 +42,3 @@ class SplitterTests(object):
         assert splitter.get_treatment_for_bucket(100, [Partition('a', 100)]) == 'a'
         assert splitter.get_treatment_for_bucket(50, [Partition('a', 50), Partition('b', 50)]) == 'a'
         assert splitter.get_treatment_for_bucket(51, [Partition('a', 50), Partition('b', 50)]) == 'b'
-
-
-
-
-
-
-

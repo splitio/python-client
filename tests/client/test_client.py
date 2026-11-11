@@ -1,13 +1,12 @@
 """SDK main client test module."""
-# pylint: disable=no-self-use,protected-access
 
 import unittest.mock as mock
 import pytest
-import queue 
+import queue
 import asyncio
 
-from splitio.client.client import Client, _LOGGER as _logger, CONTROL, ClientAsync, EvaluationOptions
-from splitio.client.factory import SplitFactory, Status as FactoryStatus, SplitFactoryAsync
+from splitio.client.client import Client, CONTROL, ClientAsync, EvaluationOptions
+from splitio.client.factory import SplitFactory, SplitFactoryAsync
 from splitio.events.events_manager import EventsManager, EventsManagerAsync
 from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
 from splitio.models.fallback_treatment import FallbackTreatment
@@ -18,18 +17,18 @@ from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStora
     InMemoryImpressionStorage, InMemoryTelemetryStorage, InMemorySplitStorageAsync, \
     InMemoryImpressionStorageAsync, InMemorySegmentStorageAsync, InMemoryTelemetryStorageAsync, InMemoryEventStorageAsync, \
     InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
-from splitio.models.splits import Split, Status, from_raw
+from splitio.models.splits import from_raw
 from splitio.engine.impressions.impressions import Manager as ImpressionManager
 from splitio.engine.impressions.manager import Counter as ImpressionsCounter
-from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
-from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
+from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker
+from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.evaluator import Evaluator, EvaluationContext
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
 from tests.integration import splits_json
 
 
-class ClientTests(object):  # pylint: disable=too-few-public-methods
+class ClientTests(object):
     """Split client test cases."""
 
     def test_get_treatment(self, mocker):
@@ -54,25 +53,26 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer(),
                                     unique_keys_tracker=UniqueKeysTracker(),
                                     imp_counter=ImpressionsCounter())
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            TelemetrySubmitterMock(),
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               TelemetrySubmitterMock(),
+                               )
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
         type(factory).ready = ready_property
@@ -99,12 +99,13 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ready_property = mocker.PropertyMock()
         ready_property.return_value = False
         type(factory).ready = ready_property
-       # pytest.set_trace()
+        # pytest.set_trace()
         assert client.get_treatment('some_key', 'SPLIT_2', {'some_attribute': 1}) == 'control'
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'control', Label.NOT_READY, None, None, 1000, None, None)]
 
         # Test with exception:
         ready_property.return_value = True
+
         def _raise(*_):
             raise RuntimeError('something')
         client._evaluator.eval_with_context.side_effect = _raise
@@ -130,22 +131,23 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'impressions': impression_storage,
-            'rule_based_segments': rb_segment_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'impressions': impression_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
         factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -212,22 +214,23 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,            
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
         factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -296,22 +299,23 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,            
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
         factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -379,22 +383,23 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
         factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -461,22 +466,23 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property.return_value = False
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
         factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -549,22 +555,23 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
         factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -633,22 +640,23 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property.return_value = False
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
         factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -719,26 +727,27 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
 
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            TelemetrySubmitterMock(),
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               TelemetrySubmitterMock(),
+                               )
 
         factory.block_until_ready(5)
 
@@ -746,7 +755,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
-            ], [], -1)
+        ], [], -1)
         client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         assert client.get_treatment('some_key', 'SPLIT_1') == 'off'
         assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
@@ -786,26 +795,27 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
 
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            TelemetrySubmitterMock(),
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               TelemetrySubmitterMock(),
+                               )
 
         factory.block_until_ready(5)
 
@@ -813,7 +823,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
-            ], [], -1)
+        ], [], -1)
         client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         assert client.get_treatment('some_key', 'SPLIT_1') == 'off'
         assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
@@ -853,26 +863,27 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         non_strategy = StrategyNoneMode()
         impmanager = ImpressionManager(non_strategy, non_strategy, telemetry_runtime_producer)
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
 
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            TelemetrySubmitterMock(),
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               TelemetrySubmitterMock(),
+                               )
 
         factory.block_until_ready(5)
 
@@ -880,7 +891,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
-            ], [], -1)
+        ], [], -1)
         client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         assert client.get_treatment('some_key', 'SPLIT_1') == 'off'
         assert client.get_treatment('some_key', 'SPLIT_2') == 'on'
@@ -905,21 +916,22 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -928,13 +940,13 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         client.destroy()
         assert client.destroyed is not None
-        assert(mocker.called)
+        assert (mocker.called)
 
     def test_track(self, mocker):
         """Test that destroy/destroyed calls are forwarded to the factory."""
         split_storage = mocker.Mock(spec=SplitStorage)
         segment_storage = mocker.Mock(spec=SegmentStorage)
-        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         event_storage.put.return_value = True
@@ -945,21 +957,22 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -989,7 +1002,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         events_queue = queue.Queue()
         split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)        
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
@@ -998,22 +1011,23 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         recorder = StandardRecorder(impmanager, mocker.Mock(), impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': mocker.Mock()},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock(),
-            True
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': mocker.Mock()},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock(),
+                               True
+                               )
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -1074,25 +1088,26 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         events_queue = queue.Queue()
         split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)        
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
         recorder = StandardRecorder(impmanager, mocker.Mock(), mocker.Mock(), telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory('localhost',
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': mocker.Mock()},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': mocker.Mock()},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -1101,9 +1116,9 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         client = Client(factory, mocker.Mock(), mocker.Mock(), mocker.Mock(), FallbackTreatmentCalculator(None))
         client.ready = False
         assert client.get_treatment('some_key', 'SPLIT_2') == CONTROL
-        assert(telemetry_storage._tel_config._not_ready == 1)
+        assert (telemetry_storage._tel_config._not_ready == 1)
         client.track('key', 'tt', 'ev')
-        assert(telemetry_storage._tel_config._not_ready == 2)
+        assert (telemetry_storage._tel_config._not_ready == 2)
         factory.destroy()
 
     def test_telemetry_record_treatment_exception(self, mocker):
@@ -1125,21 +1140,22 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory('localhost',
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            impmanager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               impmanager,
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -1154,58 +1170,58 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         ready_property.return_value = True
         type(factory).ready = ready_property
         client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
+
         def _raise(*_):
             raise RuntimeError('something')
         client._evaluator.eval_many_with_context = _raise
         client._evaluator.eval_with_context = _raise
 
-
         try:
             client.get_treatment('key', 'SPLIT_2')
-        except:
+        except Exception:
             pass
-        assert(telemetry_storage._method_exceptions._treatment == 1)
+        assert (telemetry_storage._method_exceptions._treatment == 1)
         try:
             client.get_treatment_with_config('key', 'SPLIT_2')
-        except:
+        except Exception:
             pass
-        assert(telemetry_storage._method_exceptions._treatment_with_config == 1)
+        assert (telemetry_storage._method_exceptions._treatment_with_config == 1)
 
         try:
             client.get_treatments('key', ['SPLIT_2'])
-        except:
+        except Exception:
             pass
-        assert(telemetry_storage._method_exceptions._treatments == 1)
+        assert (telemetry_storage._method_exceptions._treatments == 1)
 
         try:
             client.get_treatments_by_flag_set('key', 'set_1')
-        except:
+        except Exception:
             pass
-        assert(telemetry_storage._method_exceptions._treatments_by_flag_set == 1)
+        assert (telemetry_storage._method_exceptions._treatments_by_flag_set == 1)
 
         try:
             client.get_treatments_by_flag_sets('key', ['set_1'])
-        except:
+        except Exception:
             pass
-        assert(telemetry_storage._method_exceptions._treatments_by_flag_sets == 1)
+        assert (telemetry_storage._method_exceptions._treatments_by_flag_sets == 1)
 
         try:
             client.get_treatments_with_config('key', ['SPLIT_2'])
-        except:
+        except Exception:
             pass
-        assert(telemetry_storage._method_exceptions._treatments_with_config == 1)
+        assert (telemetry_storage._method_exceptions._treatments_with_config == 1)
 
         try:
             client.get_treatments_with_config_by_flag_set('key', 'set_1')
-        except:
+        except Exception:
             pass
-        assert(telemetry_storage._method_exceptions._treatments_with_config_by_flag_set == 1)
+        assert (telemetry_storage._method_exceptions._treatments_with_config_by_flag_set == 1)
 
         try:
             client.get_treatments_with_config_by_flag_sets('key', ['set_1'])
-        except:
+        except Exception:
             pass
-        assert(telemetry_storage._method_exceptions._treatments_with_config_by_flag_sets == 1)
+        assert (telemetry_storage._method_exceptions._treatments_with_config_by_flag_sets == 1)
         factory.destroy()
 
     def test_telemetry_method_latency(self, mocker):
@@ -1218,32 +1234,33 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         events_queue = queue.Queue()
         split_storage = InMemorySplitStorage(events_queue)
         segment_storage = InMemorySegmentStorage(events_queue)
-        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)        
+        rb_segment_storage = InMemoryRuleBasedSegmentStorage(events_queue)
         split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
 
-        mocker.patch('splitio.client.client.utctime_ms', new=lambda:1000)
+        mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            impmanager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               impmanager,
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
         factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -1255,39 +1272,39 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
 
         client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         assert client.get_treatment('key', 'SPLIT_2') == 'on'
-        assert(telemetry_storage._method_latencies._treatment[0] == 1)
+        assert (telemetry_storage._method_latencies._treatment[0] == 1)
 
         client.get_treatment_with_config('key', 'SPLIT_2')
-        assert(telemetry_storage._method_latencies._treatment_with_config[0] == 1)
+        assert (telemetry_storage._method_latencies._treatment_with_config[0] == 1)
 
         client.get_treatments('key', ['SPLIT_2'])
-        assert(telemetry_storage._method_latencies._treatments[0] == 1)
+        assert (telemetry_storage._method_latencies._treatments[0] == 1)
 
         client.get_treatments_by_flag_set('key', 'set_1')
-        assert(telemetry_storage._method_latencies._treatments_by_flag_set[0] == 1)
+        assert (telemetry_storage._method_latencies._treatments_by_flag_set[0] == 1)
 
         client.get_treatments_by_flag_sets('key', ['set_1'])
-        assert(telemetry_storage._method_latencies._treatments_by_flag_sets[0] == 1)
+        assert (telemetry_storage._method_latencies._treatments_by_flag_sets[0] == 1)
 
         client.get_treatments_with_config('key', ['SPLIT_2'])
-        assert(telemetry_storage._method_latencies._treatments_with_config[0] == 1)
+        assert (telemetry_storage._method_latencies._treatments_with_config[0] == 1)
 
         client.get_treatments_with_config_by_flag_set('key', 'set_1')
-        assert(telemetry_storage._method_latencies._treatments_with_config_by_flag_set[0] == 1)
+        assert (telemetry_storage._method_latencies._treatments_with_config_by_flag_set[0] == 1)
 
         client.get_treatments_with_config_by_flag_sets('key', ['set_1'])
-        assert(telemetry_storage._method_latencies._treatments_with_config_by_flag_sets[0] == 1)
+        assert (telemetry_storage._method_latencies._treatments_with_config_by_flag_sets[0] == 1)
 
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         client.track('key', 'tt', 'ev')
-        assert(telemetry_storage._method_latencies._track[0] == 1)
+        assert (telemetry_storage._method_latencies._track[0] == 1)
         factory.destroy()
 
     @mock.patch('splitio.recorder.recorder.StandardRecorder.record_track_stats', side_effect=Exception())
     def test_telemetry_track_exception(self, mocker):
         split_storage = mocker.Mock(spec=SplitStorage)
         segment_storage = mocker.Mock(spec=SegmentStorage)
-        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         destroyed_property = mocker.PropertyMock()
@@ -1302,21 +1319,22 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            impmanager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               impmanager,
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -1325,9 +1343,9 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(None))
         try:
             client.track('key', 'tt', 'ev')
-        except:
+        except Exception:
             pass
-        assert(telemetry_storage._method_exceptions._track == 1)
+        assert (telemetry_storage._method_exceptions._track == 1)
         factory.destroy()
 
     def test_impressions_properties(self, mocker):
@@ -1352,26 +1370,27 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer(),
                                     unique_keys_tracker=UniqueKeysTracker(),
                                     imp_counter=ImpressionsCounter())
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
-            
+
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            TelemetrySubmitterMock(),
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               TelemetrySubmitterMock(),
+                               )
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
         type(factory).ready = ready_property
@@ -1402,7 +1421,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert client.get_treatment('some_key', 'SPLIT_2', evaluation_options=EvaluationOptions(12)) == 'on'
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None)]
         assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatment')]
-        
+
         _logger.reset_mock()
         assert client.get_treatment('some_key', 'SPLIT_2', evaluation_options=EvaluationOptions('12')) == 'on'
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
@@ -1411,25 +1430,25 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         assert client.get_treatment_with_config('some_key', 'SPLIT_2', evaluation_options=EvaluationOptions({"prop": "value"})) == ('on', None)
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-        assert client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions({"prop": "value"})) ==  {'SPLIT_2': 'on'}
+        assert client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions({"prop": "value"})) == {'SPLIT_2': 'on'}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
         _logger.reset_mock()
-        assert client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions("prop")) ==  {'SPLIT_2': 'on'}
+        assert client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions("prop")) == {'SPLIT_2': 'on'}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
         assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatments')]
 
         _logger.reset_mock()
-        assert client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions(123)) ==  {'SPLIT_2': 'on'}
+        assert client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions(123)) == {'SPLIT_2': 'on'}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
         assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatments')]
 
         _logger.reset_mock()
-        assert client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=123) ==  {'SPLIT_2': 'on'}
+        assert client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=123) == {'SPLIT_2': 'on'}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
         assert _logger.error.mock_calls == [mocker.call('%s: evaluation options should be an instance of EvaluationOptions. Setting its value to None.', 'get_treatments')]
 
-        assert client.get_treatments_with_config('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions({"prop": "value"})) ==  {'SPLIT_2': ('on', None)}
+        assert client.get_treatments_with_config('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions({"prop": "value"})) == {'SPLIT_2': ('on', None)}
         assert impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
         assert client.get_treatments_by_flag_set('some_key', 'set_1', evaluation_options=EvaluationOptions({"prop": "value"})) == {'SPLIT_2': 'on'}
@@ -1449,7 +1468,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         # using fallback when the evaluator has RuntimeError exception
         split_storage = mocker.Mock(spec=SplitStorage)
         segment_storage = mocker.Mock(spec=SegmentStorage)
-        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         destroyed_property = mocker.PropertyMock()
@@ -1464,28 +1483,29 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         internal_events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            mocker.Mock(),
-            impmanager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               internal_events_queue,
+                               mocker.Mock(),
+                               impmanager,
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
         factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
-        
+
         self.imps = None
+
         def put(impressions):
-            self.imps = impressions    
+            self.imps = impressions
         impression_storage.put = put
-        
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -1497,93 +1517,93 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         client._get_feature_flag_names_by_flag_sets = get_feature_flag_names_by_flag_sets
 
         treatment = client.get_treatment("key", "some")
-        assert(treatment == "on-global")
-        assert(self.imps[0].treatment == "on-global")
-        assert(self.imps[0].label == "fallback - exception")
+        assert (treatment == "on-global")
+        assert (self.imps[0].treatment == "on-global")
+        assert (self.imps[0].label == "fallback - exception")
 
         self.imps = None
         treatment = client.get_treatments("key_m", ["some", "some2"])
-        assert(treatment == {"some": "on-global", "some2": "on-global"})
-        assert(self.imps[0].treatment == "on-global")
-        assert(self.imps[0].label == "fallback - exception")
-        assert(self.imps[1].treatment == "on-global")
-        assert(self.imps[1].label == "fallback - exception")
-        
-        assert(client.get_treatment_with_config("key", "some") == ("on-global", '{"prop": "val"}'))
-        assert(client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
-        assert(client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-global", "some2": "on-global"})
-        assert(client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-global", "some2": "on-global"})
-        assert(client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
-        assert(client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
-        
+        assert (treatment == {"some": "on-global", "some2": "on-global"})
+        assert (self.imps[0].treatment == "on-global")
+        assert (self.imps[0].label == "fallback - exception")
+        assert (self.imps[1].treatment == "on-global")
+        assert (self.imps[1].label == "fallback - exception")
+
+        assert (client.get_treatment_with_config("key", "some") == ("on-global", '{"prop": "val"}'))
+        assert (client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
+        assert (client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-global", "some2": "on-global"})
+        assert (client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-global", "some2": "on-global"})
+        assert (client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
+        assert (client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
+
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global", '{"prop": "val"}'), {'some': FallbackTreatment("on-local")}))
         treatment = client.get_treatment("key2", "some")
-        assert(treatment == "on-local")
-        assert(self.imps[0].treatment == "on-local")
-        assert(self.imps[0].label == "fallback - exception")
+        assert (treatment == "on-local")
+        assert (self.imps[0].treatment == "on-local")
+        assert (self.imps[0].label == "fallback - exception")
 
         self.imps = None
         treatment = client.get_treatments("key2_m", ["some", "some2"])
-        assert(treatment == {"some": "on-local", "some2": "on-global"})
+        assert (treatment == {"some": "on-local", "some2": "on-global"})
         assert_both = 0
         for imp in self.imps:
             if imp.feature_name == "some":
                 assert_both += 1
-                assert(imp.treatment == "on-local")
-                assert(imp.label == "fallback - exception")
+                assert (imp.treatment == "on-local")
+                assert (imp.label == "fallback - exception")
             else:
                 assert_both += 1
-                assert(imp.treatment == "on-global")
-                assert(imp.label == "fallback - exception")
+                assert (imp.treatment == "on-global")
+                assert (imp.label == "fallback - exception")
         assert assert_both == 2
 
-        assert(client.get_treatment_with_config("key", "some") == ("on-local", None))
-        assert(client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
-        assert(client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-local", "some2": "on-global"})
-        assert(client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-local", "some2": "on-global"})
-        assert(client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
-        assert(client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
-        
+        assert (client.get_treatment_with_config("key", "some") == ("on-local", None))
+        assert (client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
+        assert (client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-local", "some2": "on-global"})
+        assert (client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-local", "some2": "on-global"})
+        assert (client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
+        assert (client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
+
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local", '{"prop": "val"}')}))
         treatment = client.get_treatment("key3", "some")
-        assert(treatment == "on-local")
-        assert(self.imps[0].treatment == "on-local")
-        assert(self.imps[0].label == "fallback - exception")
+        assert (treatment == "on-local")
+        assert (self.imps[0].treatment == "on-local")
+        assert (self.imps[0].label == "fallback - exception")
 
         self.imps = None
         treatment = client.get_treatments("key3_m", ["some", "some2"])
-        assert(treatment == {"some": "on-local", "some2": "control"})
+        assert (treatment == {"some": "on-local", "some2": "control"})
         assert_both = 0
         for imp in self.imps:
             if imp.feature_name == "some":
                 assert_both += 1
-                assert(imp.treatment == "on-local")
-                assert(imp.label == "fallback - exception")
+                assert (imp.treatment == "on-local")
+                assert (imp.label == "fallback - exception")
             else:
                 assert_both += 1
-                assert(imp.treatment == "control")
-                assert(imp.label == "exception")
+                assert (imp.treatment == "control")
+                assert (imp.label == "exception")
         assert assert_both == 2
 
-        assert(client.get_treatment_with_config("key", "some") == ("on-local", '{"prop": "val"}'))
-        assert(client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
-        assert(client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-local", "some2": "control"})
-        assert(client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-local", "some2": "control"})
-        assert(client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
-        assert(client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
+        assert (client.get_treatment_with_config("key", "some") == ("on-local", '{"prop": "val"}'))
+        assert (client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
+        assert (client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-local", "some2": "control"})
+        assert (client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-local", "some2": "control"})
+        assert (client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
+        assert (client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
 
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")}))
         treatment = client.get_treatment("key4", "some")
-        assert(treatment == "control")
-        assert(self.imps[0].treatment == "control")
-        assert(self.imps[0].label == "exception")
-                
+        assert (treatment == "control")
+        assert (self.imps[0].treatment == "control")
+        assert (self.imps[0].label == "exception")
+
         try:
             factory.destroy()
-        except:
+        except Exception:
             pass
 
     @mock.patch('splitio.engine.evaluator.Evaluator.eval_with_context', side_effect=Exception())
@@ -1591,7 +1611,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         # using fallback when the evaluator has RuntimeError exception
         split_storage = mocker.Mock(spec=SplitStorage)
         segment_storage = mocker.Mock(spec=SegmentStorage)
-        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         destroyed_property = mocker.PropertyMock()
@@ -1606,58 +1626,59 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         internal_events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            mocker.Mock(),
-            impmanager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               internal_events_queue,
+                               mocker.Mock(),
+                               impmanager,
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
         factory.block_until_ready(1)  # ready flag is a Mock, so the status thread sets READY at once
-        
+
         self.imps = None
+
         def put(impressions):
-            self.imps = impressions    
+            self.imps = impressions
         impression_storage.put = put
-        
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
         client = Client(factory, recorder, mocker.Mock(), True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"))))
         treatment = client.get_treatment("key", "some")
-        assert(treatment == "on-global")
-        assert(self.imps == None)
-        
+        assert (treatment == "on-global")
+        assert (self.imps is None)
+
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")}))
         treatment = client.get_treatment("key2", "some")
-        assert(treatment == "on-local")
-        assert(self.imps == None)
-        
+        assert (treatment == "on-local")
+        assert (self.imps is None)
+
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local")}))
         treatment = client.get_treatment("key3", "some")
-        assert(treatment == "on-local")
-        assert(self.imps == None)
+        assert (treatment == "on-local")
+        assert (self.imps is None)
 
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")}))
         treatment = client.get_treatment("key4", "some")
-        assert(treatment == "control")
-        assert(self.imps == None)
-                
+        assert (treatment == "control")
+        assert (self.imps is None)
+
         try:
             factory.destroy()
-        except:
+        except Exception:
             pass
 
     @mock.patch('splitio.client.client.Client.ready', side_effect=None)
@@ -1665,7 +1686,7 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         # using fallback when the evaluator has RuntimeError exception
         split_storage = mocker.Mock(spec=SplitStorage)
         segment_storage = mocker.Mock(spec=SegmentStorage)
-        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
 
@@ -1678,27 +1699,28 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         internal_events_queue = queue.Queue()
         factory = SplitFactory(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            mocker.Mock(),
-            impmanager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
-        
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               internal_events_queue,
+                               mocker.Mock(),
+                               impmanager,
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
+
         self.imps = None
+
         def put(impressions):
-            self.imps = impressions    
+            self.imps = impressions
         impression_storage.put = put
-        
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -1707,35 +1729,35 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         client.ready = False
 
         treatment = client.get_treatment("key", "some")
-        assert(self.imps[0].treatment == "on-global")
-        assert(self.imps[0].label == "fallback - not ready")
-        
+        assert (self.imps[0].treatment == "on-global")
+        assert (self.imps[0].label == "fallback - not ready")
+
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")}))
         treatment = client.get_treatment("key2", "some")
-        assert(treatment == "on-local")
-        assert(self.imps[0].treatment == "on-local")
-        assert(self.imps[0].label == "fallback - not ready")
-        
+        assert (treatment == "on-local")
+        assert (self.imps[0].treatment == "on-local")
+        assert (self.imps[0].label == "fallback - not ready")
+
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local")}))
         treatment = client.get_treatment("key3", "some")
-        assert(treatment == "on-local")
-        assert(self.imps[0].treatment == "on-local")
-        assert(self.imps[0].label == "fallback - not ready")
+        assert (treatment == "on-local")
+        assert (self.imps[0].treatment == "on-local")
+        assert (self.imps[0].label == "fallback - not ready")
 
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")}))
         treatment = client.get_treatment("key4", "some")
-        assert(treatment == "control")
-        assert(self.imps[0].treatment == "control")
-        assert(self.imps[0].label == "not ready")
-                
+        assert (treatment == "control")
+        assert (self.imps[0].treatment == "control")
+        assert (self.imps[0].label == "not ready")
+
         try:
             factory.destroy()
-        except:
+        except Exception:
             pass
-        
+
     def test_events_subscription(self, mocker):
         events_manager = mocker.Mock(spec=EventsManager)
         client = Client(mocker.Mock(), mocker.Mock(), events_manager, True, FallbackTreatmentCalculator(None))
@@ -1745,11 +1767,12 @@ class ClientTests(object):  # pylint: disable=too-few-public-methods
         events_manager.register.mock_calls = []
         client.on("dd", self.test_fallback_treatment_not_ready_impressions)
         assert events_manager.register.mock_calls == []
-        
+
         client.on(SdkEvent.SDK_READY, "qwe")
         assert events_manager.register.mock_calls == []
 
-class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
+
+class ClientAsyncTests(object):
     """Split client async test cases."""
 
     @pytest.mark.asyncio
@@ -1757,10 +1780,11 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment_async execution paths."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-        
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -1781,23 +1805,23 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
 
         class TelemetrySubmitterMock():
             async def synchronize_config(*_):
-                pass         
-        
+                pass
+
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            TelemetrySubmitterMock(),
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    TelemetrySubmitterMock(),
+                                    )
 
         await factory.block_until_ready(1)
         client = ClientAsync(factory, recorder, events_manager, True, FallbackTreatmentCalculator(None))
@@ -1825,6 +1849,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
 
         # Test with exception:
         ready_property.return_value = True
+
         def _raise(*_):
             raise RuntimeError('something')
         client._evaluator.eval_with_context.side_effect = _raise
@@ -1837,10 +1862,11 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-        
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -1857,20 +1883,21 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property.return_value = False
 
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
+
         class TelemetrySubmitterMock():
             async def synchronize_config(*_):
                 pass
@@ -1922,10 +1949,11 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-                
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -1942,20 +1970,21 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property.return_value = False
 
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
+
         class TelemetrySubmitterMock():
             async def synchronize_config(*_):
                 pass
@@ -2010,10 +2039,11 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-                
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -2030,20 +2060,21 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property.return_value = False
 
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
+
         class TelemetrySubmitterMock():
             async def synchronize_config(*_):
                 pass
@@ -2098,10 +2129,11 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-        
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -2118,20 +2150,21 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property.return_value = False
 
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
+
         class TelemetrySubmitterMock():
             async def synchronize_config(*_):
                 pass
@@ -2186,10 +2219,11 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-                
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -2205,20 +2239,21 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
+
         class TelemetrySubmitterMock():
             async def synchronize_config(*_):
                 pass
@@ -2278,10 +2313,11 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-        
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -2297,20 +2333,21 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
+
         class TelemetrySubmitterMock():
             async def synchronize_config(*_):
                 pass
@@ -2370,10 +2407,11 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-        
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -2389,20 +2427,21 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
+
         class TelemetrySubmitterMock():
             async def synchronize_config(*_):
                 pass
@@ -2462,10 +2501,11 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-        
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -2484,20 +2524,20 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
 
         await factory.block_until_ready(5)
 
@@ -2505,10 +2545,10 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
-            ], [], -1)
+        ], [], -1)
         client = ClientAsync(factory, recorder, events_manager, True, FallbackTreatmentCalculator(None))
         treatment = await client.get_treatment('some_key', 'SPLIT_1')
-        assert  treatment == 'off'
+        assert treatment == 'off'
         treatment = await client.get_treatment('some_key', 'SPLIT_2')
         assert treatment == 'on'
         treatment = await client.get_treatment('some_key', 'SPLIT_3')
@@ -2533,10 +2573,11 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-                
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -2555,20 +2596,20 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_runtime_producer)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
 
         await factory.block_until_ready(5)
 
@@ -2576,7 +2617,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
-            ], [], -1)
+        ], [], -1)
         client = ClientAsync(factory, recorder, events_manager, True, FallbackTreatmentCalculator(None))
         assert await client.get_treatment('some_key', 'SPLIT_1') == 'off'
         assert await client.get_treatment('some_key', 'SPLIT_2') == 'on'
@@ -2601,10 +2642,11 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment execution paths."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-        
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -2623,20 +2665,20 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         impmanager = ImpressionManager(non_strategy, non_strategy, telemetry_runtime_producer)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
 
         await factory.block_until_ready(5)
 
@@ -2644,7 +2686,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             from_raw(splits_json['splitChange1_1']['ff']['d'][0]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][1]),
             from_raw(splits_json['splitChange1_1']['ff']['d'][2])
-            ], [], -1)
+        ], [], -1)
         client = ClientAsync(factory, recorder, events_manager, True, FallbackTreatmentCalculator(None))
         assert await client.get_treatment('some_key', 'SPLIT_1') == 'off'
         assert await client.get_treatment('some_key', 'SPLIT_2') == 'on'
@@ -2659,16 +2701,18 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         """Test that destroy/destroyed calls are forwarded to the factory."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-        
+
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
         segment_storage = mocker.Mock(spec=SegmentStorage)
         rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         self.events = []
+
         async def put(event):
             self.events.append(event)
             return True
@@ -2679,20 +2723,21 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
+
         class TelemetrySubmitterMock():
             async def synchronize_config(*_):
                 pass
@@ -2707,19 +2752,20 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         client = ClientAsync(factory, recorder, events_manager, True, FallbackTreatmentCalculator(None))
         assert await client.track('key', 'user', 'purchase', 12) is True
         assert self.events[0] == [EventWrapper(
-                event=Event('key', 'user', 'purchase', 12, 1000, None),
-                size=1024
-            )]
+            event=Event('key', 'user', 'purchase', 12, 1000, None),
+            size=1024
+        )]
         await factory.destroy()
 
     @pytest.mark.asyncio
     async def test_telemetry_not_ready_async(self, mocker):
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-        
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -2732,20 +2778,21 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         await split_storage.update([from_raw(splits_json['splitChange1_1']['ff']['d'][0])], [], -1)
         factory = SplitFactoryAsync('localhost',
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': mocker.Mock()},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': mocker.Mock()},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
+
         class TelemetrySubmitterMock():
             async def synchronize_config(*_):
                 pass
@@ -2758,19 +2805,20 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         await factory.block_until_ready(1)
         client = ClientAsync(factory, recorder, events_manager, True, FallbackTreatmentCalculator(None))
         assert await client.get_treatment('some_key', 'SPLIT_2') == CONTROL
-        assert(telemetry_storage._tel_config._not_ready == 1)
+        assert (telemetry_storage._tel_config._not_ready == 1)
         await client.track('key', 'tt', 'ev')
-        assert(telemetry_storage._tel_config._not_ready == 2)
+        assert (telemetry_storage._tel_config._not_ready == 2)
         await factory.destroy()
 
     @pytest.mark.asyncio
     async def test_telemetry_record_treatment_exception_async(self, mocker):
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-        
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -2789,20 +2837,21 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
+
         class TelemetrySubmitterMock():
             async def synchronize_config(*_):
                 pass
@@ -2814,34 +2863,35 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
 
         client = ClientAsync(factory, recorder, events_manager, True, FallbackTreatmentCalculator(None))
         client._evaluator = mocker.Mock()
+
         def _raise(*_):
             raise RuntimeError('something')
         client._evaluator.eval_with_context.side_effect = _raise
         client._evaluator.eval_many_with_context.side_effect = _raise
 
         await client.get_treatment('key', 'SPLIT_2')
-        assert(telemetry_storage._method_exceptions._treatment == 1)
+        assert (telemetry_storage._method_exceptions._treatment == 1)
 
         await client.get_treatment_with_config('key', 'SPLIT_2')
-        assert(telemetry_storage._method_exceptions._treatment_with_config == 1)
+        assert (telemetry_storage._method_exceptions._treatment_with_config == 1)
 
         await client.get_treatments('key', ['SPLIT_2'])
-        assert(telemetry_storage._method_exceptions._treatments == 1)
+        assert (telemetry_storage._method_exceptions._treatments == 1)
 
         await client.get_treatments_by_flag_set('key', 'set_1')
-        assert(telemetry_storage._method_exceptions._treatments_by_flag_set == 1)
+        assert (telemetry_storage._method_exceptions._treatments_by_flag_set == 1)
 
         await client.get_treatments_by_flag_sets('key', ['set_1'])
-        assert(telemetry_storage._method_exceptions._treatments_by_flag_sets == 1)
+        assert (telemetry_storage._method_exceptions._treatments_by_flag_sets == 1)
 
         await client.get_treatments_with_config('key', ['SPLIT_2'])
-        assert(telemetry_storage._method_exceptions._treatments_with_config == 1)
+        assert (telemetry_storage._method_exceptions._treatments_with_config == 1)
 
         await client.get_treatments_with_config_by_flag_set('key', 'set_1')
-        assert(telemetry_storage._method_exceptions._treatments_with_config_by_flag_set == 1)
+        assert (telemetry_storage._method_exceptions._treatments_with_config_by_flag_set == 1)
 
         await client.get_treatments_with_config_by_flag_sets('key', ['set_1'])
-        assert(telemetry_storage._method_exceptions._treatments_with_config_by_flag_sets == 1)
+        assert (telemetry_storage._method_exceptions._treatments_with_config_by_flag_sets == 1)
 
         await factory.destroy()
 
@@ -2849,10 +2899,11 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
     async def test_telemetry_method_latency_async(self, mocker):
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-                
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -2871,20 +2922,21 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
+
         class TelemetrySubmitterMock():
             async def synchronize_config(*_):
                 pass
@@ -2896,46 +2948,47 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
 
         try:
             await factory.block_until_ready(1)
-        except:
+        except Exception:
             pass
         client = ClientAsync(factory, recorder, events_manager, True, FallbackTreatmentCalculator(None))
         assert await client.get_treatment('key', 'SPLIT_2') == 'on'
-        assert(telemetry_storage._method_latencies._treatment[0] == 1)
+        assert (telemetry_storage._method_latencies._treatment[0] == 1)
 
         await client.get_treatment_with_config('key', 'SPLIT_2')
-        assert(telemetry_storage._method_latencies._treatment_with_config[0] == 1)
+        assert (telemetry_storage._method_latencies._treatment_with_config[0] == 1)
 
         await client.get_treatments('key', ['SPLIT_2'])
-        assert(telemetry_storage._method_latencies._treatments[0] == 1)
+        assert (telemetry_storage._method_latencies._treatments[0] == 1)
 
         await client.get_treatments_by_flag_set('key', 'set_1')
-        assert(telemetry_storage._method_latencies._treatments_by_flag_set[0] == 1)
+        assert (telemetry_storage._method_latencies._treatments_by_flag_set[0] == 1)
 
         await client.get_treatments_by_flag_sets('key', ['set_1'])
-        assert(telemetry_storage._method_latencies._treatments_by_flag_sets[0] == 1)
+        assert (telemetry_storage._method_latencies._treatments_by_flag_sets[0] == 1)
 
         await client.get_treatments_with_config('key', ['SPLIT_2'])
-        assert(telemetry_storage._method_latencies._treatments_with_config[0] == 1)
+        assert (telemetry_storage._method_latencies._treatments_with_config[0] == 1)
 
         await client.get_treatments_with_config_by_flag_set('key', 'set_1')
-        assert(telemetry_storage._method_latencies._treatments_with_config_by_flag_set[0] == 1)
+        assert (telemetry_storage._method_latencies._treatments_with_config_by_flag_set[0] == 1)
 
         await client.get_treatments_with_config_by_flag_sets('key', ['set_1'])
-        assert(telemetry_storage._method_latencies._treatments_with_config_by_flag_sets[0] == 1)
+        assert (telemetry_storage._method_latencies._treatments_with_config_by_flag_sets[0] == 1)
 
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         await client.track('key', 'tt', 'ev')
-        assert(telemetry_storage._method_latencies._track[0] == 1)
+        assert (telemetry_storage._method_latencies._track[0] == 1)
         await factory.destroy()
 
     @pytest.mark.asyncio
     async def test_telemetry_track_exception_async(self, mocker):
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-        
+
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
         segment_storage = mocker.Mock(spec=SegmentStorage)
         rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
@@ -2952,20 +3005,21 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         event_storage = InMemoryEventStorageAsync(10, telemetry_producer.get_telemetry_runtime_producer())
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock()
+                                    )
+
         class TelemetrySubmitterMock():
             async def synchronize_config(*_):
                 pass
@@ -2979,9 +3033,9 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         client = ClientAsync(factory, recorder, events_manager, True, FallbackTreatmentCalculator(None))
         try:
             await client.track('key', 'tt', 'ev')
-        except:
+        except Exception:
             pass
-        assert(telemetry_storage._method_exceptions._track == 1)
+        assert (telemetry_storage._method_exceptions._track == 1)
         await factory.destroy()
 
     @pytest.mark.asyncio
@@ -2989,10 +3043,11 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         """Test get_treatment_async execution paths."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
-                
+
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         split_storage = InMemorySplitStorageAsync(internal_events_queue)
@@ -3015,20 +3070,20 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
             async def synchronize_config(*_):
                 pass
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            TelemetrySubmitterMock(),
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    mocker.Mock(),
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    TelemetrySubmitterMock(),
+                                    )
 
         await factory.block_until_ready(1)
         client = ClientAsync(factory, recorder, events_manager, True, FallbackTreatmentCalculator(None))
@@ -3055,7 +3110,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         assert await client.get_treatment('some_key', 'SPLIT_2', evaluation_options=EvaluationOptions(12)) == 'on'
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, None)]
         assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatment')]
-        
+
         _logger.reset_mock()
         assert await client.get_treatment('some_key', 'SPLIT_2', evaluation_options=EvaluationOptions('12')) == 'on'
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
@@ -3064,25 +3119,25 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         assert await client.get_treatment_with_config('some_key', 'SPLIT_2', evaluation_options=EvaluationOptions({"prop": "value"})) == ('on', None)
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
-        assert await client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions({"prop": "value"})) ==  {'SPLIT_2': 'on'}
+        assert await client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions({"prop": "value"})) == {'SPLIT_2': 'on'}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
         _logger.reset_mock()
-        assert await client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions("prop")) ==  {'SPLIT_2': 'on'}
+        assert await client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions("prop")) == {'SPLIT_2': 'on'}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
         assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatments')]
 
         _logger.reset_mock()
-        assert await client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions(123)) ==  {'SPLIT_2': 'on'}
+        assert await client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions(123)) == {'SPLIT_2': 'on'}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
         assert _logger.error.mock_calls == [mocker.call('%s: properties must be of type dictionary.', 'get_treatments')]
 
         _logger.reset_mock()
-        assert await client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=123) ==  {'SPLIT_2': 'on'}
+        assert await client.get_treatments('some_key', ['SPLIT_2'], evaluation_options=123) == {'SPLIT_2': 'on'}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, 1000, None)]
         assert _logger.error.mock_calls == [mocker.call('%s: evaluation options should be an instance of EvaluationOptions. Setting its value to None.', 'get_treatments')]
 
-        assert await client.get_treatments_with_config('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions({"prop": "value"})) ==  {'SPLIT_2': ('on', None)}
+        assert await client.get_treatments_with_config('some_key', ['SPLIT_2'], evaluation_options=EvaluationOptions({"prop": "value"})) == {'SPLIT_2': ('on', None)}
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
 
         assert await client.get_treatments_by_flag_set('some_key', 'set_1', evaluation_options=EvaluationOptions({"prop": "value"})) == {'SPLIT_2': 'on'}
@@ -3098,7 +3153,7 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         assert await impression_storage.pop_many(100) == [Impression('some_key', 'SPLIT_2', 'on', 'some_label', 123, None, 1000, None, '{"prop": "value"}')]
         try:
             await factory.destroy()
-        except:
+        except Exception:
             pass
 
     @pytest.mark.asyncio
@@ -3106,18 +3161,19 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         # using fallback when the evaluator has RuntimeError exception
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
 
         split_storage = mocker.Mock(spec=SplitStorage)
         segment_storage = mocker.Mock(spec=SegmentStorage)
-        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         destroyed_property = mocker.PropertyMock()
         destroyed_property.return_value = False
-        
+
         mocker.patch('splitio.client.client.utctime_ms', new=lambda: 1000)
         mocker.patch('splitio.client.client.get_latency_bucket_index', new=lambda x: 5)
 
@@ -3126,41 +3182,42 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_evaluation_producer = telemetry_producer.get_telemetry_evaluation_producer()
         impmanager = ImpressionManager(StrategyDebugMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_evaluation_producer, telemetry_producer.get_telemetry_runtime_producer())
-        
+
         class TelemetrySubmitterMock():
             async def synchronize_config(*_):
                 pass
-        
+
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            impmanager,
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            TelemetrySubmitterMock(),
-            None
-        )
-        
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    impmanager,
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    TelemetrySubmitterMock(),
+                                    None
+                                    )
+
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
         type(factory).ready = ready_property
-        
+
         self.imps = None
+
         async def put(impressions):
-            self.imps = impressions    
+            self.imps = impressions
         impression_storage.put = put
-                
+
         client = ClientAsync(factory, recorder, events_manager, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global", '{"prop": "val"}'))))
 
         def eval_with_context(*_):
-            raise RuntimeError()        
+            raise RuntimeError()
         client._evaluator.eval_with_context = eval_with_context
 
         async def get_feature_flag_names_by_flag_sets(*_):
@@ -3176,93 +3233,93 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         rb_segment_storage.fetch_many = fetch_many_rbs
 
         treatment = await client.get_treatment("key", "some")
-        assert(treatment == "on-global")
-        assert(self.imps[0].treatment == "on-global")
-        assert(self.imps[0].label == "fallback - exception")
+        assert (treatment == "on-global")
+        assert (self.imps[0].treatment == "on-global")
+        assert (self.imps[0].label == "fallback - exception")
 
         self.imps = None
         treatment = await client.get_treatments("key_m", ["some", "some2"])
-        assert(treatment == {"some": "on-global", "some2": "on-global"})
-        assert(self.imps[0].treatment == "on-global")
-        assert(self.imps[0].label == "fallback - exception")
-        assert(self.imps[1].treatment == "on-global")
-        assert(self.imps[1].label == "fallback - exception")
-        
-        assert(await client.get_treatment_with_config("key", "some") == ("on-global", '{"prop": "val"}'))
-        assert(await client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
-        assert(await client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-global", "some2": "on-global"})
-        assert(await client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-global", "some2": "on-global"})
-        assert(await client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
-        assert(await client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
-        
+        assert (treatment == {"some": "on-global", "some2": "on-global"})
+        assert (self.imps[0].treatment == "on-global")
+        assert (self.imps[0].label == "fallback - exception")
+        assert (self.imps[1].treatment == "on-global")
+        assert (self.imps[1].label == "fallback - exception")
+
+        assert (await client.get_treatment_with_config("key", "some") == ("on-global", '{"prop": "val"}'))
+        assert (await client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
+        assert (await client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-global", "some2": "on-global"})
+        assert (await client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-global", "some2": "on-global"})
+        assert (await client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
+        assert (await client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-global", '{"prop": "val"}'), "some2": ("on-global", '{"prop": "val"}')})
+
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global", '{"prop": "val"}'), {'some': FallbackTreatment("on-local")}))
         treatment = await client.get_treatment("key2", "some")
-        assert(treatment == "on-local")
-        assert(self.imps[0].treatment == "on-local")
-        assert(self.imps[0].label == "fallback - exception")
+        assert (treatment == "on-local")
+        assert (self.imps[0].treatment == "on-local")
+        assert (self.imps[0].label == "fallback - exception")
 
         self.imps = None
         treatment = await client.get_treatments("key2_m", ["some", "some2"])
-        assert(treatment == {"some": "on-local", "some2": "on-global"})
+        assert (treatment == {"some": "on-local", "some2": "on-global"})
         assert_both = 0
         for imp in self.imps:
             if imp.feature_name == "some":
                 assert_both += 1
-                assert(imp.treatment == "on-local")
-                assert(imp.label == "fallback - exception")
+                assert (imp.treatment == "on-local")
+                assert (imp.label == "fallback - exception")
             else:
                 assert_both += 1
-                assert(imp.treatment == "on-global")
-                assert(imp.label == "fallback - exception")
+                assert (imp.treatment == "on-global")
+                assert (imp.label == "fallback - exception")
         assert assert_both == 2
 
-        assert(await client.get_treatment_with_config("key", "some") == ("on-local", None))
-        assert(await client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
-        assert(await client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-local", "some2": "on-global"})
-        assert(await client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-local", "some2": "on-global"})
-        assert(await client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
-        assert(await client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
-        
+        assert (await client.get_treatment_with_config("key", "some") == ("on-local", None))
+        assert (await client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
+        assert (await client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-local", "some2": "on-global"})
+        assert (await client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-local", "some2": "on-global"})
+        assert (await client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
+        assert (await client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", None), "some2": ("on-global", '{"prop": "val"}')})
+
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local", '{"prop": "val"}')}))
         treatment = await client.get_treatment("key3", "some")
-        assert(treatment == "on-local")
-        assert(self.imps[0].treatment == "on-local")
-        assert(self.imps[0].label == "fallback - exception")
+        assert (treatment == "on-local")
+        assert (self.imps[0].treatment == "on-local")
+        assert (self.imps[0].label == "fallback - exception")
 
         self.imps = None
         treatment = await client.get_treatments("key3_m", ["some", "some2"])
-        assert(treatment == {"some": "on-local", "some2": "control"})
+        assert (treatment == {"some": "on-local", "some2": "control"})
         assert_both = 0
         for imp in self.imps:
             if imp.feature_name == "some":
                 assert_both += 1
-                assert(imp.treatment == "on-local")
-                assert(imp.label == "fallback - exception")
+                assert (imp.treatment == "on-local")
+                assert (imp.label == "fallback - exception")
             else:
                 assert_both += 1
-                assert(imp.treatment == "control")
-                assert(imp.label == "exception")
+                assert (imp.treatment == "control")
+                assert (imp.label == "exception")
         assert assert_both == 2
 
-        assert(await client.get_treatment_with_config("key", "some") == ("on-local", '{"prop": "val"}'))
-        assert(await client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
-        assert(await client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-local", "some2": "control"})
-        assert(await client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-local", "some2": "control"})
-        assert(await client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
-        assert(await client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
+        assert (await client.get_treatment_with_config("key", "some") == ("on-local", '{"prop": "val"}'))
+        assert (await client.get_treatments_with_config("key_m", ["some", "some2"]) == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
+        assert (await client.get_treatments_by_flag_set("key_m", "set") == {"some": "on-local", "some2": "control"})
+        assert (await client.get_treatments_by_flag_set("key_m", ["set"]) == {"some": "on-local", "some2": "control"})
+        assert (await client.get_treatments_with_config_by_flag_set("key_m", "set") == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
+        assert (await client.get_treatments_with_config_by_flag_sets("key_m", ["set"]) == {"some": ("on-local", '{"prop": "val"}'), "some2": ("control", None)})
 
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")}))
         treatment = await client.get_treatment("key4", "some")
-        assert(treatment == "control")
-        assert(self.imps[0].treatment == "control")
-        assert(self.imps[0].label == "exception")
-                
+        assert (treatment == "control")
+        assert (self.imps[0].treatment == "control")
+        assert (self.imps[0].label == "exception")
+
         try:
             await factory.destroy()
-        except:
+        except Exception:
             pass
 
     @pytest.mark.asyncio
@@ -3270,13 +3327,14 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         # using fallback when the evaluator has RuntimeError exception
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
 
         split_storage = mocker.Mock(spec=SplitStorage)
         segment_storage = mocker.Mock(spec=SegmentStorage)
-        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
         destroyed_property = mocker.PropertyMock()
@@ -3291,78 +3349,79 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
 
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            impmanager,
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock(),
-            None
-        )
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    impmanager,
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock(),
+                                    None
+                                    )
         ready_property = mocker.PropertyMock()
         ready_property.return_value = True
         type(factory).ready = ready_property
-        
+
         self.imps = None
+
         async def put(impressions):
-            self.imps = impressions    
+            self.imps = impressions
         impression_storage.put = put
-        
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
-        
+
         client = ClientAsync(factory, recorder, events_manager, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"))))
 
         def eval_with_context(*_):
-            raise Exception()        
+            raise Exception()
         client._evaluator.eval_with_context = eval_with_context
-        
+
         async def context_for(*_):
             return EvaluationContext(
-                {}, 
+                {},
                 {},
                 {}
             )
         client._context_factory.context_for = context_for
-        
+
         treatment = await client.get_treatment("key", "some")
-        assert(treatment == "on-global")
-        assert(self.imps[0].treatment == "on-global")
-        assert(self.imps[0].label == "fallback - exception")
-        
+        assert (treatment == "on-global")
+        assert (self.imps[0].treatment == "on-global")
+        assert (self.imps[0].label == "fallback - exception")
+
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")}))
         treatment = await client.get_treatment("key2", "some")
-        assert(treatment == "on-local")
-        assert(self.imps[0].treatment == "on-local")
-        assert(self.imps[0].label == "fallback - exception")
-        
+        assert (treatment == "on-local")
+        assert (self.imps[0].treatment == "on-local")
+        assert (self.imps[0].label == "fallback - exception")
+
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local")}))
         treatment = await client.get_treatment("key3", "some")
-        assert(treatment == "on-local")
-        assert(self.imps[0].treatment == "on-local")
-        assert(self.imps[0].label == "fallback - exception")
+        assert (treatment == "on-local")
+        assert (self.imps[0].treatment == "on-local")
+        assert (self.imps[0].label == "fallback - exception")
 
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")}))
         treatment = await client.get_treatment("key4", "some")
-        assert(treatment == "control")
-        assert(self.imps[0].treatment == "control")
-        assert(self.imps[0].label == "exception")
-                
+        assert (treatment == "control")
+        assert (self.imps[0].treatment == "control")
+        assert (self.imps[0].label == "exception")
+
         try:
             await factory.destroy()
-        except:
+        except Exception:
             pass
 
     @pytest.mark.asyncio
@@ -3370,13 +3429,14 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         # using fallback when the evaluator has RuntimeError exception
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
 
         split_storage = mocker.Mock(spec=SplitStorage)
         segment_storage = mocker.Mock(spec=SegmentStorage)
-        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)        
+        rb_segment_storage = mocker.Mock(spec=RuleBasedSegmentsStorage)
         impression_storage = mocker.Mock(spec=ImpressionStorage)
         event_storage = mocker.Mock(spec=EventStorage)
 
@@ -3387,36 +3447,38 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         impmanager = ImpressionManager(StrategyOptimizedMode(), StrategyNoneMode(), telemetry_producer.get_telemetry_runtime_producer())
         recorder = StandardRecorderAsync(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
+
         async def manager_start_task():
             pass
-        
+
         factory = SplitFactoryAsync(mocker.Mock(),
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            internal_events_queue,
-            events_manager,
-            impmanager,
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock(),
-            manager_start_task
-        )
-        
+                                    {'splits': split_storage,
+                                     'segments': segment_storage,
+                                     'rule_based_segments': rb_segment_storage,
+                                     'impressions': impression_storage,
+                                     'events': event_storage},
+                                    mocker.Mock(),
+                                    recorder,
+                                    internal_events_queue,
+                                    events_manager,
+                                    impmanager,
+                                    telemetry_producer,
+                                    telemetry_producer.get_telemetry_init_producer(),
+                                    mocker.Mock(),
+                                    manager_start_task
+                                    )
+
         self.imps = None
+
         async def put(impressions):
-            self.imps = impressions    
+            self.imps = impressions
         impression_storage.put = put
-        
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
         factory._telemetry_submitter = TelemetrySubmitterMock()
-        
+
         client = ClientAsync(factory, recorder, events_manager, True, FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"))))
         ready_property = mocker.PropertyMock()
         ready_property.return_value = False
@@ -3424,52 +3486,53 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
 
         async def context_for(*_):
             return EvaluationContext(
-                {"some": {}}, 
+                {"some": {}},
                 {},
                 {}
             )
         client._context_factory.context_for = context_for
 
         treatment = await client.get_treatment("key", "some")
-        assert(self.imps[0].treatment == "on-global")
-        assert(self.imps[0].label == "fallback - not ready")
-        
+        assert (self.imps[0].treatment == "on-global")
+        assert (self.imps[0].label == "fallback - not ready")
+
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(FallbackTreatment("on-global"), {'some': FallbackTreatment("on-local")}))
         treatment = await client.get_treatment("key2", "some")
-        assert(treatment == "on-local")
-        assert(self.imps[0].treatment == "on-local")
-        assert(self.imps[0].label == "fallback - not ready")
-        
+        assert (treatment == "on-local")
+        assert (self.imps[0].treatment == "on-local")
+        assert (self.imps[0].label == "fallback - not ready")
+
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some': FallbackTreatment("on-local")}))
         treatment = await client.get_treatment("key3", "some")
-        assert(treatment == "on-local")
-        assert(self.imps[0].treatment == "on-local")
-        assert(self.imps[0].label == "fallback - not ready")
+        assert (treatment == "on-local")
+        assert (self.imps[0].treatment == "on-local")
+        assert (self.imps[0].label == "fallback - not ready")
 
         self.imps = None
         client._fallback_treatment_calculator = FallbackTreatmentCalculator(FallbackTreatmentsConfiguration(None, {'some2': FallbackTreatment("on-local")}))
         treatment = await client.get_treatment("key4", "some")
-        assert(treatment == "control")
-        assert(self.imps[0].treatment == "control")
-        assert(self.imps[0].label == "not ready")
-                
+        assert (treatment == "control")
+        assert (self.imps[0].treatment == "control")
+        assert (self.imps[0].label == "not ready")
+
         try:
             await factory.destroy()
-        except:
+        except Exception:
             pass
-        
+
     @pytest.mark.asyncio
     async def test_events_subscription(self, mocker):
         events_manager = mocker.Mock(spec=EventsManagerAsync)
         self.event = None
         self.handle = None
+
         async def register(sdk_event, callback_handle):
             self.event = sdk_event
             self.handle = callback_handle
         events_manager.register = register
-        
+
         client = ClientAsync(mocker.Mock(), mocker.Mock(), events_manager, True, FallbackTreatmentCalculator(None))
         await client.on(SdkEvent.SDK_READY, self.event_callback)
         assert self.event == SdkEvent.SDK_READY
@@ -3477,10 +3540,10 @@ class ClientAsyncTests(object):  # pylint: disable=too-few-public-methods
 
         self.event = None
         await client.on("dd", self.event_callback)
-        assert self.event == None
-        
+        assert self.event is None
+
         await client.on(SdkEvent.SDK_READY, "qwe")
-        assert self.event == None
+        assert self.event is None
 
     async def event_callback(self, metadata):
         pass

@@ -9,6 +9,7 @@ invalid_versions = os.path.join(os.path.dirname(__file__), 'files', 'invalid-sem
 equalto_versions = os.path.join(os.path.dirname(__file__), 'files', 'equal-to-semver.csv')
 between_versions = os.path.join(os.path.dirname(__file__), 'files', 'between-semver.csv')
 
+
 class SemverTests(object):
     """Test the semver object model."""
 

@@ -1,16 +1,17 @@
 """Storage Helper tests."""
 import pytest
 import queue
-import asyncio 
+import asyncio
 
 from splitio.util.storage_helper import update_feature_flag_storage, get_valid_flag_sets, combine_valid_flag_sets, \
     update_rule_based_segment_storage, update_rule_based_segment_storage_async, update_feature_flag_storage_async, \
-    get_standard_segment_names_in_rbs_storage_async, get_standard_segment_names_in_rbs_storage 
+    get_standard_segment_names_in_rbs_storage_async, get_standard_segment_names_in_rbs_storage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync, \
     InMemorySplitStorageAsync
 from splitio.models import splits, rule_based_segments
 from splitio.storage import FlagSetsFilter
 from tests.sync.test_splits_synchronizer import splits_raw as split_sample
+
 
 class StorageHelperTests(object):
 
@@ -19,9 +20,9 @@ class StorageHelperTests(object):
         "name": "sample_rule_based_segment",
         "status": "ACTIVE",
         "trafficTypeName": "user",
-        "excluded":{
-        "keys":["mauro@split.io","gaston@split.io"],
-        "segments":[{"name":"excluded_segment", "type": "standard"}]
+        "excluded": {
+            "keys": ["mauro@split.io", "gaston@split.io"],
+            "segments": [{"name": "excluded_segment", "type": "standard"}]
         },
         "conditions": [
             {"matcherGroup": {
@@ -48,6 +49,7 @@ class StorageHelperTests(object):
         self.added = []
         self.deleted = []
         self.change_number = 0
+
         def update(to_add, to_delete, change_number):
             self.added = to_add
             self.deleted = to_delete
@@ -61,15 +63,17 @@ class StorageHelperTests(object):
         class flag_set_filter():
             def should_filter():
                 return False
+
             def intersect(sets):
                 return True
         storage.flag_set_filter = flag_set_filter
         storage.flag_set_filter.flag_sets = {}
 
         self.clear = 0
+
         def clear():
             self.clear += 1
-        storage.clear = clear    
+        storage.clear = clear
 
         update_feature_flag_storage(storage, [split], 123, True)
         assert self.added[0] == split
@@ -80,6 +84,7 @@ class StorageHelperTests(object):
         class flag_set_filter2():
             def should_filter():
                 return True
+
             def intersect(sets):
                 return False
         storage.flag_set_filter = flag_set_filter2
@@ -94,6 +99,7 @@ class StorageHelperTests(object):
         class flag_set_filter3():
             def should_filter():
                 return True
+
             def intersect(sets):
                 return True
         storage.flag_set_filter = flag_set_filter3
@@ -108,9 +114,9 @@ class StorageHelperTests(object):
 
         split_json = split_sample[0]
         split_json['conditions'].append({
-                    "matcherGroup": {
-                        "combiner": "AND",
-                        "matchers": [
+            "matcherGroup": {
+                "combiner": "AND",
+                "matchers": [
                             {
                                 "matcherType": "IN_SEGMENT",
                                 "negate": False,
@@ -119,19 +125,19 @@ class StorageHelperTests(object):
                                 },
                                 "whitelistMatcherData": None
                             }
-                        ]
-                    },
-                    "partitions": [
-                        {
-                            "treatment": "on",
-                            "size": 30
-                        },
-                        {
-                            "treatment": "off",
-                            "size": 70
-                        }
-                    ]
+                ]
+            },
+            "partitions": [
+                {
+                    "treatment": "on",
+                    "size": 30
+                },
+                {
+                    "treatment": "off",
+                    "size": 70
                 }
+            ]
+        }
         )
 
         split = splits.from_raw(split_json)
@@ -167,51 +173,54 @@ class StorageHelperTests(object):
 
         results_set = ['set1', {'set2', 'set3'}]
         assert combine_valid_flag_sets(results_set) == {'set2', 'set3'}
-        
+
     def test_update_rule_base_segment_storage(self, mocker):
         storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
         self.added = []
         self.deleted = []
         self.change_number = 0
+
         def update(to_add, to_delete, change_number):
             self.added = to_add
             self.deleted = to_delete
             self.change_number = change_number
         storage.update = update
-        
+
         self.clear = 0
+
         def clear():
             self.clear += 1
-        storage.clear = clear    
-        
+        storage.clear = clear
+
         segments = update_rule_based_segment_storage(storage, [self.rbs], 123)
         assert self.added[0] == self.rbs
         assert self.deleted == []
         assert self.change_number == 123
         assert segments == {'excluded_segment', 'employees'}
         assert self.clear == 0
-        
+
         segments = update_rule_based_segment_storage(storage, [self.rbs], 123, True)
         assert self.clear == 1
 
     def test_get_standard_segment_in_rbs_storage(self, mocker):
         events_queue = queue.Queue()
         storage = InMemoryRuleBasedSegmentStorage(events_queue)
-        segments = update_rule_based_segment_storage(storage, [self.rbs], 123)
+        update_rule_based_segment_storage(storage, [self.rbs], 123)
         assert get_standard_segment_names_in_rbs_storage(storage) == {'excluded_segment', 'employees'}
 
     @pytest.mark.asyncio
-    async def test_get_standard_segment_in_rbs_storage(self, mocker):
+    async def test_get_standard_segment_in_rbs_storage_async(self, mocker):
         storage = InMemoryRuleBasedSegmentStorageAsync(asyncio.Queue())
-        segments = await update_rule_based_segment_storage_async(storage, [self.rbs], 123)
+        await update_rule_based_segment_storage_async(storage, [self.rbs], 123)
         assert await get_standard_segment_names_in_rbs_storage_async(storage) == {'excluded_segment', 'employees'}
-        
+
     @pytest.mark.asyncio
     async def test_update_rule_base_segment_storage_async(self, mocker):
         storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
         self.added = []
         self.deleted = []
         self.change_number = 0
+
         async def update(to_add, to_delete, change_number):
             self.added = to_add
             self.deleted = to_delete
@@ -219,16 +228,17 @@ class StorageHelperTests(object):
         storage.update = update
 
         self.clear = 0
+
         async def clear():
             self.clear += 1
-        storage.clear = clear    
+        storage.clear = clear
 
         segments = await update_rule_based_segment_storage_async(storage, [self.rbs], 123)
         assert self.added[0] == self.rbs
         assert self.deleted == []
         assert self.change_number == 123
-        assert segments == {'excluded_segment', 'employees'}        
-                        
+        assert segments == {'excluded_segment', 'employees'}
+
         segments = await update_rule_based_segment_storage_async(storage, [self.rbs], 123, True)
         assert self.clear == 1
 
@@ -240,10 +250,11 @@ class StorageHelperTests(object):
         self.added = []
         self.deleted = []
         self.change_number = 0
+
         async def get(flag_name):
             return None
         storage.get = get
-        
+
         async def update(to_add, to_delete, change_number):
             self.added = to_add
             self.deleted = to_delete
@@ -257,15 +268,17 @@ class StorageHelperTests(object):
         class flag_set_filter():
             def should_filter():
                 return False
+
             def intersect(sets):
                 return True
         storage.flag_set_filter = flag_set_filter
         storage.flag_set_filter.flag_sets = {}
 
         self.clear = 0
+
         async def clear():
             self.clear += 1
-        storage.clear = clear    
+        storage.clear = clear
 
         await update_feature_flag_storage_async(storage, [split], 123, True)
         assert self.added[0] == split
@@ -276,6 +289,7 @@ class StorageHelperTests(object):
         class flag_set_filter2():
             def should_filter():
                 return True
+
             def intersect(sets):
                 return False
         storage.flag_set_filter = flag_set_filter2
@@ -294,6 +308,7 @@ class StorageHelperTests(object):
         class flag_set_filter3():
             def should_filter():
                 return True
+
             def intersect(sets):
                 return True
         storage.flag_set_filter = flag_set_filter3
@@ -308,9 +323,9 @@ class StorageHelperTests(object):
 
         split_json = split_sample[0]
         split_json['conditions'].append({
-                    "matcherGroup": {
-                        "combiner": "AND",
-                        "matchers": [
+            "matcherGroup": {
+                "combiner": "AND",
+                "matchers": [
                             {
                                 "matcherType": "IN_SEGMENT",
                                 "negate": False,
@@ -319,19 +334,19 @@ class StorageHelperTests(object):
                                 },
                                 "whitelistMatcherData": None
                             }
-                        ]
-                    },
-                    "partitions": [
-                        {
-                            "treatment": "on",
-                            "size": 30
-                        },
-                        {
-                            "treatment": "off",
-                            "size": 70
-                        }
-                    ]
+                ]
+            },
+            "partitions": [
+                {
+                    "treatment": "on",
+                    "size": 30
+                },
+                {
+                    "treatment": "off",
+                    "size": 70
                 }
+            ]
+        }
         )
 
         split = splits.from_raw(split_json)

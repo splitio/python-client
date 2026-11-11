@@ -2,6 +2,7 @@ import pytest
 
 from splitio.models.notification import wrap_notification, SplitChangeNotification, SplitKillNotification, SegmentChangeNotification, ControlNotification
 
+
 class NotificationTests(object):
     """Notification model tests."""
 
@@ -19,7 +20,7 @@ class NotificationTests(object):
             wrap_notification('{"type":"SPLIT_UPDATE","changeNumber":1591996754396}', None)
 
         with pytest.raises(KeyError):
-            wrap_notification('{"type":"SPLIT_UPDATE"}',  'NDA5ODc2MTAyNg==_MzAyODY0NDkyOA==_splits')
+            wrap_notification('{"type":"SPLIT_UPDATE"}', 'NDA5ODc2MTAyNg==_MzAyODY0NDkyOA==_splits')
 
         with pytest.raises(ValueError):
             wrap_notification('{"type":"CONTROL","controlType":"STREAMING_PAUSEDD"}', 'control_pri')

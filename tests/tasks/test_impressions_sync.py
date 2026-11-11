@@ -13,6 +13,7 @@ from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSync
 from splitio.engine.impressions.manager import Counter
 from splitio.optional.loaders import asyncio
 
+
 class ImpressionsSyncTaskTests(object):
     """Impressions Syncrhonization task test cases."""
 
@@ -62,6 +63,7 @@ class ImpressionsSyncTaskAsyncTests(object):
             Impression('key5', 'split3', 'off', 'l1', 123456, 'b1', 321654, None, None)
         ]
         self.pop_called = 0
+
         async def pop_many(*args):
             self.pop_called += 1
             return impressions
@@ -70,10 +72,11 @@ class ImpressionsSyncTaskAsyncTests(object):
         api = mocker.Mock(spec=ImpressionsAPI)
         self.flushed = None
         self.called = 0
+
         async def flush_impressions(imps):
             self.called += 1
             self.flushed = imps
-            return  HttpResponse(200, '', {})
+            return HttpResponse(200, '', {})
         api.flush_impressions = flush_impressions
 
         impression_synchronizer = ImpressionSynchronizerAsync(api, storage, 5)
@@ -141,6 +144,7 @@ class ImpressionsCountSyncTaskAsyncTests(object):
             Counter.CountPerFeature('f2', 456, 222)
         ]
         self._pop_called = 0
+
         def pop_all():
             self._pop_called += 1
             return counters
@@ -149,10 +153,11 @@ class ImpressionsCountSyncTaskAsyncTests(object):
         api = mocker.Mock(spec=ImpressionsAPI)
         self.flushed = None
         self.called = 0
+
         async def flush_counters(imps):
             self.called += 1
             self.flushed = imps
-            return  HttpResponse(200, '', {})
+            return HttpResponse(200, '', {})
         api.flush_counters = flush_counters
 
         impressions_sync.ImpressionsCountSyncTaskAsync._PERIOD = 1

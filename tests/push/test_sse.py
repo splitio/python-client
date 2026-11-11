@@ -3,11 +3,11 @@
 import time
 import threading
 import pytest
-from contextlib import suppress
 
 from splitio.push.sse import SSEClient, SSEEvent, SSEClientAsync
 from splitio.optional.loaders import asyncio
 from tests.helpers.mockserver import SSEMockServer
+
 
 class SSEClientTests(object):
     """SSEClient test cases."""
@@ -19,6 +19,7 @@ class SSEClientTests(object):
         server.start()
 
         events = []
+
         def callback(event):
             """Callback."""
             events.append(event)
@@ -60,6 +61,7 @@ class SSEClientTests(object):
         server.start()
 
         events = []
+
         def callback(event):
             """Callback."""
             events.append(event)
@@ -98,6 +100,7 @@ class SSEClientTests(object):
         server.start()
 
         events = []
+
         def callback(event):
             """Callback."""
             events.append(event)
@@ -408,6 +411,7 @@ class SSEClientTests(object):
         assert captured['port'] == 9999
         assert captured['tunneled'] is False
 
+
 class SSEClientAsyncTests(object):
     """SSEClient test cases."""
 
@@ -442,14 +446,15 @@ class SSEClientAsyncTests(object):
         # Since generators are meant to be iterated, we need to consume them all until StopIteration occurs
         # to do this, connection must be closed in another coroutine, while the current one is still consuming events.
         shutdown_task = asyncio.get_running_loop().create_task(client.shutdown())
-        with pytest.raises(StopAsyncIteration): await sse_events_loop.__anext__()
+        with pytest.raises(StopAsyncIteration):
+            await sse_events_loop.__anext__()
         await shutdown_task
 
         assert event1 == SSEEvent('1', None, None, None)
         assert event2 == SSEEvent('2', 'message', None, 'abc')
         assert event3 == SSEEvent('3', 'message', None, 'def')
         assert event4 == SSEEvent('4', 'message', None, 'ghi')
-        assert client._response == None
+        assert client._response is None
 
         server.publish(server.GRACEFUL_REQUEST_END)
         server.stop()
@@ -477,19 +482,19 @@ class SSEClientAsyncTests(object):
         server.publish(server.GRACEFUL_REQUEST_END)
 
         # after the connection ends, any subsequent read sohould fail and iteration should stop
-        with pytest.raises(StopAsyncIteration): await sse_events_loop.__anext__()
+        with pytest.raises(StopAsyncIteration):
+            await sse_events_loop.__anext__()
 
         assert event1 == SSEEvent('1', None, None, None)
         assert event2 == SSEEvent('2', 'message', None, 'abc')
         assert event3 == SSEEvent('3', 'message', None, 'def')
         assert event4 == SSEEvent('4', 'message', None, 'ghi')
-        assert client._response == None
+        assert client._response is None
 
-        await client._done.wait() # to ensure `start()` has finished
+        await client._done.wait()  # to ensure `start()` has finished
         assert client._response is None
 
 #        server.stop()
-
 
     @pytest.mark.asyncio
     async def test_sse_server_disconnects_abruptly(self):
@@ -512,7 +517,8 @@ class SSEClientAsyncTests(object):
         event4 = await sse_events_loop.__anext__()
 
         server.publish(server.VIOLENT_REQUEST_END)
-        with pytest.raises(StopAsyncIteration): await sse_events_loop.__anext__()
+        with pytest.raises(StopAsyncIteration):
+            await sse_events_loop.__anext__()
 
         server.stop()
 
@@ -521,5 +527,5 @@ class SSEClientAsyncTests(object):
         assert event3 == SSEEvent('3', 'message', None, 'def')
         assert event4 == SSEEvent('4', 'message', None, 'ghi')
 
-        await client._done.wait() # to ensure `start()` has finished
+        await client._done.wait()  # to ensure `start()` has finished
         assert client._response is None

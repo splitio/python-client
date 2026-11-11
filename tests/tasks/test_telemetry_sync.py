@@ -21,6 +21,7 @@ class TelemetrySyncTaskTests(object):
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_consumer = TelemetryStorageConsumer(telemetry_storage)
         telemetry_submitter = InMemoryTelemetrySubmitter(telemetry_consumer, mocker.Mock(), mocker.Mock(), api)
+
         def _build_stats():
             return {}
         telemetry_submitter._build_stats = _build_stats
@@ -45,6 +46,7 @@ class TelemetrySyncTaskAsyncTests(object):
         """Test that the task works properly under normal circumstances."""
         api = mocker.Mock(spec=TelemetryAPIAsync)
         self.called = False
+
         async def record_stats(stats):
             self.called = True
             return HttpResponse(200, '', {})
@@ -53,6 +55,7 @@ class TelemetrySyncTaskAsyncTests(object):
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_consumer = TelemetryStorageConsumerAsync(telemetry_storage)
         telemetry_submitter = InMemoryTelemetrySubmitterAsync(telemetry_consumer, mocker.Mock(), mocker.Mock(), api)
+
         async def _build_stats():
             return {}
         telemetry_submitter._build_stats = _build_stats

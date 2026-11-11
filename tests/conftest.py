@@ -117,7 +117,7 @@ def _report_blocking_threads(delay):
     for thread in [main] + others[:40]:
         lines.append('  %s (%s, daemon=%s)' % (thread.name, type(thread).__name__, thread.daemon))
         if thread.ident in frames:
-            lines.extend('    ' + l for l in ''.join(traceback.format_stack(frames[thread.ident])).splitlines())
+            lines.extend('    ' + line for line in ''.join(traceback.format_stack(frames[thread.ident])).splitlines())
     lines.append('non-daemon threads: %s' % [t.name for t in threading.enumerate() if not t.daemon])
     sys.stderr.write('\n'.join(lines) + '\n')
     sys.stderr.flush()

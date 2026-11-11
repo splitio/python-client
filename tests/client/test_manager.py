@@ -4,15 +4,16 @@ import queue
 import asyncio
 
 from splitio.client.factory import SplitFactory
-from splitio.client.manager import SplitManager, SplitManagerAsync, _LOGGER as _logger
+from splitio.client.manager import SplitManager, SplitManagerAsync
 from splitio.models import splits
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, InMemorySplitStorage, InMemorySplitStorageAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionManager
-from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync, TelemetryStorageConsumer, TelemetryStorageConsumerAsync
+from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from tests.integration import splits_json
 
-class SplitManagerTests(object):  # pylint: disable=too-few-public-methods
+
+class SplitManagerTests(object):
     """Split manager test cases."""
 
     def test_manager_calls(self, mocker):
@@ -29,8 +30,8 @@ class SplitManagerTests(object):  # pylint: disable=too-few-public-methods
         factory.ready = True
 
         manager = SplitManager(factory)
-        split1 =  splits.from_raw(splits_json["splitChange1_1"]['ff']['d'][0])
-        split2 =  splits.from_raw(splits_json["splitChange1_3"]['ff']['d'][0])
+        split1 = splits.from_raw(splits_json["splitChange1_1"]['ff']['d'][0])
+        split2 = splits.from_raw(splits_json["splitChange1_3"]['ff']['d'][0])
         storage.update([split1, split2], [], -1)
         manager._storage = storage
 
@@ -49,21 +50,21 @@ class SplitManagerTests(object):  # pylint: disable=too-few-public-methods
         recorder = StandardRecorder(impmanager, mocker.Mock(), mocker.Mock(), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {'splits': mocker.Mock(),
-            'segments': mocker.Mock(),
-            'impressions': mocker.Mock(),
-            'events': mocker.Mock()},
-            mocker.Mock(),
-            recorder,
-            mocker.Mock(),
-            mocker.Mock(),
-            impmanager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock(),
-            True
-        )
+                               {'splits': mocker.Mock(),
+                                'segments': mocker.Mock(),
+                                'impressions': mocker.Mock(),
+                                'events': mocker.Mock()},
+                               mocker.Mock(),
+                               recorder,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               impmanager,
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock(),
+                               True
+                               )
 
         expected_msg = [
             mocker.call('Client is not ready - no calls possible')
@@ -86,7 +87,7 @@ class SplitManagerTests(object):  # pylint: disable=too-few-public-methods
         _logger.reset_mock()
 
 
-class SplitManagerAsyncTests(object):  # pylint: disable=too-few-public-methods
+class SplitManagerAsyncTests(object):
     """Split manager test cases."""
 
     @pytest.mark.asyncio
@@ -104,8 +105,8 @@ class SplitManagerAsyncTests(object):  # pylint: disable=too-few-public-methods
         factory.ready = True
 
         manager = SplitManagerAsync(factory)
-        split1 =  splits.from_raw(splits_json["splitChange1_1"]['ff']['d'][0])
-        split2 =  splits.from_raw(splits_json["splitChange1_3"]['ff']['d'][0])
+        split1 = splits.from_raw(splits_json["splitChange1_1"]['ff']['d'][0])
+        split2 = splits.from_raw(splits_json["splitChange1_3"]['ff']['d'][0])
         await storage.update([split1, split2], [], -1)
         manager._storage = storage
 
@@ -125,21 +126,21 @@ class SplitManagerAsyncTests(object):  # pylint: disable=too-few-public-methods
         recorder = StandardRecorderAsync(impmanager, mocker.Mock(), mocker.Mock(), telemetry_producer.get_telemetry_evaluation_producer(),
                                          telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {'splits': mocker.Mock(),
-            'segments': mocker.Mock(),
-            'impressions': mocker.Mock(),
-            'events': mocker.Mock()},
-            mocker.Mock(),
-            recorder,
-            mocker.Mock(),
-            mocker.Mock(),
-            impmanager,
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock(),
-            True
-        )
+                               {'splits': mocker.Mock(),
+                                'segments': mocker.Mock(),
+                                'impressions': mocker.Mock(),
+                                'events': mocker.Mock()},
+                               mocker.Mock(),
+                               recorder,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               impmanager,
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock(),
+                               True
+                               )
 
         expected_msg = [
             mocker.call('Client is not ready - no calls possible')

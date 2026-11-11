@@ -1,6 +1,4 @@
 """Streaming integration tests."""
-# pylint:disable=no-self-use,invalid-name,too-many-arguments,too-few-public-methods,line-too-long
-# pylint:disable=too-many-statements,too-many-locals,too-many-lines
 import threading
 import time
 import json
@@ -55,7 +53,7 @@ class StreamingIntegrationTests(object):
 
     update_flag = False
     metadata = []
-    
+
     def test_happiness(self):
         """Test initialization & splits/segment updates."""
         auth_server_response = {
@@ -75,15 +73,15 @@ class StreamingIntegrationTests(object):
             -1: {'ff': {
                 's': -1,
                 't': 1,
-                'd': [make_simple_split('split1', 1, True, False, 'on', 'user', True)]}, 
+                'd': [make_simple_split('split1', 1, True, False, 'on', 'user', True)]},
                 'rbs': {'s': -1, 't': -1, 'd': []}
             },
             1: {'ff': {
                 's': 1,
                 't': 1,
-                'd': []}, 
+                'd': []},
                 'rbs': {'s': -1, 't': -1, 'd': []}
-            }
+                }
         }
 
         segment_changes = {}
@@ -117,9 +115,9 @@ class StreamingIntegrationTests(object):
         assert _wait_until(lambda: _switched_to_streaming(factory))
         split_changes[1] = {
             'ff': {
-            's': 1,
-            't': 2,
-            'd': [make_simple_split('split1', 2, True, False, 'off', 'user', False)]}, 
+                's': 1,
+                't': 2,
+                'd': [make_simple_split('split1', 2, True, False, 'off', 'user', False)]},
             'rbs': {'s': -1, 't': -1, 'd': []}
         }
         split_changes[2] = {'ff': {'s': 2, 't': 2, 'd': []}, 'rbs': {'s': -1, 't': -1, 'd': []}}
@@ -136,10 +134,10 @@ class StreamingIntegrationTests(object):
 
         split_changes[2] = {
             'ff': {
-            's': 2,
-            't': 3,
-            'd': [make_split_with_segment('split2', 2, True, False,
-                                               'off', 'user', 'off', 'segment1')]}, 
+                's': 2,
+                't': 3,
+                'd': [make_split_with_segment('split2', 2, True, False,
+                                              'off', 'user', 'off', 'segment1')]},
             'rbs': {'s': -1, 't': -1, 'd': []}
         }
         split_changes[3] = {'ff': {'s': 3, 't': 3, 'd': []}, 'rbs': {'s': -1, 't': -1, 'd': []}}
@@ -160,14 +158,14 @@ class StreamingIntegrationTests(object):
         sse_server.publish(make_segment_change_event('segment1', 1))
         time.sleep(1)
         assert self.update_flag
-        assert self.metadata[len(self.metadata)-1].get_type() == SdkEventType.SEGMENTS_UPDATE
+        assert self.metadata[len(self.metadata) - 1].get_type() == SdkEventType.SEGMENTS_UPDATE
         flag = False
         for meta in self.metadata:
             if 'split2' in meta.get_names():
                 assert meta.get_type() == SdkEventType.FLAG_UPDATE
                 flag = True
         assert flag
-        
+
         assert factory.client().get_treatment('pindon', 'split2') == 'off'
         assert factory.client().get_treatment('maldo', 'split2') == 'on'
 
@@ -175,8 +173,8 @@ class StreamingIntegrationTests(object):
         sse_server.publish(make_split_fast_change_event(4))
         time.sleep(1)
         assert self.update_flag
-        assert self.metadata[len(self.metadata)-1].get_type() == SdkEventType.FLAG_UPDATE
-        assert 'split5' in self.metadata[len(self.metadata)-1].get_names()
+        assert self.metadata[len(self.metadata) - 1].get_type() == SdkEventType.FLAG_UPDATE
+        assert 'split5' in self.metadata[len(self.metadata) - 1].get_names()
         assert factory.client().get_treatment('maldo', 'split5') == 'on'
 
         # Validate the SSE request
@@ -277,7 +275,7 @@ class StreamingIntegrationTests(object):
 
     def _reset_flags(self):
         self.update_flag = False
-        
+
     def test_occupancy_flicker(self):
         """Test that changes in occupancy switch between polling & streaming properly."""
         auth_server_response = {
@@ -297,10 +295,10 @@ class StreamingIntegrationTests(object):
             -1: {'ff': {
                 's': -1,
                 't': 1,
-                'd': [make_simple_split('split1', 1, True, False, 'off', 'user', True)]}, 
+                'd': [make_simple_split('split1', 1, True, False, 'off', 'user', True)]},
                 'rbs': {'s': -1, 't': -1, 'd': []}
             },
-            1: {'ff': {'s': 1, 't': 1, 'd': []}, 
+            1: {'ff': {'s': 1, 't': 1, 'd': []},
                 'rbs': {'s': -1, 't': -1, 'd': []}}
         }
 
@@ -332,7 +330,7 @@ class StreamingIntegrationTests(object):
         time.sleep(2)
 
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._split_tasks.split_task._task
         assert not task.running()
 
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -342,8 +340,8 @@ class StreamingIntegrationTests(object):
         # and perform a syncAll that gets this change
         split_changes[1] = {
             'ff': {'s': 1,
-            't': 2,
-            'd': [make_simple_split('split1', 2, True, False, 'off', 'user', False)]},
+                   't': 2,
+                   'd': [make_simple_split('split1', 2, True, False, 'off', 'user', False)]},
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
         split_changes[2] = {'ff': {'s': 2, 't': 2, 'd': []}, 'rbs': {'t': -1, 's': -1, 'd': []}}
@@ -359,8 +357,8 @@ class StreamingIntegrationTests(object):
         # sync all after streaming is restored.
         split_changes[2] = {
             'ff': {'s': 2,
-            't': 3,
-            'd': [make_simple_split('split1', 3, True, False, 'off', 'user', True)]},
+                   't': 3,
+                   'd': [make_simple_split('split1', 3, True, False, 'off', 'user', True)]},
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
         split_changes[3] = {'ff': {'s': 3, 't': 3, 'd': []}, 'rbs': {'t': -1, 's': -1, 'd': []}}
@@ -373,11 +371,11 @@ class StreamingIntegrationTests(object):
         # Now we make another change and send an event so it's propagated
         split_changes[3] = {
             'ff': {'s': 3,
-            't': 4,
-            'd': [make_simple_split('split1', 4, True, False, 'off', 'user', False)]},
+                   't': 4,
+                   'd': [make_simple_split('split1', 4, True, False, 'off', 'user', False)]},
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
-        split_changes[4] = {'ff': {'s': 4, 't': 4, 'd': []}, 'rbs': {'t': -1, 's': -1, 'd': []}}        
+        split_changes[4] = {'ff': {'s': 4, 't': 4, 'd': []}, 'rbs': {'t': -1, 's': -1, 'd': []}}
         sse_server.publish(make_split_change_event(4))
         time.sleep(2)
         assert factory.client().get_treatment('maldo', 'split1') == 'off'
@@ -385,8 +383,8 @@ class StreamingIntegrationTests(object):
         # Kill the split
         split_changes[4] = {
             'ff': {'s': 4,
-            't': 5,
-            'd': [make_simple_split('split1', 5, True, True, 'frula', 'user', False)]},
+                   't': 5,
+                   'd': [make_simple_split('split1', 5, True, True, 'frula', 'user', False)]},
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
         split_changes[5] = {'ff': {'s': 5, 't': 5, 'd': []}, 'rbs': {'t': -1, 's': -1, 'd': []}}
@@ -518,10 +516,10 @@ class StreamingIntegrationTests(object):
                 's': -1,
                 't': 1,
                 'd': [make_simple_split('split1', 1, True, False, 'off', 'user', True)]},
-            'rbs': {'t': -1, 's': -1, 'd': []}
+                'rbs': {'t': -1, 's': -1, 'd': []}
             },
             1: {'ff': {'s': 1, 't': 1, 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}}
+                'rbs': {'t': -1, 's': -1, 'd': []}}
         }
 
         segment_changes = {}
@@ -552,7 +550,7 @@ class StreamingIntegrationTests(object):
         time.sleep(2)
 
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._split_tasks.split_task._task
         assert task.running()
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
 
@@ -561,12 +559,12 @@ class StreamingIntegrationTests(object):
         # and perform a syncAll that gets this change
         split_changes[1] = {
             'ff': {'s': 1,
-            't': 2,
-            'd': [make_simple_split('split1', 2, True, False, 'off', 'user', False)]},
+                   't': 2,
+                   'd': [make_simple_split('split1', 2, True, False, 'off', 'user', False)]},
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
         split_changes[2] = {'ff': {'s': 2, 't': 2, 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}}
+                            'rbs': {'t': -1, 's': -1, 'd': []}}
 
         sse_server.publish(make_occupancy('control_sec', 1))
         time.sleep(2)
@@ -646,7 +644,7 @@ class StreamingIntegrationTests(object):
         sse_server.publish(sse_server.GRACEFUL_REQUEST_END)
         sse_server.stop()
         split_backend.stop()
-        
+
     def test_streaming_status_changes(self):
         """Test changes between streaming enabled, paused and disabled."""
         auth_server_response = {
@@ -667,10 +665,10 @@ class StreamingIntegrationTests(object):
                 's': -1,
                 't': 1,
                 'd': [make_simple_split('split1', 1, True, False, 'off', 'user', True)]},
-            'rbs': {'t': -1, 's': -1, 'd': []}
+                'rbs': {'t': -1, 's': -1, 'd': []}
             },
             1: {'ff': {'s': 1, 't': 1, 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}}
+                'rbs': {'t': -1, 's': -1, 'd': []}}
         }
 
         segment_changes = {}
@@ -701,7 +699,7 @@ class StreamingIntegrationTests(object):
         time.sleep(2)
 
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._split_tasks.split_task._task
         assert not task.running()
 
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -711,8 +709,8 @@ class StreamingIntegrationTests(object):
         # and perform a syncAll that gets this change
         split_changes[1] = {
             'ff': {'s': 1,
-            't': 2,
-            'd': [make_simple_split('split1', 2, True, False, 'off', 'user', False)]},
+                   't': 2,
+                   'd': [make_simple_split('split1', 2, True, False, 'off', 'user', False)]},
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
         split_changes[2] = {'ff': {'s': 2, 't': 2, 'd': []}, 'rbs': {'t': -1, 's': -1, 'd': []}}
@@ -727,8 +725,8 @@ class StreamingIntegrationTests(object):
         # sync all after streaming is restored.
         split_changes[2] = {
             'ff': {'s': 2,
-            't': 3,
-            'd': [make_simple_split('split1', 3, True, False, 'off', 'user', True)]},
+                   't': 3,
+                   'd': [make_simple_split('split1', 3, True, False, 'off', 'user', True)]},
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
         split_changes[3] = {'ff': {'s': 3, 't': 3, 'd': []}, 'rbs': {'t': -1, 's': -1, 'd': []}}
@@ -741,12 +739,12 @@ class StreamingIntegrationTests(object):
         # Now we make another change and send an event so it's propagated
         split_changes[3] = {
             'ff': {'s': 3,
-            't': 4,
-            'd': [make_simple_split('split1', 4, True, False, 'off', 'user', False)]},
+                   't': 4,
+                   'd': [make_simple_split('split1', 4, True, False, 'off', 'user', False)]},
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
         split_changes[4] = {'ff': {'s': 4, 't': 4, 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}}
+                            'rbs': {'t': -1, 's': -1, 'd': []}}
         sse_server.publish(make_split_change_event(4))
         time.sleep(2)
         assert factory.client().get_treatment('maldo', 'split1') == 'off'
@@ -754,12 +752,12 @@ class StreamingIntegrationTests(object):
 
         split_changes[4] = {
             'ff': {'s': 4,
-            't': 5,
-            'd': [make_simple_split('split1', 5, True, False, 'off', 'user', True)]},
+                   't': 5,
+                   'd': [make_simple_split('split1', 5, True, False, 'off', 'user', True)]},
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
         split_changes[5] = {'ff': {'s': 5, 't': 5, 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}}
+                            'rbs': {'t': -1, 's': -1, 'd': []}}
         sse_server.publish(make_control_event('STREAMING_DISABLED', 2))
         time.sleep(2)
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -891,14 +889,14 @@ class StreamingIntegrationTests(object):
                 's': -1,
                 't': 1,
                 'd': [make_simple_split('split1', 1, True, False, 'on', 'user', True)]},
-            'rbs': {'t': -1, 's': -1, 'd': []}
+                'rbs': {'t': -1, 's': -1, 'd': []}
             },
             1: {'ff': {
                 's': 1,
                 't': 1,
                 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}
-            }
+                'rbs': {'t': -1, 's': -1, 'd': []}
+                }
         }
 
         segment_changes = {}
@@ -929,7 +927,7 @@ class StreamingIntegrationTests(object):
         factory.block_until_ready(1)
         assert factory.ready
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._split_tasks.split_task._task
         assert not task.running()
 
         time.sleep(1)
@@ -940,7 +938,7 @@ class StreamingIntegrationTests(object):
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
         split_changes[2] = {'ff': {'s': 2, 't': 2, 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}}
+                            'rbs': {'t': -1, 's': -1, 'd': []}}
         sse_server.publish(make_split_change_event(2))
         time.sleep(1)
         assert factory.client().get_treatment('maldo', 'split1') == 'off'
@@ -966,7 +964,7 @@ class StreamingIntegrationTests(object):
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
         split_changes[3] = {'ff': {'s': 3, 't': 3, 'd': [],
-            'rbs': {'t': -1, 's': -1, 'd': []}}}
+                                   'rbs': {'t': -1, 's': -1, 'd': []}}}
         sse_server.publish(make_split_change_event(3))
         time.sleep(1)
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -1113,10 +1111,10 @@ class StreamingIntegrationTests(object):
                 's': -1,
                 't': 1,
                 'd': [make_simple_split('split1', 1, True, False, 'off', 'user', True)]},
-            'rbs': {'t': -1, 's': -1, 'd': []}
+                'rbs': {'t': -1, 's': -1, 'd': []}
             },
             1: {'ff': {'s': 1, 't': 1, 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}}
+                'rbs': {'t': -1, 's': -1, 'd': []}}
         }
 
         segment_changes = {}
@@ -1147,7 +1145,7 @@ class StreamingIntegrationTests(object):
         time.sleep(2)
 
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._split_tasks.split_task._task
         assert not task.running()
 
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -1161,7 +1159,7 @@ class StreamingIntegrationTests(object):
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
         split_changes[2] = {'ff': {'s': 2, 't': 2, 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}}
+                            'rbs': {'t': -1, 's': -1, 'd': []}}
 
         sse_server.publish(make_ably_error_event(60000, 600))
         time.sleep(1)
@@ -1191,7 +1189,7 @@ class StreamingIntegrationTests(object):
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
         split_changes[3] = {'ff': {'s': 3, 't': 3, 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}}
+                            'rbs': {'t': -1, 's': -1, 'd': []}}
         sse_server.publish(make_split_change_event(3))
         time.sleep(2)
         assert factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -1347,10 +1345,10 @@ class StreamingIntegrationTests(object):
                 's': -1,
                 't': 1,
                 'd': [make_simple_split('split1', 1, True, False, 'off', 'user', True)]},
-            'rbs': {'t': -1, 's': -1, 'd': []}
+                'rbs': {'t': -1, 's': -1, 'd': []}
             },
             1: {'ff': {'s': 1, 't': 1, 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}}
+                'rbs': {'t': -1, 's': -1, 'd': []}}
         }
 
         segment_changes = {}
@@ -1426,14 +1424,14 @@ class StreamingIntegrationAsyncTests(object):
                 's': -1,
                 't': 1,
                 'd': [make_simple_split('split1', 1, True, False, 'on', 'user', True)]},
-            'rbs': {'t': -1, 's': -1, 'd': []}
+                'rbs': {'t': -1, 's': -1, 'd': []}
             },
             1: {'ff': {
                 's': 1,
                 't': 1,
                 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}
-            }
+                'rbs': {'t': -1, 's': -1, 'd': []}
+                }
         }
 
         segment_changes = {}
@@ -1472,7 +1470,7 @@ class StreamingIntegrationAsyncTests(object):
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
         split_changes[2] = {'ff': {'s': 2, 't': 2, 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}}
+                            'rbs': {'t': -1, 's': -1, 'd': []}}
         sse_server.publish(make_split_change_event(2))
         await asyncio.sleep(1)
         flag = False
@@ -1481,18 +1479,18 @@ class StreamingIntegrationAsyncTests(object):
                 assert meta.get_type() == SdkEventType.FLAG_UPDATE
                 flag = True
         assert flag
-        
+
         assert await factory.client().get_treatment('maldo', 'split1') == 'off'
 
         split_changes[2] = {'ff': {
             's': 2,
             't': 3,
             'd': [make_split_with_segment('split2', 2, True, False,
-                                               'off', 'user', 'off', 'segment1')]},
+                                          'off', 'user', 'off', 'segment1')]},
             'rbs': {'t': -1, 's': -1, 'd': []}
         }
         split_changes[3] = {'ff': {'s': 3, 't': 3, 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}}
+                            'rbs': {'t': -1, 's': -1, 'd': []}}
         segment_changes[('segment1', -1)] = {
             'name': 'segment1',
             'added': ['maldo'],
@@ -1626,10 +1624,10 @@ class StreamingIntegrationAsyncTests(object):
                 's': -1,
                 't': 1,
                 'd': [make_simple_split('split1', 1, True, False, 'off', 'user', True)]},
-            'rbs': {'t': -1, 's': -1, 'd': []}
+                'rbs': {'t': -1, 's': -1, 'd': []}
             },
             1: {'ff': {'s': 1, 't': 1, 'd': []},
-            'rbs': {'t': -1, 's': -1, 'd': []}}
+                'rbs': {'t': -1, 's': -1, 'd': []}}
         }
 
         segment_changes = {}
@@ -1660,7 +1658,7 @@ class StreamingIntegrationAsyncTests(object):
         await asyncio.sleep(2)
 
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._split_tasks.split_task._task
         assert not task.running()
 
         assert await factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -1843,7 +1841,7 @@ class StreamingIntegrationAsyncTests(object):
                 's': -1,
                 't': 1,
                 'd': [make_simple_split('split1', 1, True, False, 'off', 'user', True)]},
-            'rbs': {'t': -1, 's': -1, 'd': []}
+                'rbs': {'t': -1, 's': -1, 'd': []}
             },
             1: {'ff': {'s': 1, 't': 1, 'd': []}, 'rbs': {'t': -1, 's': -1, 'd': []}}
         }
@@ -1879,7 +1877,7 @@ class StreamingIntegrationAsyncTests(object):
         await asyncio.sleep(2)
 
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._split_tasks.split_task._task
         assert task.running()
         assert await factory.client().get_treatment('maldo', 'split1') == 'on'
 
@@ -1992,7 +1990,7 @@ class StreamingIntegrationAsyncTests(object):
                 's': -1,
                 't': 1,
                 'd': [make_simple_split('split1', 1, True, False, 'off', 'user', True)]},
-            'rbs': {'t': -1, 's': -1, 'd': []}
+                'rbs': {'t': -1, 's': -1, 'd': []}
             },
             1: {'ff': {'s': 1, 't': 1, 'd': []}, 'rbs': {'t': -1, 's': -1, 'd': []}}
         }
@@ -2028,7 +2026,7 @@ class StreamingIntegrationAsyncTests(object):
         await asyncio.sleep(2)
 
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._split_tasks.split_task._task
         assert not task.running()
 
         assert await factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -2217,7 +2215,7 @@ class StreamingIntegrationAsyncTests(object):
                 's': -1,
                 't': 1,
                 'd': [make_simple_split('split1', 1, True, False, 'on', 'user', True)]},
-            'rbs': {'t': -1, 's': -1, 'd': []}
+                'rbs': {'t': -1, 's': -1, 'd': []}
             },
             1: {'ff': {'s': 1, 't': 1, 'd': []}, 'rbs': {'t': -1, 's': -1, 'd': []}}
         }
@@ -2249,7 +2247,7 @@ class StreamingIntegrationAsyncTests(object):
         await factory.block_until_ready(1)
         assert factory.ready
         assert await factory.client().get_treatment('maldo', 'split1') == 'on'
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._split_tasks.split_task._task
         assert not task.running()
 
         await asyncio.sleep(1)
@@ -2432,7 +2430,7 @@ class StreamingIntegrationAsyncTests(object):
                 's': -1,
                 't': 1,
                 'd': [make_simple_split('split1', 1, True, False, 'off', 'user', True)]},
-            'rbs': {'t': -1, 's': -1, 'd': []}
+                'rbs': {'t': -1, 's': -1, 'd': []}
             },
             1: {'ff': {'s': 1, 't': 1, 'd': []}, 'rbs': {'t': -1, 's': -1, 'd': []}}
         }
@@ -2467,7 +2465,7 @@ class StreamingIntegrationAsyncTests(object):
         assert factory.ready
         await asyncio.sleep(2)
         # Get a hook of the task so we can query its status
-        task = factory._sync_manager._synchronizer._split_tasks.split_task._task  # pylint:disable=protected-access
+        task = factory._sync_manager._synchronizer._split_tasks.split_task._task
         assert not task.running()
 
         assert await factory.client().get_treatment('maldo', 'split1') == 'on'
@@ -2663,7 +2661,7 @@ class StreamingIntegrationAsyncTests(object):
                 's': -1,
                 't': 1,
                 'd': [make_simple_split('split1', 1, True, False, 'off', 'user', True)]},
-            'rbs': {'t': -1, 's': -1, 'd': []}
+                'rbs': {'t': -1, 's': -1, 'd': []}
             },
             1: {'ff': {'s': 1, 't': 1, 'd': []}, 'rbs': {'t': -1, 's': -1, 'd': []}}
         }
@@ -2710,22 +2708,24 @@ class StreamingIntegrationAsyncTests(object):
         sse_server.stop()
         split_backend.stop()
 
+
 def make_split_change_event(change_number):
     """Make a split change event."""
     return {
         'event': 'message',
         'data': json.dumps({
-            'id':'TVUsxaabHs:0:0',
-            'clientId':'pri:MzM0ODI1MTkxMw==',
-            'timestamp': change_number-1,
-            'encoding':'json',
-            'channel':'MTYyMTcxOTQ4Mw==_MjA4MzczNDU1Mg==_splits',
+            'id': 'TVUsxaabHs:0:0',
+            'clientId': 'pri:MzM0ODI1MTkxMw==',
+            'timestamp': change_number - 1,
+            'encoding': 'json',
+            'channel': 'MTYyMTcxOTQ4Mw==_MjA4MzczNDU1Mg==_splits',
             'data': json.dumps({
                 'type': 'SPLIT_UPDATE',
                 'changeNumber': change_number
             })
         })
     }
+
 
 def make_split_fast_change_event(change_number):
     """Make a split change event."""
@@ -2738,11 +2738,11 @@ def make_split_fast_change_event(change_number):
     return {
         'event': 'message',
         'data': json.dumps({
-            'id':'TVUsxaabHs:0:0',
-            'clientId':'pri:MzM0ODI1MTkxMw==',
-            'timestamp': change_number-1,
-            'encoding':'json',
-            'channel':'MTYyMTcxOTQ4Mw==_MjA4MzczNDU1Mg==_splits',
+            'id': 'TVUsxaabHs:0:0',
+            'clientId': 'pri:MzM0ODI1MTkxMw==',
+            'timestamp': change_number - 1,
+            'encoding': 'json',
+            'channel': 'MTYyMTcxOTQ4Mw==_MjA4MzczNDU1Mg==_splits',
             'data': json.dumps({
                 'type': 'SPLIT_UPDATE',
                 'changeNumber': change_number,
@@ -2753,16 +2753,17 @@ def make_split_fast_change_event(change_number):
         })
     }
 
+
 def make_split_kill_event(name, default_treatment, change_number):
     """Make a split change event."""
     return {
         'event': 'message',
         'data': json.dumps({
-            'id':'TVUsxaabHs:0:0',
-            'clientId':'pri:MzM0ODI1MTkxMw==',
-            'timestamp': change_number-1,
-            'encoding':'json',
-            'channel':'MTYyMTcxOTQ4Mw==_MjA4MzczNDU1Mg==_splits',
+            'id': 'TVUsxaabHs:0:0',
+            'clientId': 'pri:MzM0ODI1MTkxMw==',
+            'timestamp': change_number - 1,
+            'encoding': 'json',
+            'channel': 'MTYyMTcxOTQ4Mw==_MjA4MzczNDU1Mg==_splits',
             'data': json.dumps({
                 'type': 'SPLIT_KILL',
                 'splitName': name,
@@ -2772,34 +2773,37 @@ def make_split_kill_event(name, default_treatment, change_number):
         })
     }
 
+
 def make_initial_event():
     """Make a split change event."""
-    return {'id':'TVUsxaabHs:0:0'}
+    return {'id': 'TVUsxaabHs:0:0'}
+
 
 def make_occupancy(channel, publishers):
     """Make an occupancy event."""
     return {
         'event': 'message',
         'data': json.dumps({
-            'id':'aP6EuhrcUm:0:0',
-            'timestamp':1604325712734,
+            'id': 'aP6EuhrcUm:0:0',
+            'timestamp': 1604325712734,
             'encoding': 'json',
             'channel': "[?occupancy=metrics.publishers]%s" % channel,
             'data': json.dumps({'metrics': {'publishers': publishers}}),
-            'name':'[meta]occupancy'
+            'name': '[meta]occupancy'
         })
     }
+
 
 def make_segment_change_event(name, change_number):
     """Make a split change event."""
     return {
         'event': 'message',
         'data': json.dumps({
-            'id':'TVUsxaabHs:0:0',
-            'clientId':'pri:MzM0ODI1MTkxMw==',
-            'timestamp': change_number-1,
-            'encoding':'json',
-            'channel':'MTYyMTcxOTQ4Mw==_MjA4MzczNDU1Mg==_segments',
+            'id': 'TVUsxaabHs:0:0',
+            'clientId': 'pri:MzM0ODI1MTkxMw==',
+            'timestamp': change_number - 1,
+            'encoding': 'json',
+            'channel': 'MTYyMTcxOTQ4Mw==_MjA4MzczNDU1Mg==_segments',
             'data': json.dumps({
                 'type': 'SEGMENT_UPDATE',
                 'segmentName': name,
@@ -2808,16 +2812,17 @@ def make_segment_change_event(name, change_number):
         })
     }
 
+
 def make_control_event(control_type, timestamp):
     """Make a control event."""
     return {
         'event': 'message',
         'data': json.dumps({
-            'id':'TVUsxaabHs:0:0',
-            'clientId':'pri:MzM0ODI1MTkxMw==',
+            'id': 'TVUsxaabHs:0:0',
+            'clientId': 'pri:MzM0ODI1MTkxMw==',
             'timestamp': timestamp,
-            'encoding':'json',
-            'channel':'[?occupancy=metrics.publishers]control_pri',
+            'encoding': 'json',
+            'channel': '[?occupancy=metrics.publishers]control_pri',
             'data': json.dumps({
                 'type': 'CONTROL',
                 'controlType': control_type,
@@ -2825,17 +2830,19 @@ def make_control_event(control_type, timestamp):
         })
     }
 
+
 def make_ably_error_event(code, status):
     """Make a control event."""
     return {
         'event': 'error',
         'data': json.dumps({
-            'message':'Invalid accessToken in request: sarasa',
+            'message': 'Invalid accessToken in request: sarasa',
             'code': code,
             'statusCode': status,
-            'href':"https://help.ably.io/error/%d" % code
+            'href': "https://help.ably.io/error/%d" % code
         })
     }
+
 
 def make_simple_split(name, cn, active, killed, default_treatment, tt, on):
     """Make a simple split."""
@@ -2867,6 +2874,7 @@ def make_simple_split(name, cn, active, killed, default_treatment, tt, on):
             }
         ]
     }
+
 
 def make_split_with_segment(name, cn, active, killed, default_treatment,
                             tt, on, segment):

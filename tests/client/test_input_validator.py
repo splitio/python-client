@@ -4,20 +4,21 @@ import logging
 import asyncio
 
 from splitio.client.factory import SplitFactory, get_factory, SplitFactoryAsync, get_factory_async
-from splitio.client.client import CONTROL, Client, _LOGGER as _logger, ClientAsync
+from splitio.client.client import CONTROL, Client, ClientAsync
 from splitio.client.key import Key
 from splitio.events.events_manager import EventsManagerAsync
 from splitio.storage import SplitStorage, EventStorage, ImpressionStorage, SegmentStorage, RuleBasedSegmentsStorage
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync, \
-    InMemorySplitStorage, InMemorySplitStorageAsync, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
+    InMemorySplitStorage, InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.models.splits import Split
 from splitio.models.fallback_config import FallbackTreatmentCalculator
 from splitio.client import input_validator
-from splitio.client.manager import SplitManager, SplitManagerAsync 
+from splitio.client.manager import SplitManager, SplitManagerAsync
 from splitio.recorder.recorder import StandardRecorder, StandardRecorderAsync
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.engine.impressions.impressions import Manager as ImpressionManager
 from splitio.models.fallback_treatment import FallbackTreatment
+
 
 class ClientInputValidationTests(object):
     """Input validation test cases."""
@@ -43,13 +44,13 @@ class ClientInputValidationTests(object):
         recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                               {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             mocker.Mock(),
@@ -287,13 +288,13 @@ class ClientInputValidationTests(object):
         recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                               {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             mocker.Mock(),
@@ -565,13 +566,13 @@ class ClientInputValidationTests(object):
         recorder = StandardRecorder(impmanager, events_storage_mock, ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {
-                'splits': split_storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': events_storage_mock,
-            },
+                               {
+            'splits': split_storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': events_storage_mock,
+        },
             mocker.Mock(),
             recorder,
             mocker.Mock(),
@@ -847,13 +848,13 @@ class ClientInputValidationTests(object):
         recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                               {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             mocker.Mock(),
@@ -997,13 +998,13 @@ class ClientInputValidationTests(object):
         recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                               {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             mocker.Mock(),
@@ -1148,13 +1149,13 @@ class ClientInputValidationTests(object):
         recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                               {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             mocker.Mock(),
@@ -1269,13 +1270,13 @@ class ClientInputValidationTests(object):
         recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                               {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             mocker.Mock(),
@@ -1375,6 +1376,7 @@ class ClientInputValidationTests(object):
 
     def test_get_treatments_with_config_by_flag_set(self, mocker):
         split_mock = mocker.Mock(spec=Split)
+
         def _configs(treatment):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
         split_mock.get_configurations_for.side_effect = _configs
@@ -1392,7 +1394,7 @@ class ClientInputValidationTests(object):
         }
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
         rbs_storage.fetch_many.return_value = {}
-        
+
         storage_mock.get_feature_flags_by_sets.return_value = ['some_feature']
 
         impmanager = mocker.Mock(spec=ImpressionManager)
@@ -1401,13 +1403,13 @@ class ClientInputValidationTests(object):
         recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                               {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             mocker.Mock(),
@@ -1501,6 +1503,7 @@ class ClientInputValidationTests(object):
 
     def test_get_treatments_with_config_by_flag_sets(self, mocker):
         split_mock = mocker.Mock(spec=Split)
+
         def _configs(treatment):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
         split_mock.get_configurations_for.side_effect = _configs
@@ -1518,7 +1521,7 @@ class ClientInputValidationTests(object):
         }
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorage)
         rbs_storage.fetch_many.return_value = {}
-        
+
         storage_mock.get_feature_flags_by_sets.return_value = ['some_feature']
 
         impmanager = mocker.Mock(spec=ImpressionManager)
@@ -1527,13 +1530,13 @@ class ClientInputValidationTests(object):
         recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                               {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             mocker.Mock(),
@@ -1655,16 +1658,16 @@ class ClientInputValidationTests(object):
         _logger = mocker.Mock()
         mocker.patch('splitio.client.input_validator._LOGGER', new=_logger)
 
-        assert input_validator.validate_fallback_treatment(FallbackTreatment("on", {"prop":"val"}))
+        assert input_validator.validate_fallback_treatment(FallbackTreatment("on", {"prop": "val"}))
         assert input_validator.validate_fallback_treatment(FallbackTreatment("on"))
-        
+
         _logger.reset_mock()
         assert not input_validator.validate_fallback_treatment(FallbackTreatment("on" * 100))
         assert _logger.warning.mock_calls == [
             mocker.call("Config: Fallback treatment size should not exceed %s characters", 100)
         ]
-        
-        assert input_validator.validate_fallback_treatment(FallbackTreatment("on", {"prop" * 500:"val" * 500}))
+
+        assert input_validator.validate_fallback_treatment(FallbackTreatment("on", {"prop" * 500: "val" * 500}))
 
         _logger.reset_mock()
         assert not input_validator.validate_fallback_treatment(FallbackTreatment("on/c"))
@@ -1680,7 +1683,8 @@ class ClientInputValidationTests(object):
 
         assert input_validator.validate_fallback_treatment(FallbackTreatment("on_c"))
         assert input_validator.validate_fallback_treatment(FallbackTreatment("on_45-c"))
-        
+
+
 class ClientInputValidationAsyncTests(object):
     """Input validation test cases."""
 
@@ -1689,6 +1693,7 @@ class ClientInputValidationAsyncTests(object):
         """Test get_treatment validation."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
@@ -1702,12 +1707,14 @@ class ClientInputValidationAsyncTests(object):
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
         storage_mock = mocker.Mock(spec=SplitStorage)
+
         async def fetch_many(*_):
             return {
-            'some_feature': split_mock
+                'some_feature': split_mock
             }
         storage_mock.fetch_many = fetch_many
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+
         async def fetch_many_rbs(*_):
             return {}
         rbs_storage.fetch_many = fetch_many_rbs
@@ -1720,15 +1727,15 @@ class ClientInputValidationAsyncTests(object):
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
-                                    telemetry_producer.get_telemetry_runtime_producer())
+                                         telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                                    {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             internal_events_queue,
@@ -1935,6 +1942,7 @@ class ClientInputValidationAsyncTests(object):
         ]
 
         _logger.reset_mock()
+
         async def fetch_many(*_):
             return {'some_feature': None}
         storage_mock.fetch_many = fetch_many
@@ -1956,6 +1964,7 @@ class ClientInputValidationAsyncTests(object):
         """Test get_treatment validation."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
@@ -1973,12 +1982,14 @@ class ClientInputValidationAsyncTests(object):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
         split_mock.get_configurations_for.side_effect = _configs
         storage_mock = mocker.Mock(spec=SplitStorage)
+
         async def fetch_many(*_):
             return {
-            'some_feature': split_mock
+                'some_feature': split_mock
             }
         storage_mock.fetch_many = fetch_many
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+
         async def fetch_many_rbs(*_):
             return {}
         rbs_storage.fetch_many = fetch_many_rbs
@@ -1991,15 +2002,15 @@ class ClientInputValidationAsyncTests(object):
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
-                                    telemetry_producer.get_telemetry_runtime_producer())
+                                         telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                                    {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             internal_events_queue,
@@ -2015,6 +2026,7 @@ class ClientInputValidationAsyncTests(object):
         type(factory).ready = ready_mock
 
         client = ClientAsync(factory, mocker.Mock(), events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
+
         async def record_treatment_stats(*_):
             pass
         client._recorder.record_treatment_stats = record_treatment_stats
@@ -2205,6 +2217,7 @@ class ClientInputValidationAsyncTests(object):
         ]
 
         _logger.reset_mock()
+
         async def fetch_many(*_):
             return {'some_feature': None}
         storage_mock.fetch_many = fetch_many
@@ -2226,11 +2239,13 @@ class ClientInputValidationAsyncTests(object):
         """Test track method()."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
 
         events_storage_mock = mocker.Mock(spec=EventStorage)
+
         async def put(*_):
             return True
         events_storage_mock.put = put
@@ -2244,15 +2259,15 @@ class ClientInputValidationAsyncTests(object):
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         recorder = StandardRecorderAsync(impmanager, events_storage_mock, ImpressionStorage, telemetry_producer.get_telemetry_evaluation_producer(),
-                                    telemetry_producer.get_telemetry_runtime_producer())
+                                         telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {
-                'splits': split_storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': events_storage_mock,
-            },
+                                    {
+            'splits': split_storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': events_storage_mock,
+        },
             mocker.Mock(),
             recorder,
             internal_events_queue,
@@ -2509,6 +2524,7 @@ class ClientInputValidationAsyncTests(object):
         """Test getTreatments() method."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
@@ -2522,19 +2538,23 @@ class ClientInputValidationAsyncTests(object):
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
         storage_mock = mocker.Mock(spec=SplitStorage)
+
         async def get(*_):
             return split_mock
         storage_mock.get = get
+
         async def get_change_number(*_):
             return 1
         storage_mock.get_change_number = get_change_number
+
         async def fetch_many(*_):
             return {
-            'some_feature': split_mock,
-            'some': split_mock,
-        }
+                'some_feature': split_mock,
+                'some': split_mock,
+            }
         storage_mock.fetch_many = fetch_many
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+
         async def fetch_many_rbs(*_):
             return {}
         rbs_storage.fetch_many = fetch_many_rbs
@@ -2543,15 +2563,15 @@ class ClientInputValidationAsyncTests(object):
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
-                                    telemetry_producer.get_telemetry_runtime_producer())
+                                         telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                                    {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             internal_events_queue,
@@ -2567,6 +2587,7 @@ class ClientInputValidationAsyncTests(object):
         type(factory).ready = ready_mock
 
         client = ClientAsync(factory, recorder, events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
+
         async def record_treatment_stats(*_):
             pass
         client._recorder.record_treatment_stats = record_treatment_stats
@@ -2656,10 +2677,11 @@ class ClientInputValidationAsyncTests(object):
         ]
 
         _logger.reset_mock()
+
         async def fetch_many(*_):
             return {
-            'some_feature': None
-        }
+                'some_feature': None
+            }
         storage_mock.fetch_many = fetch_many
 
         ready_mock = mocker.PropertyMock()
@@ -2682,6 +2704,7 @@ class ClientInputValidationAsyncTests(object):
         """Test getTreatments() method."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
@@ -2696,18 +2719,22 @@ class ClientInputValidationAsyncTests(object):
         type(split_mock).prerequisites = []
 
         storage_mock = mocker.Mock(spec=SplitStorage)
+
         async def get(*_):
             return split_mock
         storage_mock.get = get
+
         async def get_change_number(*_):
             return 1
         storage_mock.get_change_number = get_change_number
+
         async def fetch_many(*_):
             return {
-            'some_feature': split_mock
-        }
+                'some_feature': split_mock
+            }
         storage_mock.fetch_many = fetch_many
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+
         async def fetch_many_rbs(*_):
             return {}
         rbs_storage.fetch_many = fetch_many_rbs
@@ -2716,15 +2743,15 @@ class ClientInputValidationAsyncTests(object):
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
-                                    telemetry_producer.get_telemetry_runtime_producer())
+                                         telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                                    {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             internal_events_queue,
@@ -2743,6 +2770,7 @@ class ClientInputValidationAsyncTests(object):
         split_mock.get_configurations_for.side_effect = _configs
 
         client = ClientAsync(factory, mocker.Mock(), events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
+
         async def record_treatment_stats(*_):
             pass
         client._recorder.record_treatment_stats = record_treatment_stats
@@ -2831,10 +2859,11 @@ class ClientInputValidationAsyncTests(object):
         ]
 
         _logger.reset_mock()
+
         async def fetch_many(*_):
             return {
-            'some_feature': None
-        }
+                'some_feature': None
+            }
         storage_mock.fetch_many = fetch_many
 
         ready_mock = mocker.PropertyMock()
@@ -2856,6 +2885,7 @@ class ClientInputValidationAsyncTests(object):
     async def test_get_treatments_by_flag_set(self, mocker):
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
@@ -2869,22 +2899,27 @@ class ClientInputValidationAsyncTests(object):
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
         storage_mock = mocker.Mock(spec=SplitStorage)
+
         async def get(*_):
             return split_mock
         storage_mock.get = get
+
         async def get_change_number(*_):
             return 1
         storage_mock.get_change_number = get_change_number
+
         async def fetch_many(*_):
             return {
-            'some_feature': split_mock,
-            'some': split_mock,
-        }
+                'some_feature': split_mock,
+                'some': split_mock,
+            }
         storage_mock.fetch_many = fetch_many
+
         async def get_feature_flags_by_sets(*_):
             return ['some_feature']
         storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+
         async def fetch_many_rbs(*_):
             return {}
         rbs_storage.fetch_many = fetch_many_rbs
@@ -2893,15 +2928,15 @@ class ClientInputValidationAsyncTests(object):
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
-                                    telemetry_producer.get_telemetry_runtime_producer())
+                                         telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                                    {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             internal_events_queue,
@@ -2917,6 +2952,7 @@ class ClientInputValidationAsyncTests(object):
         type(factory).ready = ready_mock
 
         client = ClientAsync(factory, recorder, events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
+
         async def record_treatment_stats(*_):
             pass
         client._recorder.record_treatment_stats = record_treatment_stats
@@ -2986,10 +3022,11 @@ class ClientInputValidationAsyncTests(object):
         ]
 
         _logger.reset_mock()
+
         async def fetch_many(*_):
             return {
-            'some_feature': None
-        }
+                'some_feature': None
+            }
         storage_mock.fetch_many = fetch_many
 
         async def get_feature_flags_by_sets(*_):
@@ -3010,6 +3047,7 @@ class ClientInputValidationAsyncTests(object):
     async def test_get_treatments_by_flag_sets(self, mocker):
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
@@ -3023,23 +3061,27 @@ class ClientInputValidationAsyncTests(object):
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
         storage_mock = mocker.Mock(spec=SplitStorage)
+
         async def get(*_):
             return split_mock
         storage_mock.get = get
+
         async def get_change_number(*_):
             return 1
         storage_mock.get_change_number = get_change_number
+
         async def fetch_many(*_):
             return {
-            'some_feature': split_mock,
-            'some': split_mock,
-        }
+                'some_feature': split_mock,
+                'some': split_mock,
+            }
         storage_mock.fetch_many = fetch_many
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+
         async def fetch_many_rbs(*_):
             return {}
         rbs_storage.fetch_many = fetch_many_rbs
-        
+
         async def get_feature_flags_by_sets(*_):
             return ['some_feature']
         storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
@@ -3048,15 +3090,15 @@ class ClientInputValidationAsyncTests(object):
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
-                                    telemetry_producer.get_telemetry_runtime_producer())
+                                         telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                                    {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             internal_events_queue,
@@ -3072,6 +3114,7 @@ class ClientInputValidationAsyncTests(object):
         type(factory).ready = ready_mock
 
         client = ClientAsync(factory, recorder, events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
+
         async def record_treatment_stats(*_):
             pass
         client._recorder.record_treatment_stats = record_treatment_stats
@@ -3147,10 +3190,11 @@ class ClientInputValidationAsyncTests(object):
         ]
 
         _logger.reset_mock()
+
         async def fetch_many(*_):
             return {
-            'some_feature': None
-        }
+                'some_feature': None
+            }
         storage_mock.fetch_many = fetch_many
 
         async def get_feature_flags_by_sets(*_):
@@ -3171,11 +3215,13 @@ class ClientInputValidationAsyncTests(object):
     async def test_get_treatments_with_config_by_flag_set(self, mocker):
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
 
         split_mock = mocker.Mock(spec=Split)
+
         def _configs(treatment):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
         split_mock.get_configurations_for.side_effect = _configs
@@ -3188,22 +3234,27 @@ class ClientInputValidationAsyncTests(object):
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
         storage_mock = mocker.Mock(spec=SplitStorage)
+
         async def get(*_):
             return split_mock
         storage_mock.get = get
+
         async def get_change_number(*_):
             return 1
         storage_mock.get_change_number = get_change_number
+
         async def fetch_many(*_):
             return {
-            'some_feature': split_mock,
-            'some': split_mock,
-        }
+                'some_feature': split_mock,
+                'some': split_mock,
+            }
         storage_mock.fetch_many = fetch_many
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+
         async def fetch_many_rbs(*_):
             return {}
         rbs_storage.fetch_many = fetch_many_rbs
+
         async def get_feature_flags_by_sets(*_):
             return ['some_feature']
         storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
@@ -3212,15 +3263,15 @@ class ClientInputValidationAsyncTests(object):
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
-                                    telemetry_producer.get_telemetry_runtime_producer())
+                                         telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                                    {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             internal_events_queue,
@@ -3236,6 +3287,7 @@ class ClientInputValidationAsyncTests(object):
         type(factory).ready = ready_mock
 
         client = ClientAsync(factory, recorder, events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
+
         async def record_treatment_stats(*_):
             pass
         client._recorder.record_treatment_stats = record_treatment_stats
@@ -3305,10 +3357,11 @@ class ClientInputValidationAsyncTests(object):
         ]
 
         _logger.reset_mock()
+
         async def fetch_many(*_):
             return {
-            'some_feature': None
-        }
+                'some_feature': None
+            }
         storage_mock.fetch_many = fetch_many
 
         async def get_feature_flags_by_sets(*_):
@@ -3329,11 +3382,13 @@ class ClientInputValidationAsyncTests(object):
     async def test_get_treatments_with_config_by_flag_sets(self, mocker):
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
 
         split_mock = mocker.Mock(spec=Split)
+
         def _configs(treatment):
             return '{"some": "property"}' if treatment == 'default_treatment' else None
         split_mock.get_configurations_for.side_effect = _configs
@@ -3345,23 +3400,27 @@ class ClientInputValidationAsyncTests(object):
         type(split_mock).conditions = conditions_mock
         type(split_mock).prerequisites = []
         storage_mock = mocker.Mock(spec=SplitStorage)
+
         async def get(*_):
             return split_mock
         storage_mock.get = get
+
         async def get_change_number(*_):
             return 1
         storage_mock.get_change_number = get_change_number
+
         async def fetch_many(*_):
             return {
-            'some_feature': split_mock,
-            'some': split_mock,
-        }
+                'some_feature': split_mock,
+                'some': split_mock,
+            }
         storage_mock.fetch_many = fetch_many
         rbs_storage = mocker.Mock(spec=InMemoryRuleBasedSegmentStorageAsync)
+
         async def fetch_many_rbs(*_):
             return {}
         rbs_storage.fetch_many = fetch_many_rbs
-        
+
         async def get_feature_flags_by_sets(*_):
             return ['some_feature']
         storage_mock.get_feature_flags_by_sets = get_feature_flags_by_sets
@@ -3370,15 +3429,15 @@ class ClientInputValidationAsyncTests(object):
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
-                                    telemetry_producer.get_telemetry_runtime_producer())
+                                         telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': rbs_storage,
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                                    {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': rbs_storage,
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             internal_events_queue,
@@ -3395,6 +3454,7 @@ class ClientInputValidationAsyncTests(object):
         type(factory).ready = ready_mock
 
         client = ClientAsync(factory, recorder, events_manager, mocker.Mock(), FallbackTreatmentCalculator(None))
+
         async def record_treatment_stats(*_):
             pass
         client._recorder.record_treatment_stats = record_treatment_stats
@@ -3470,10 +3530,11 @@ class ClientInputValidationAsyncTests(object):
         ]
 
         _logger.reset_mock()
+
         async def fetch_many(*_):
             return {
-            'some_feature': None
-        }
+                'some_feature': None
+            }
         storage_mock.fetch_many = fetch_many
 
         async def get_feature_flags_by_sets(*_):
@@ -3489,7 +3550,6 @@ class ClientInputValidationAsyncTests(object):
             mocker.call("%s: No valid Flag set or no feature flags found for evaluating treatments", "get_treatments_with_config_by_flag_sets")
         ]
         await factory.destroy()
-
 
     def test_flag_sets_validation(self):
         """Test sanitization for flag sets."""
@@ -3518,7 +3578,7 @@ class ClientInputValidationAsyncTests(object):
         assert flag_sets == []
 
 
-class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-methods
+class ManagerInputValidationTests(object):
     """Manager input validation test cases."""
 
     def test_split_(self, mocker):
@@ -3533,13 +3593,13 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
         recorder = StandardRecorder(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
                                     telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                               {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             mocker.Mock(),
@@ -3594,7 +3654,8 @@ class ManagerInputValidationTests(object):  #pylint: disable=too-few-public-meth
             'nonexistant-split'
         )]
 
-class ManagerInputValidationAsyncTests(object):  #pylint: disable=too-few-public-methods
+
+class ManagerInputValidationAsyncTests(object):
     """Manager input validation test cases."""
 
     @pytest.mark.asyncio
@@ -3602,12 +3663,14 @@ class ManagerInputValidationAsyncTests(object):  #pylint: disable=too-few-public
         """Test split input validation."""
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
 
         storage_mock = mocker.Mock(spec=SplitStorage)
         split_mock = mocker.Mock(spec=Split)
+
         async def get(*_):
             return split_mock
         storage_mock.get = get
@@ -3616,15 +3679,15 @@ class ManagerInputValidationAsyncTests(object):  #pylint: disable=too-few-public
         telemetry_storage = await InMemoryTelemetryStorageAsync.create()
         telemetry_producer = TelemetryStorageProducerAsync(telemetry_storage)
         recorder = StandardRecorderAsync(impmanager, mocker.Mock(spec=EventStorage), mocker.Mock(spec=ImpressionStorage), telemetry_producer.get_telemetry_evaluation_producer(),
-                                    telemetry_producer.get_telemetry_runtime_producer())
+                                         telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactoryAsync(mocker.Mock(),
-            {
-                'splits': storage_mock,
-                'segments': mocker.Mock(spec=SegmentStorage),
-                'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
-                'impressions': mocker.Mock(spec=ImpressionStorage),
-                'events': mocker.Mock(spec=EventStorage),
-            },
+                                    {
+            'splits': storage_mock,
+            'segments': mocker.Mock(spec=SegmentStorage),
+            'rule_based_segments': mocker.Mock(spec=RuleBasedSegmentsStorage),
+            'impressions': mocker.Mock(spec=ImpressionStorage),
+            'events': mocker.Mock(spec=EventStorage),
+        },
             mocker.Mock(),
             recorder,
             internal_events_queue,
@@ -3670,6 +3733,7 @@ class ManagerInputValidationAsyncTests(object):  #pylint: disable=too-few-public
 
         _logger.reset_mock()
         split_mock.reset_mock()
+
         async def get(*_):
             return None
         storage_mock.get = get
@@ -3682,7 +3746,8 @@ class ManagerInputValidationAsyncTests(object):  #pylint: disable=too-few-public
             'nonexistant-split'
         )]
 
-class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-methods
+
+class FactoryInputValidationTests(object):
     """Factory instantiation input validation test cases."""
 
     def test_input_validation_factory(self, mocker):
@@ -3710,13 +3775,13 @@ class FactoryInputValidationTests(object):  #pylint: disable=too-few-public-meth
         logger.reset_mock()
         try:
             f = get_factory(True, config={'redisHost': 'localhost'})
-        except:
+        except Exception:
             pass
         assert logger.error.mock_calls == []
         f.destroy()
 
 
-class FactoryInputValidationAsyncTests(object):  #pylint: disable=too-few-public-methods
+class FactoryInputValidationAsyncTests(object):
     """Factory instantiation input validation test cases."""
 
     @pytest.mark.asyncio
@@ -3745,12 +3810,13 @@ class FactoryInputValidationAsyncTests(object):  #pylint: disable=too-few-public
         logger.reset_mock()
         try:
             f = await get_factory_async(True, config={'redisHost': 'localhost'})
-        except:
+        except Exception:
             pass
         assert logger.error.mock_calls == []
         await f.destroy()
 
-class PluggableInputValidationTests(object):  #pylint: disable=too-few-public-methods
+
+class PluggableInputValidationTests(object):
     """Pluggable adapter instance validation test cases."""
 
     class mock_adapter0():
@@ -3786,9 +3852,6 @@ class PluggableInputValidationTests(object):  #pylint: disable=too-few-public-me
         def get_keys_by_prefix(self, prefix):
             pass
 
-        def get_many(self, keys):
-            pass
-
         def add_items(self, key, added_items):
             pass
 
@@ -3811,31 +3874,31 @@ class PluggableInputValidationTests(object):  #pylint: disable=too-few-public-me
 
     def test_validate_pluggable_adapter(self):
         # missing storageWrapper config parameter
-        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable'}))
+        assert (not input_validator.validate_pluggable_adapter({'storageType': 'pluggable'}))
 
         # ignore if storage type is not pluggable
-        assert(input_validator.validate_pluggable_adapter({'storageType': 'memory'}))
+        assert (input_validator.validate_pluggable_adapter({'storageType': 'memory'}))
 
         # mock adapter is not derived from object class
-        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'pe': self.mock_adapter0()}))
+        assert (not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'pe': self.mock_adapter0()}))
 
         # mock adapter missing many functions
-        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter1()}))
+        assert (not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter1()}))
 
         # mock adapter missing expire function
-        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter2()}))
+        assert (not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter2()}))
 
         # mock adapter expire function has incrrect args count
-        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter3()}))
+        assert (not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter3()}))
 
         # expected mock adapter should pass
-        assert(input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter4()}))
+        assert (input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storageWrapper': self.mock_adapter4()}))
 
         # using string type prefix should pass
-        assert(input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storagePrefix': 'myprefix', 'storageWrapper': self.mock_adapter4()}))
+        assert (input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storagePrefix': 'myprefix', 'storageWrapper': self.mock_adapter4()}))
 
         # using non-string type prefix should not pass
-        assert(not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storagePrefix': 'myprefix', 123: self.mock_adapter4()}))
+        assert (not input_validator.validate_pluggable_adapter({'storageType': 'pluggable', 'storagePrefix': 'myprefix', 123: self.mock_adapter4()}))
 
     def test_sanitize_flag_sets(self):
         """Test sanitization for flag sets."""
