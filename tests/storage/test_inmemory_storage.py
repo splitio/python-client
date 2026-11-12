@@ -1,5 +1,4 @@
 """In-Memory storage test module."""
-# pylint: disable=no-self-use
 import random
 import pytest
 import copy
@@ -20,16 +19,18 @@ from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStora
 from splitio.models.rule_based_segments import RuleBasedSegment
 from splitio.models import rule_based_segments
 
+
 class FlagSetsFilterTests(object):
     """Flag sets filter storage tests."""
+
     def test_without_initial_set(self):
         flag_set = FlagSets()
         assert flag_set.sets_feature_flag_map == {}
 
         flag_set._add_flag_set('set1')
         assert flag_set.get_flag_set('set1') == set({})
-        assert flag_set.flag_set_exist('set1') == True
-        assert flag_set.flag_set_exist('set2') == False
+        assert flag_set.flag_set_exist('set1') is True
+        assert flag_set.flag_set_exist('set2') is False
 
         flag_set.add_feature_flag_to_flag_set('set1', 'split1')
         assert flag_set.get_flag_set('set1') == {'split1'}
@@ -41,7 +42,7 @@ class FlagSetsFilterTests(object):
         assert flag_set.sets_feature_flag_map == {'set1': set({'split2'})}
         flag_set._remove_flag_set('set1')
         assert flag_set.sets_feature_flag_map == {}
-        assert flag_set.flag_set_exist('set1') == False
+        assert flag_set.flag_set_exist('set1') is False
 
     def test_with_initial_set(self):
         flag_set = FlagSets(['set1', 'set2'])
@@ -49,8 +50,8 @@ class FlagSetsFilterTests(object):
 
         flag_set._add_flag_set('set1')
         assert flag_set.get_flag_set('set1') == set({})
-        assert flag_set.flag_set_exist('set1') == True
-        assert flag_set.flag_set_exist('set2') == True
+        assert flag_set.flag_set_exist('set1') is True
+        assert flag_set.flag_set_exist('set2') is True
 
         flag_set.add_feature_flag_to_flag_set('set1', 'split1')
         assert flag_set.get_flag_set('set1') == {'split1'}
@@ -62,7 +63,8 @@ class FlagSetsFilterTests(object):
         assert flag_set.sets_feature_flag_map == {'set1': set({'split2'})}
         flag_set._remove_flag_set('set1')
         assert flag_set.sets_feature_flag_map == {}
-        assert flag_set.flag_set_exist('set1') == False
+        assert flag_set.flag_set_exist('set1') is False
+
 
 class InMemorySplitStorageTests(object):
     """In memory split storage test cases."""
@@ -291,11 +293,11 @@ class InMemorySplitStorageTests(object):
         assert storage.flag_set.sets_feature_flag_map == {'set10': set(), 'set02': set(), 'set05': set()}
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set10', 'set02'])
+                       'ACTIVE', 1, sets=['set10', 'set02'])
         split2 = Split('split2', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set05', 'set02'])
+                       'ACTIVE', 1, sets=['set05', 'set02'])
         split3 = Split('split3', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set04', 'set05'])
+                       'ACTIVE', 1, sets=['set04', 'set05'])
         storage.update([split1], [], 1)
         assert storage.get_feature_flags_by_sets(['set10']) == ['split1']
         assert storage.get_feature_flags_by_sets(['set02']) == ['split1']
@@ -315,7 +317,7 @@ class InMemorySplitStorageTests(object):
         assert storage.get_feature_flags_by_sets(['set05']) == []
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set02'])
+                       'ACTIVE', 1, sets=['set02'])
         storage.update([split1], [], 1)
         assert storage.is_flag_set_exist('set10')
         assert storage.get_feature_flags_by_sets(['set02']) == ['split1']
@@ -337,11 +339,11 @@ class InMemorySplitStorageTests(object):
         assert storage.flag_set.sets_feature_flag_map == {}
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set10', 'set02'])
+                       'ACTIVE', 1, sets=['set10', 'set02'])
         split2 = Split('split2', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set05', 'set02'])
+                       'ACTIVE', 1, sets=['set05', 'set02'])
         split3 = Split('split3', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set04', 'set05'])
+                       'ACTIVE', 1, sets=['set04', 'set05'])
         storage.update([split1], [], 1)
         assert storage.get_feature_flags_by_sets(['set10']) == ['split1']
         assert storage.get_feature_flags_by_sets(['set02']) == ['split1']
@@ -359,7 +361,7 @@ class InMemorySplitStorageTests(object):
         assert storage.get_feature_flags_by_sets(['set02']) == ['split1']
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set02'])
+                       'ACTIVE', 1, sets=['set02'])
         storage.update([split1], [], 1)
         assert not storage.is_flag_set_exist('set10')
         assert storage.get_feature_flags_by_sets(['set02']) == ['split1']
@@ -395,7 +397,7 @@ class InMemorySplitStorageTests(object):
         assert event.metadata.get_names() == {'some_split'}
 
         split2 = Split('another_split', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1)
+                       'ACTIVE', 1)
         storage.update([split2], ['some_split'], 1)
         event = events_queue.get()
         assert event.internal_event == SdkInternalEvent.FLAGS_UPDATED
@@ -407,6 +409,7 @@ class InMemorySplitStorageTests(object):
         assert event.internal_event == SdkInternalEvent.FLAG_KILLED_NOTIFICATION
         assert event.metadata.get_type() == SdkEventType.FLAG_UPDATE
         assert event.metadata.get_names() == {'another_split'}
+
 
 class InMemorySplitStorageAsyncTests(object):
     """In memory split storage test cases."""
@@ -628,11 +631,11 @@ class InMemorySplitStorageAsyncTests(object):
         assert storage.flag_set.sets_feature_flag_map == {'set10': set(), 'set02': set(), 'set05': set()}
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set10', 'set02'])
+                       'ACTIVE', 1, sets=['set10', 'set02'])
         split2 = Split('split2', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set05', 'set02'])
+                       'ACTIVE', 1, sets=['set05', 'set02'])
         split3 = Split('split3', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set04', 'set05'])
+                       'ACTIVE', 1, sets=['set04', 'set05'])
         await storage.update([split1], [], 1)
         assert await storage.get_feature_flags_by_sets(['set10']) == ['split1']
         assert await storage.get_feature_flags_by_sets(['set02']) == ['split1']
@@ -652,7 +655,7 @@ class InMemorySplitStorageAsyncTests(object):
         assert await storage.get_feature_flags_by_sets(['set05']) == []
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set02'])
+                       'ACTIVE', 1, sets=['set02'])
         await storage.update([split1], [], 1)
         assert await storage.is_flag_set_exist('set10')
         assert await storage.get_feature_flags_by_sets(['set02']) == ['split1']
@@ -674,11 +677,11 @@ class InMemorySplitStorageAsyncTests(object):
         assert storage.flag_set.sets_feature_flag_map == {}
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set10', 'set02'])
+                       'ACTIVE', 1, sets=['set10', 'set02'])
         split2 = Split('split2', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set05', 'set02'])
+                       'ACTIVE', 1, sets=['set05', 'set02'])
         split3 = Split('split3', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set04', 'set05'])
+                       'ACTIVE', 1, sets=['set04', 'set05'])
         await storage.update([split1], [], 1)
         assert await storage.get_feature_flags_by_sets(['set10']) == ['split1']
         assert await storage.get_feature_flags_by_sets(['set02']) == ['split1']
@@ -696,7 +699,7 @@ class InMemorySplitStorageAsyncTests(object):
         assert await storage.get_feature_flags_by_sets(['set02']) == ['split1']
 
         split1 = Split('split1', 123456789, False, 'some', 'traffic_type',
-                      'ACTIVE', 1, sets=['set02'])
+                       'ACTIVE', 1, sets=['set02'])
         await storage.update([split1], [], 1)
         assert not await storage.is_flag_set_exist('set10')
         assert await storage.get_feature_flags_by_sets(['set02']) == ['split1']
@@ -708,7 +711,7 @@ class InMemorySplitStorageAsyncTests(object):
         await storage.update([split3], [], 1)
         assert await storage.get_feature_flags_by_sets(['set05']) == ['split3']
         assert await storage.get_feature_flags_by_sets(['set04', 'set05']) == ['split3']
-        
+
     @pytest.mark.asyncio
     async def test_internal_event_notification(self, mocker):
         """Test retrieving a list of all split names."""
@@ -737,7 +740,8 @@ class InMemorySplitStorageAsyncTests(object):
         assert event.internal_event == SdkInternalEvent.FLAG_KILLED_NOTIFICATION
         assert event.metadata.get_type() == SdkEventType.FLAG_UPDATE
         assert event.metadata.get_names() == {'split1'}
-        
+
+
 class InMemorySegmentStorageTests(object):
     """In memory segment storage tests."""
 
@@ -819,6 +823,7 @@ class InMemorySegmentStorageTests(object):
         assert event.internal_event == SdkInternalEvent.SEGMENTS_UPDATED
         assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
+
 
 class InMemorySegmentStorageAsyncTests(object):
     """In memory segment storage tests."""
@@ -902,6 +907,7 @@ class InMemorySegmentStorageAsyncTests(object):
         assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
 
+
 class InMemoryImpressionsStorageTests(object):
     """InMemory impressions storage test cases."""
 
@@ -914,7 +920,7 @@ class InMemoryImpressionsStorageTests(object):
         storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
         storage.put([Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
         storage.put([Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
-        assert(telemetry_storage._counters._impressions_queued == 3)
+        assert (telemetry_storage._counters._impressions_queued == 3)
 
         # Assert impressions are retrieved in the same order they are inserted.
         assert storage.pop_many(1) == [
@@ -976,8 +982,8 @@ class InMemoryImpressionsStorageTests(object):
         storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
         storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
         storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
-        assert(telemetry_storage._counters._impressions_dropped == 1)
-        assert(telemetry_storage._counters._impressions_queued == 2)
+        assert (telemetry_storage._counters._impressions_dropped == 1)
+        assert (telemetry_storage._counters._impressions_queued == 2)
 
 
 class InMemoryImpressionsStorageAsyncTests(object):
@@ -993,7 +999,7 @@ class InMemoryImpressionsStorageAsyncTests(object):
         await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
         await storage.put([Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
         await storage.put([Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
-        assert(telemetry_storage._counters._impressions_queued == 3)
+        assert (telemetry_storage._counters._impressions_queued == 3)
 
         # Assert impressions are retrieved in the same order they are inserted.
         assert await storage.pop_many(1) == [
@@ -1033,6 +1039,7 @@ class InMemoryImpressionsStorageAsyncTests(object):
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         storage = InMemoryImpressionStorageAsync(100, telemetry_runtime_producer)
         self.hook_called = False
+
         async def queue_full_hook():
             self.hook_called = True
 
@@ -1043,7 +1050,7 @@ class InMemoryImpressionsStorageAsyncTests(object):
         ]
         await storage.put(impressions)
         await queue_full_hook()
-        assert self.hook_called == True
+        assert self.hook_called is True
 
     @pytest.mark.asyncio
     async def test_clear(self, mocker):
@@ -1067,8 +1074,8 @@ class InMemoryImpressionsStorageAsyncTests(object):
         await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
         await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
         await storage.put([Impression('key1', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)])
-        assert(telemetry_storage._counters._impressions_dropped == 1)
-        assert(telemetry_storage._counters._impressions_queued == 2)
+        assert (telemetry_storage._counters._impressions_dropped == 1)
+        assert (telemetry_storage._counters._impressions_queued == 2)
 
 
 class InMemoryEventsStorageTests(object):
@@ -1131,7 +1138,7 @@ class InMemoryEventsStorageTests(object):
         storage = InMemoryEventStorage(200, mocker.Mock())
         queue_full_hook = mocker.Mock()
         storage.set_queue_full_hook(queue_full_hook)
-        events = [EventWrapper(event=Event('key%d' % i, 'user', 'purchase', 12.5, 1, None),  size=32768) for i in range(160)]
+        events = [EventWrapper(event=Event('key%d' % i, 'user', 'purchase', 12.5, 1, None), size=32768) for i in range(160)]
         storage.put(events)
         assert queue_full_hook.mock_calls == [mocker.call()]
 
@@ -1164,8 +1171,8 @@ class InMemoryEventsStorageTests(object):
             event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
             size=1024,
         )])
-        assert(telemetry_storage._counters._events_dropped == 1)
-        assert(telemetry_storage._counters._events_queued == 2)
+        assert (telemetry_storage._counters._events_dropped == 1)
+        assert (telemetry_storage._counters._events_queued == 2)
 
 
 class InMemoryEventsStorageAsyncTests(object):
@@ -1226,13 +1233,14 @@ class InMemoryEventsStorageAsyncTests(object):
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         storage = InMemoryEventStorageAsync(100, telemetry_runtime_producer)
         self.called = False
+
         async def queue_full_hook():
             self.called = True
 
         storage.set_queue_full_hook(queue_full_hook)
         events = [EventWrapper(event=Event('key%d' % i, 'user', 'purchase', 12.5, 321654, None), size=1024) for i in range(0, 101)]
         await storage.put(events)
-        assert self.called == True
+        assert self.called is True
 
     @pytest.mark.asyncio
     async def test_queue_full_hook_properties(self, mocker):
@@ -1242,12 +1250,13 @@ class InMemoryEventsStorageAsyncTests(object):
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         storage = InMemoryEventStorageAsync(200, telemetry_runtime_producer)
         self.called = False
+
         async def queue_full_hook():
             self.called = True
         storage.set_queue_full_hook(queue_full_hook)
-        events = [EventWrapper(event=Event('key%d' % i, 'user', 'purchase', 12.5, 1, None),  size=32768) for i in range(160)]
+        events = [EventWrapper(event=Event('key%d' % i, 'user', 'purchase', 12.5, 1, None), size=32768) for i in range(160)]
         await storage.put(events)
-        assert self.called == True
+        assert self.called is True
 
     @pytest.mark.asyncio
     async def test_clear(self, mocker):
@@ -1283,8 +1292,8 @@ class InMemoryEventsStorageAsyncTests(object):
             event=Event('key1', 'user', 'purchase', 3.5, 123456, None),
             size=1024,
         )])
-        assert(telemetry_storage._counters._events_dropped == 1)
-        assert(telemetry_storage._counters._events_queued == 2)
+        assert (telemetry_storage._counters._events_dropped == 1)
+        assert (telemetry_storage._counters._events_queued == 2)
 
 
 class InMemoryTelemetryStorageTests(object):
@@ -1293,20 +1302,20 @@ class InMemoryTelemetryStorageTests(object):
     def test_resets(self):
         storage = InMemoryTelemetryStorage()
 
-        assert(storage._counters._impressions_queued == 0)
-        assert(storage._counters._impressions_deduped == 0)
-        assert(storage._counters._impressions_dropped == 0)
-        assert(storage._counters._events_dropped == 0)
-        assert(storage._counters._events_queued == 0)
-        assert(storage._counters._auth_rejections == 0)
-        assert(storage._counters._token_refreshes == 0)
+        assert (storage._counters._impressions_queued == 0)
+        assert (storage._counters._impressions_deduped == 0)
+        assert (storage._counters._impressions_dropped == 0)
+        assert (storage._counters._events_dropped == 0)
+        assert (storage._counters._events_queued == 0)
+        assert (storage._counters._auth_rejections == 0)
+        assert (storage._counters._token_refreshes == 0)
 
-        assert(storage._method_exceptions.pop_all() == {'methodExceptions': {'treatment': 0, 'treatments': 0, 'treatment_with_config': 0, 'treatments_with_config': 0, 'treatments_by_flag_set': 0, 'treatments_by_flag_sets': 0, 'treatments_with_config_by_flag_set': 0, 'treatments_with_config_by_flag_sets': 0, 'track': 0}})
-        assert(storage._last_synchronization.get_all() == {'lastSynchronizations': {'split': 0, 'segment': 0, 'impression': 0, 'impressionCount': 0, 'event': 0, 'telemetry': 0, 'token': 0}})
-        assert(storage._http_sync_errors.pop_all() == {'httpErrors': {'split': {}, 'segment': {}, 'impression': {}, 'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}}})
-        assert(storage._tel_config.get_stats() == {
-                'bT':0,
-                'nR':0,
+        assert (storage._method_exceptions.pop_all() == {'methodExceptions': {'treatment': 0, 'treatments': 0, 'treatment_with_config': 0, 'treatments_with_config': 0, 'treatments_by_flag_set': 0, 'treatments_by_flag_sets': 0, 'treatments_with_config_by_flag_set': 0, 'treatments_with_config_by_flag_sets': 0, 'track': 0}})
+        assert (storage._last_synchronization.get_all() == {'lastSynchronizations': {'split': 0, 'segment': 0, 'impression': 0, 'impressionCount': 0, 'event': 0, 'telemetry': 0, 'token': 0}})
+        assert (storage._http_sync_errors.pop_all() == {'httpErrors': {'split': {}, 'segment': {}, 'impression': {}, 'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}}})
+        assert (storage._tel_config.get_stats() == {
+                'bT': 0,
+                'nR': 0,
                 'tR': 0,
                 'oM': None,
                 'sT': None,
@@ -1322,12 +1331,12 @@ class InMemoryTelemetryStorageTests(object):
                 'rF': 0,
                 'fsT': 0,
                 'fsI': 0
-            })
-        assert(storage._streaming_events.pop_streaming_events() == {'streamingEvents': []})
-        assert(storage._tags == [])
+                })
+        assert (storage._streaming_events.pop_streaming_events() == {'streamingEvents': []})
+        assert (storage._tags == [])
 
-        assert(storage._method_latencies.pop_all() == {'methodLatencies': {'treatment': [0] * 23, 'treatments': [0] * 23, 'treatment_with_config': [0] * 23, 'treatments_with_config': [0] * 23, 'treatments_by_flag_set': [0] * 23, 'treatments_by_flag_sets': [0] * 23, 'treatments_with_config_by_flag_set': [0] * 23, 'treatments_with_config_by_flag_sets': [0] * 23, 'track': [0] * 23}})
-        assert(storage._http_latencies.pop_all() == {'httpLatencies': {'split': [0] * 23, 'segment': [0] * 23, 'impression': [0] * 23, 'impressionCount': [0] * 23, 'event': [0] * 23, 'telemetry': [0] * 23, 'token': [0] * 23}})
+        assert (storage._method_latencies.pop_all() == {'methodLatencies': {'treatment': [0] * 23, 'treatments': [0] * 23, 'treatment_with_config': [0] * 23, 'treatments_with_config': [0] * 23, 'treatments_by_flag_set': [0] * 23, 'treatments_by_flag_sets': [0] * 23, 'treatments_with_config_by_flag_set': [0] * 23, 'treatments_with_config_by_flag_sets': [0] * 23, 'track': [0] * 23}})
+        assert (storage._http_latencies.pop_all() == {'httpLatencies': {'split': [0] * 23, 'segment': [0] * 23, 'impression': [0] * 23, 'impressionCount': [0] * 23, 'event': [0] * 23, 'telemetry': [0] * 23, 'token': [0] * 23}})
 
     def test_record_config(self):
         storage = InMemoryTelemetryStorage()
@@ -1335,7 +1344,7 @@ class InMemoryTelemetryStorageTests(object):
                   'streamingEnabled': True,
                   'impressionsQueueSize': 100,
                   'eventsQueueSize': 200,
-                  'impressionsMode': 'DEBUG',''
+                  'impressionsMode': 'DEBUG', ''
                   'impressionListener': None,
                   'featuresRefreshRate': 30,
                   'segmentsRefreshRate': 30,
@@ -1346,103 +1355,103 @@ class InMemoryTelemetryStorageTests(object):
                   }
         storage.record_config(config, {}, 2, 1)
         storage.record_active_and_redundant_factories(1, 0)
-        assert(storage._tel_config.get_stats() == {'oM': 0,
-            'sT': storage._tel_config._get_storage_type(config['operationMode'], config['storageType']),
-            'sE': config['streamingEnabled'],
-            'rR': {'sp': 30, 'se': 30, 'im': 60, 'ev': 60, 'te': 10},
-            'uO':  {'s': False, 'e': False, 'a': False, 'st': False, 't': False},
-            'iQ': config['impressionsQueueSize'],
-            'eQ': config['eventsQueueSize'],
-            'iM': storage._tel_config._get_impressions_mode(config['impressionsMode']),
-            'iL': True if config['impressionListener'] is not None else False,
-            'hp': storage._tel_config._check_if_proxy_detected(),
-            'bT': 0,
-            'tR': 0,
-            'nR': 0,
-            'aF': 1,
-            'rF': 0,
-            'fsT': 2,
-            'fsI': 1}
-            )
+        assert (storage._tel_config.get_stats() == {'oM': 0,
+                                                    'sT': storage._tel_config._get_storage_type(config['operationMode'], config['storageType']),
+                                                    'sE': config['streamingEnabled'],
+                                                    'rR': {'sp': 30, 'se': 30, 'im': 60, 'ev': 60, 'te': 10},
+                                                    'uO': {'s': False, 'e': False, 'a': False, 'st': False, 't': False},
+                                                    'iQ': config['impressionsQueueSize'],
+                                                    'eQ': config['eventsQueueSize'],
+                                                    'iM': storage._tel_config._get_impressions_mode(config['impressionsMode']),
+                                                    'iL': True if config['impressionListener'] is not None else False,
+                                                    'hp': storage._tel_config._check_if_proxy_detected(),
+                                                    'bT': 0,
+                                                    'tR': 0,
+                                                    'nR': 0,
+                                                    'aF': 1,
+                                                    'rF': 0,
+                                                    'fsT': 2,
+                                                    'fsI': 1}
+                )
 
     def test_record_counters(self):
         storage = InMemoryTelemetryStorage()
 
         storage.record_ready_time(10)
-        assert(storage._tel_config._time_until_ready == 10)
+        assert (storage._tel_config._time_until_ready == 10)
 
         storage.add_tag('tag')
-        assert('tag' in storage._tags)
+        assert ('tag' in storage._tags)
         [storage.add_tag('tag') for i in range(1, 25)]
-        assert(len(storage._tags) == 10)
+        assert (len(storage._tags) == 10)
 
         storage.record_bur_time_out()
         storage.record_bur_time_out()
-        assert(storage._tel_config.get_bur_time_outs() == 2)
+        assert (storage._tel_config.get_bur_time_outs() == 2)
 
         storage.record_not_ready_usage()
         storage.record_not_ready_usage()
-        assert(storage._tel_config.get_non_ready_usage() == 2)
+        assert (storage._tel_config.get_non_ready_usage() == 2)
 
         storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT)
-        assert(storage._method_exceptions._treatment == 1)
+        assert (storage._method_exceptions._treatment == 1)
 
         storage.record_impression_stats(ModelTelemetry.CounterConstants.IMPRESSIONS_QUEUED, 5)
-        assert(storage._counters.get_counter_stats(ModelTelemetry.CounterConstants.IMPRESSIONS_QUEUED) == 5)
+        assert (storage._counters.get_counter_stats(ModelTelemetry.CounterConstants.IMPRESSIONS_QUEUED) == 5)
 
         storage.record_event_stats(ModelTelemetry.CounterConstants.EVENTS_DROPPED, 6)
-        assert(storage._counters.get_counter_stats(ModelTelemetry.CounterConstants.EVENTS_DROPPED) == 6)
+        assert (storage._counters.get_counter_stats(ModelTelemetry.CounterConstants.EVENTS_DROPPED) == 6)
 
         storage.record_successful_sync(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, 10)
-        assert(storage._last_synchronization._segment == 10)
+        assert (storage._last_synchronization._segment == 10)
 
         storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, '500')
-        assert(storage._http_sync_errors._segment['500'] == 1)
+        assert (storage._http_sync_errors._segment['500'] == 1)
 
         storage.record_auth_rejections()
         storage.record_auth_rejections()
-        assert(storage._counters.pop_auth_rejections() == 2)
+        assert (storage._counters.pop_auth_rejections() == 2)
 
         storage.record_token_refreshes()
         storage.record_token_refreshes()
-        assert(storage._counters.pop_token_refreshes() == 2)
+        assert (storage._counters.pop_token_refreshes() == 2)
 
         storage.record_streaming_event((ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED, 'split', 1234))
-        assert(storage._streaming_events.pop_streaming_events() == {'streamingEvents': [{'e': ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED.value, 'd': 'split', 't': 1234}]})
+        assert (storage._streaming_events.pop_streaming_events() == {'streamingEvents': [{'e': ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED.value, 'd': 'split', 't': 1234}]})
         [storage.record_streaming_event((ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED, 'split', 1234)) for i in range(1, 25)]
-        assert(len(storage._streaming_events._streaming_events) == 20)
+        assert (len(storage._streaming_events._streaming_events) == 20)
 
         storage.record_session_length(20)
-        assert(storage._counters.get_session_length() == 20)
+        assert (storage._counters.get_session_length() == 20)
 
     def test_record_latencies(self):
         storage = InMemoryTelemetryStorage()
 
         for method in ModelTelemetry.MethodExceptionsAndLatencies:
-            if self._get_method_latency(method, storage) == None:
+            if self._get_method_latency(method, storage) is None:
                 continue
             storage.record_latency(method, 50)
-            assert(self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(50)] == 1)
+            assert (self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(50)] == 1)
             storage.record_latency(method, 50000000)
-            assert(self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
+            assert (self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
             for j in range(10):
                 latency = random.randint(1001, 4987885)
                 current_count = self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(latency)]
                 [storage.record_latency(method, latency) for i in range(2)]
-                assert(self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
+                assert (self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
 
         for resource in ModelTelemetry.HTTPExceptionsAndLatencies:
-            if self._get_http_latency(resource, storage) == None:
+            if self._get_http_latency(resource, storage) is None:
                 continue
             storage.record_sync_latency(resource, 50)
-            assert(self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(50)] == 1)
+            assert (self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(50)] == 1)
             storage.record_sync_latency(resource, 50000000)
-            assert(self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
+            assert (self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
             for j in range(10):
                 latency = random.randint(1001, 4987885)
                 current_count = self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(latency)]
                 [storage.record_sync_latency(resource, latency) for i in range(2)]
-                assert(self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
+                assert (self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
 
     def _get_method_latency(self, resource, storage):
         if resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT:
@@ -1493,26 +1502,26 @@ class InMemoryTelemetryStorageTests(object):
         [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG) for i in range(5)]
         [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET) for i in range(3)]
         [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS) for i in range(10)]
-        [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET)  for i in range(7)]
+        [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET) for i in range(7)]
         [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS) for i in range(6)]
         [storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TRACK) for i in range(3)]
         exceptions = storage.pop_exceptions()
-        assert(storage._method_exceptions._treatment == 0)
-        assert(storage._method_exceptions._treatments == 0)
-        assert(storage._method_exceptions._treatment_with_config == 0)
-        assert(storage._method_exceptions._treatments_with_config == 0)
-        assert(storage._method_exceptions._treatments_by_flag_set == 0)
-        assert(storage._method_exceptions._treatments_by_flag_sets == 0)
-        assert(storage._method_exceptions._track == 0)
-        assert(storage._method_exceptions._treatments_with_config_by_flag_set == 0)
-        assert(storage._method_exceptions._treatments_with_config_by_flag_sets == 0)
-        assert(exceptions == {'methodExceptions': {'treatment': 2, 'treatments': 1, 'treatment_with_config': 1, 'treatments_with_config': 5, 'treatments_by_flag_set': 3, 'treatments_by_flag_sets': 10, 'treatments_with_config_by_flag_set': 7, 'treatments_with_config_by_flag_sets': 6, 'track': 3}})
+        assert (storage._method_exceptions._treatment == 0)
+        assert (storage._method_exceptions._treatments == 0)
+        assert (storage._method_exceptions._treatment_with_config == 0)
+        assert (storage._method_exceptions._treatments_with_config == 0)
+        assert (storage._method_exceptions._treatments_by_flag_set == 0)
+        assert (storage._method_exceptions._treatments_by_flag_sets == 0)
+        assert (storage._method_exceptions._track == 0)
+        assert (storage._method_exceptions._treatments_with_config_by_flag_set == 0)
+        assert (storage._method_exceptions._treatments_with_config_by_flag_sets == 0)
+        assert (exceptions == {'methodExceptions': {'treatment': 2, 'treatments': 1, 'treatment_with_config': 1, 'treatments_with_config': 5, 'treatments_by_flag_set': 3, 'treatments_by_flag_sets': 10, 'treatments_with_config_by_flag_set': 7, 'treatments_with_config_by_flag_sets': 6, 'track': 3}})
 
         storage.add_tag('tag1')
         storage.add_tag('tag2')
         tags = storage.pop_tags()
-        assert(storage._tags == [])
-        assert(tags == ['tag1', 'tag2'])
+        assert (storage._tags == [])
+        assert (tags == ['tag1', 'tag2'])
 
         [storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, str(i)) for i in [500, 501, 502]]
         [storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.SPLIT, str(i)) for i in [400, 401, 402]]
@@ -1522,34 +1531,34 @@ class InMemoryTelemetryStorageTests(object):
         storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.TELEMETRY, '505')
         [storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.TOKEN, '502') for i in range(5)]
         http_errors = storage.pop_http_errors()
-        assert(http_errors == {'httpErrors': {'split': {'400': 1, '401': 1, '402': 1}, 'segment': {'500': 1, '501': 1, '502': 1},
-                                        'impression': {'502': 1}, 'impressionCount': {'501': 1, '502': 1},
-                                        'event': {'501': 1}, 'telemetry': {'505': 1}, 'token': {'502': 5}}})
-        assert(storage._http_sync_errors._split == {})
-        assert(storage._http_sync_errors._segment == {})
-        assert(storage._http_sync_errors._impression == {})
-        assert(storage._http_sync_errors._impression_count == {})
-        assert(storage._http_sync_errors._event == {})
-        assert(storage._http_sync_errors._telemetry == {})
+        assert (http_errors == {'httpErrors': {'split': {'400': 1, '401': 1, '402': 1}, 'segment': {'500': 1, '501': 1, '502': 1},
+                                               'impression': {'502': 1}, 'impressionCount': {'501': 1, '502': 1},
+                                               'event': {'501': 1}, 'telemetry': {'505': 1}, 'token': {'502': 5}}})
+        assert (storage._http_sync_errors._split == {})
+        assert (storage._http_sync_errors._segment == {})
+        assert (storage._http_sync_errors._impression == {})
+        assert (storage._http_sync_errors._impression_count == {})
+        assert (storage._http_sync_errors._event == {})
+        assert (storage._http_sync_errors._telemetry == {})
 
         storage.record_auth_rejections()
         storage.record_auth_rejections()
         auth_rejections = storage.pop_auth_rejections()
-        assert(storage._counters._auth_rejections == 0)
-        assert(auth_rejections == 2)
+        assert (storage._counters._auth_rejections == 0)
+        assert (auth_rejections == 2)
 
         storage.record_token_refreshes()
         storage.record_token_refreshes()
         token_refreshes = storage.pop_token_refreshes()
-        assert(storage._counters._token_refreshes == 0)
-        assert(token_refreshes == 2)
+        assert (storage._counters._token_refreshes == 0)
+        assert (token_refreshes == 2)
 
         storage.record_streaming_event((ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED, 'split', 1234))
         storage.record_streaming_event((ModelTelemetry.StreamingEventTypes.OCCUPANCY_PRI, 'split', 1234))
         streaming_events = storage.pop_streaming_events()
-        assert(storage._streaming_events._streaming_events == [])
-        assert(streaming_events == {'streamingEvents': [{'e': ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED.value, 'd': 'split', 't': 1234},
-                                    {'e': ModelTelemetry.StreamingEventTypes.OCCUPANCY_PRI.value, 'd': 'split', 't': 1234}]})
+        assert (storage._streaming_events._streaming_events == [])
+        assert (streaming_events == {'streamingEvents': [{'e': ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED.value, 'd': 'split', 't': 1234},
+                                                         {'e': ModelTelemetry.StreamingEventTypes.OCCUPANCY_PRI.value, 'd': 'split', 't': 1234}]})
 
     def test_pop_latencies(self):
         storage = InMemoryTelemetryStorage()
@@ -1565,25 +1574,25 @@ class InMemoryTelemetryStorageTests(object):
         [storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TRACK, i) for i in [1, 10, 100]]
         latencies = storage.pop_latencies()
 
-        assert(storage._method_latencies._treatment == [0] * 23)
-        assert(storage._method_latencies._treatments == [0] * 23)
-        assert(storage._method_latencies._treatment_with_config == [0] * 23)
-        assert(storage._method_latencies._treatments_with_config == [0] * 23)
-        assert(storage._method_latencies._treatments_by_flag_set == [0] * 23)
-        assert(storage._method_latencies._treatments_by_flag_sets == [0] * 23)
-        assert(storage._method_latencies._treatments_with_config_by_flag_set == [0] * 23)
-        assert(storage._method_latencies._treatments_with_config_by_flag_sets == [0] * 23)
-        assert(storage._method_latencies._track == [0] * 23)
-        assert(latencies ==  {'methodLatencies': {
-                    'treatment': [4] + [0] * 22,
-                    'treatments': [4] + [0] * 22,
-                    'treatment_with_config': [1] + [0] * 22,
-                    'treatments_with_config': [2] + [0] * 22,
-                    'treatments_by_flag_set': [2] + [0] * 22,
-                    'treatments_by_flag_sets': [2] + [0] * 22,
-                    'treatments_with_config_by_flag_set': [1] + [0] * 22,
-                    'treatments_with_config_by_flag_sets': [2] + [0] * 22,
-                    'track': [3] + [0] * 22}})
+        assert (storage._method_latencies._treatment == [0] * 23)
+        assert (storage._method_latencies._treatments == [0] * 23)
+        assert (storage._method_latencies._treatment_with_config == [0] * 23)
+        assert (storage._method_latencies._treatments_with_config == [0] * 23)
+        assert (storage._method_latencies._treatments_by_flag_set == [0] * 23)
+        assert (storage._method_latencies._treatments_by_flag_sets == [0] * 23)
+        assert (storage._method_latencies._treatments_with_config_by_flag_set == [0] * 23)
+        assert (storage._method_latencies._treatments_with_config_by_flag_sets == [0] * 23)
+        assert (storage._method_latencies._track == [0] * 23)
+        assert (latencies == {'methodLatencies': {
+            'treatment': [4] + [0] * 22,
+            'treatments': [4] + [0] * 22,
+            'treatment_with_config': [1] + [0] * 22,
+            'treatments_with_config': [2] + [0] * 22,
+            'treatments_by_flag_set': [2] + [0] * 22,
+            'treatments_by_flag_sets': [2] + [0] * 22,
+            'treatments_with_config_by_flag_set': [1] + [0] * 22,
+            'treatments_with_config_by_flag_sets': [2] + [0] * 22,
+            'track': [3] + [0] * 22}})
 
         [storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.SPLIT, i) for i in [50, 10, 20, 40]]
         [storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, i) for i in [70, 100, 40, 30]]
@@ -1594,15 +1603,15 @@ class InMemoryTelemetryStorageTests(object):
         [storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.TOKEN, i) for i in [10, 15, 100]]
         sync_latency = storage.pop_http_latencies()
 
-        assert(storage._http_latencies._split == [0] * 23)
-        assert(storage._http_latencies._segment == [0] * 23)
-        assert(storage._http_latencies._impression == [0] * 23)
-        assert(storage._http_latencies._impression_count == [0] * 23)
-        assert(storage._http_latencies._telemetry == [0] * 23)
-        assert(storage._http_latencies._token == [0] * 23)
-        assert(sync_latency == {'httpLatencies': {'split': [4] + [0] * 22, 'segment': [4] + [0] * 22,
-                                'impression': [2] + [0] * 22, 'impressionCount': [2] + [0] * 22, 'event': [2] + [0] * 22,
-                                'telemetry': [3] + [0] * 22, 'token': [3] + [0] * 22}})
+        assert (storage._http_latencies._split == [0] * 23)
+        assert (storage._http_latencies._segment == [0] * 23)
+        assert (storage._http_latencies._impression == [0] * 23)
+        assert (storage._http_latencies._impression_count == [0] * 23)
+        assert (storage._http_latencies._telemetry == [0] * 23)
+        assert (storage._http_latencies._token == [0] * 23)
+        assert (sync_latency == {'httpLatencies': {'split': [4] + [0] * 22, 'segment': [4] + [0] * 22,
+                                                   'impression': [2] + [0] * 22, 'impressionCount': [2] + [0] * 22, 'event': [2] + [0] * 22,
+                                                   'telemetry': [3] + [0] * 22, 'token': [3] + [0] * 22}})
 
 
 class InMemoryTelemetryStorageAsyncTests(object):
@@ -1612,20 +1621,20 @@ class InMemoryTelemetryStorageAsyncTests(object):
     async def test_resets(self):
         storage = await InMemoryTelemetryStorageAsync.create()
 
-        assert(storage._counters._impressions_queued == 0)
-        assert(storage._counters._impressions_deduped == 0)
-        assert(storage._counters._impressions_dropped == 0)
-        assert(storage._counters._events_dropped == 0)
-        assert(storage._counters._events_queued == 0)
-        assert(storage._counters._auth_rejections == 0)
-        assert(storage._counters._token_refreshes == 0)
+        assert (storage._counters._impressions_queued == 0)
+        assert (storage._counters._impressions_deduped == 0)
+        assert (storage._counters._impressions_dropped == 0)
+        assert (storage._counters._events_dropped == 0)
+        assert (storage._counters._events_queued == 0)
+        assert (storage._counters._auth_rejections == 0)
+        assert (storage._counters._token_refreshes == 0)
 
-        assert(await storage._method_exceptions.pop_all() == {'methodExceptions': {'treatment': 0, 'treatments': 0, 'treatment_with_config': 0, 'treatments_with_config': 0, 'treatments_by_flag_set': 0, 'treatments_by_flag_sets': 0, 'treatments_with_config_by_flag_set': 0, 'treatments_with_config_by_flag_sets': 0, 'track': 0}})
-        assert(await storage._last_synchronization.get_all() == {'lastSynchronizations': {'split': 0, 'segment': 0, 'impression': 0, 'impressionCount': 0, 'event': 0, 'telemetry': 0, 'token': 0}})
-        assert(await storage._http_sync_errors.pop_all() == {'httpErrors': {'split': {}, 'segment': {}, 'impression': {}, 'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}}})
-        assert(await storage._tel_config.get_stats() == {
-                'bT':0,
-                'nR':0,
+        assert (await storage._method_exceptions.pop_all() == {'methodExceptions': {'treatment': 0, 'treatments': 0, 'treatment_with_config': 0, 'treatments_with_config': 0, 'treatments_by_flag_set': 0, 'treatments_by_flag_sets': 0, 'treatments_with_config_by_flag_set': 0, 'treatments_with_config_by_flag_sets': 0, 'track': 0}})
+        assert (await storage._last_synchronization.get_all() == {'lastSynchronizations': {'split': 0, 'segment': 0, 'impression': 0, 'impressionCount': 0, 'event': 0, 'telemetry': 0, 'token': 0}})
+        assert (await storage._http_sync_errors.pop_all() == {'httpErrors': {'split': {}, 'segment': {}, 'impression': {}, 'impressionCount': {}, 'event': {}, 'telemetry': {}, 'token': {}}})
+        assert (await storage._tel_config.get_stats() == {
+                'bT': 0,
+                'nR': 0,
                 'tR': 0,
                 'oM': None,
                 'sT': None,
@@ -1641,12 +1650,12 @@ class InMemoryTelemetryStorageAsyncTests(object):
                 'rF': 0,
                 'fsT': 0,
                 'fsI': 0
-            })
-        assert(await storage._streaming_events.pop_streaming_events() == {'streamingEvents': []})
-        assert(storage._tags == [])
+                })
+        assert (await storage._streaming_events.pop_streaming_events() == {'streamingEvents': []})
+        assert (storage._tags == [])
 
-        assert(await storage._method_latencies.pop_all() == {'methodLatencies': {'treatment': [0] * 23, 'treatments': [0] * 23, 'treatment_with_config': [0] * 23, 'treatments_with_config': [0] * 23, 'treatments_by_flag_set': [0] * 23, 'treatments_by_flag_sets': [0] * 23, 'treatments_with_config_by_flag_set': [0] * 23, 'treatments_with_config_by_flag_sets': [0] * 23, 'track': [0] * 23}})
-        assert(await storage._http_latencies.pop_all() == {'httpLatencies': {'split': [0] * 23, 'segment': [0] * 23, 'impression': [0] * 23, 'impressionCount': [0] * 23, 'event': [0] * 23, 'telemetry': [0] * 23, 'token': [0] * 23}})
+        assert (await storage._method_latencies.pop_all() == {'methodLatencies': {'treatment': [0] * 23, 'treatments': [0] * 23, 'treatment_with_config': [0] * 23, 'treatments_with_config': [0] * 23, 'treatments_by_flag_set': [0] * 23, 'treatments_by_flag_sets': [0] * 23, 'treatments_with_config_by_flag_set': [0] * 23, 'treatments_with_config_by_flag_sets': [0] * 23, 'track': [0] * 23}})
+        assert (await storage._http_latencies.pop_all() == {'httpLatencies': {'split': [0] * 23, 'segment': [0] * 23, 'impression': [0] * 23, 'impressionCount': [0] * 23, 'event': [0] * 23, 'telemetry': [0] * 23, 'token': [0] * 23}})
 
     @pytest.mark.asyncio
     async def test_record_config(self):
@@ -1655,7 +1664,7 @@ class InMemoryTelemetryStorageAsyncTests(object):
                   'streamingEnabled': True,
                   'impressionsQueueSize': 100,
                   'eventsQueueSize': 200,
-                  'impressionsMode': 'DEBUG',''
+                  'impressionsMode': 'DEBUG', ''
                   'impressionListener': None,
                   'featuresRefreshRate': 30,
                   'segmentsRefreshRate': 30,
@@ -1666,105 +1675,105 @@ class InMemoryTelemetryStorageAsyncTests(object):
                   }
         await storage.record_config(config, {}, 2, 1)
         await storage.record_active_and_redundant_factories(1, 0)
-        assert(await storage._tel_config.get_stats() == {'oM': 0,
-            'sT': storage._tel_config._get_storage_type(config['operationMode'], config['storageType']),
-            'sE': config['streamingEnabled'],
-            'rR': {'sp': 30, 'se': 30, 'im': 60, 'ev': 60, 'te': 10},
-            'uO':  {'s': False, 'e': False, 'a': False, 'st': False, 't': False},
-            'iQ': config['impressionsQueueSize'],
-            'eQ': config['eventsQueueSize'],
-            'iM': storage._tel_config._get_impressions_mode(config['impressionsMode']),
-            'iL': True if config['impressionListener'] is not None else False,
-            'hp': storage._tel_config._check_if_proxy_detected(),
-            'bT': 0,
-            'tR': 0,
-            'nR': 0,
-            'aF': 1,
-            'rF': 0,
-            'fsT': 2,
-            'fsI': 1}
-            )
+        assert (await storage._tel_config.get_stats() == {'oM': 0,
+                                                          'sT': storage._tel_config._get_storage_type(config['operationMode'], config['storageType']),
+                                                          'sE': config['streamingEnabled'],
+                                                          'rR': {'sp': 30, 'se': 30, 'im': 60, 'ev': 60, 'te': 10},
+                                                          'uO': {'s': False, 'e': False, 'a': False, 'st': False, 't': False},
+                                                          'iQ': config['impressionsQueueSize'],
+                                                          'eQ': config['eventsQueueSize'],
+                                                          'iM': storage._tel_config._get_impressions_mode(config['impressionsMode']),
+                                                          'iL': True if config['impressionListener'] is not None else False,
+                                                          'hp': storage._tel_config._check_if_proxy_detected(),
+                                                          'bT': 0,
+                                                          'tR': 0,
+                                                          'nR': 0,
+                                                          'aF': 1,
+                                                          'rF': 0,
+                                                          'fsT': 2,
+                                                          'fsI': 1}
+                )
 
     @pytest.mark.asyncio
     async def test_record_counters(self):
         storage = await InMemoryTelemetryStorageAsync.create()
 
         await storage.record_ready_time(10)
-        assert(storage._tel_config._time_until_ready == 10)
+        assert (storage._tel_config._time_until_ready == 10)
 
         await storage.add_tag('tag')
-        assert('tag' in storage._tags)
+        assert ('tag' in storage._tags)
         [await storage.add_tag('tag') for i in range(1, 25)]
-        assert(len(storage._tags) == 10)
+        assert (len(storage._tags) == 10)
 
         await storage.record_bur_time_out()
         await storage.record_bur_time_out()
-        assert(await storage._tel_config.get_bur_time_outs() == 2)
+        assert (await storage._tel_config.get_bur_time_outs() == 2)
 
         await storage.record_not_ready_usage()
         await storage.record_not_ready_usage()
-        assert(await storage._tel_config.get_non_ready_usage() == 2)
+        assert (await storage._tel_config.get_non_ready_usage() == 2)
 
         await storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT)
-        assert(storage._method_exceptions._treatment == 1)
+        assert (storage._method_exceptions._treatment == 1)
 
         await storage.record_impression_stats(ModelTelemetry.CounterConstants.IMPRESSIONS_QUEUED, 5)
-        assert(await storage._counters.get_counter_stats(ModelTelemetry.CounterConstants.IMPRESSIONS_QUEUED) == 5)
+        assert (await storage._counters.get_counter_stats(ModelTelemetry.CounterConstants.IMPRESSIONS_QUEUED) == 5)
 
         await storage.record_event_stats(ModelTelemetry.CounterConstants.EVENTS_DROPPED, 6)
-        assert(await storage._counters.get_counter_stats(ModelTelemetry.CounterConstants.EVENTS_DROPPED) == 6)
+        assert (await storage._counters.get_counter_stats(ModelTelemetry.CounterConstants.EVENTS_DROPPED) == 6)
 
         await storage.record_successful_sync(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, 10)
-        assert(storage._last_synchronization._segment == 10)
+        assert (storage._last_synchronization._segment == 10)
 
         await storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, '500')
-        assert(storage._http_sync_errors._segment['500'] == 1)
+        assert (storage._http_sync_errors._segment['500'] == 1)
 
         await storage.record_auth_rejections()
         await storage.record_auth_rejections()
-        assert(await storage._counters.pop_auth_rejections() == 2)
+        assert (await storage._counters.pop_auth_rejections() == 2)
 
         await storage.record_token_refreshes()
         await storage.record_token_refreshes()
-        assert(await storage._counters.pop_token_refreshes() == 2)
+        assert (await storage._counters.pop_token_refreshes() == 2)
 
         await storage.record_streaming_event((ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED, 'split', 1234))
-        assert(await storage._streaming_events.pop_streaming_events() == {'streamingEvents': [{'e': ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED.value, 'd': 'split', 't': 1234}]})
+        assert (await storage._streaming_events.pop_streaming_events() == {'streamingEvents': [{'e': ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED.value, 'd': 'split', 't': 1234}]})
         [await storage.record_streaming_event((ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED, 'split', 1234)) for i in range(1, 25)]
-        assert(len(storage._streaming_events._streaming_events) == 20)
+        assert (len(storage._streaming_events._streaming_events) == 20)
 
         await storage.record_session_length(20)
-        assert(await storage._counters.get_session_length() == 20)
+        assert (await storage._counters.get_session_length() == 20)
 
     @pytest.mark.asyncio
     async def test_record_latencies(self):
         storage = await InMemoryTelemetryStorageAsync.create()
 
         for method in ModelTelemetry.MethodExceptionsAndLatencies:
-            if self._get_method_latency(method, storage) == None:
+            if self._get_method_latency(method, storage) is None:
                 continue
             await storage.record_latency(method, 50)
-            assert(self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(50)] == 1)
+            assert (self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(50)] == 1)
             await storage.record_latency(method, 50000000)
-            assert(self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
+            assert (self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
             for j in range(10):
                 latency = random.randint(1001, 4987885)
                 current_count = self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(latency)]
                 [await storage.record_latency(method, latency) for i in range(2)]
-                assert(self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
+                assert (self._get_method_latency(method, storage)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
 
         for resource in ModelTelemetry.HTTPExceptionsAndLatencies:
-            if self._get_http_latency(resource, storage) == None:
+            if self._get_http_latency(resource, storage) is None:
                 continue
             await storage.record_sync_latency(resource, 50)
-            assert(self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(50)] == 1)
+            assert (self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(50)] == 1)
             await storage.record_sync_latency(resource, 50000000)
-            assert(self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
+            assert (self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(50000000)] == 1)
             for j in range(10):
                 latency = random.randint(1001, 4987885)
                 current_count = self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(latency)]
                 [await storage.record_sync_latency(resource, latency) for i in range(2)]
-                assert(self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
+                assert (self._get_http_latency(resource, storage)[ModelTelemetry.get_latency_bucket_index(latency)] == 2 + current_count)
 
     def _get_method_latency(self, resource, storage):
         if resource == ModelTelemetry.MethodExceptionsAndLatencies.TREATMENT:
@@ -1816,26 +1825,26 @@ class InMemoryTelemetryStorageAsyncTests(object):
         [await storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG) for i in range(5)]
         [await storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SET) for i in range(3)]
         [await storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_BY_FLAG_SETS) for i in range(10)]
-        [await storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET)  for i in range(7)]
+        [await storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SET) for i in range(7)]
         [await storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TREATMENTS_WITH_CONFIG_BY_FLAG_SETS) for i in range(6)]
         [await storage.record_exception(ModelTelemetry.MethodExceptionsAndLatencies.TRACK) for i in range(3)]
         exceptions = await storage.pop_exceptions()
-        assert(storage._method_exceptions._treatment == 0)
-        assert(storage._method_exceptions._treatments == 0)
-        assert(storage._method_exceptions._treatment_with_config == 0)
-        assert(storage._method_exceptions._treatments_with_config == 0)
-        assert(storage._method_exceptions._treatments_by_flag_set == 0)
-        assert(storage._method_exceptions._treatments_by_flag_sets == 0)
-        assert(storage._method_exceptions._track == 0)
-        assert(storage._method_exceptions._treatments_with_config_by_flag_set == 0)
-        assert(storage._method_exceptions._treatments_with_config_by_flag_sets == 0)
-        assert(exceptions == {'methodExceptions': {'treatment': 2, 'treatments': 1, 'treatment_with_config': 1, 'treatments_with_config': 5, 'treatments_by_flag_set': 3, 'treatments_by_flag_sets': 10, 'treatments_with_config_by_flag_set': 7, 'treatments_with_config_by_flag_sets': 6, 'track': 3}})
+        assert (storage._method_exceptions._treatment == 0)
+        assert (storage._method_exceptions._treatments == 0)
+        assert (storage._method_exceptions._treatment_with_config == 0)
+        assert (storage._method_exceptions._treatments_with_config == 0)
+        assert (storage._method_exceptions._treatments_by_flag_set == 0)
+        assert (storage._method_exceptions._treatments_by_flag_sets == 0)
+        assert (storage._method_exceptions._track == 0)
+        assert (storage._method_exceptions._treatments_with_config_by_flag_set == 0)
+        assert (storage._method_exceptions._treatments_with_config_by_flag_sets == 0)
+        assert (exceptions == {'methodExceptions': {'treatment': 2, 'treatments': 1, 'treatment_with_config': 1, 'treatments_with_config': 5, 'treatments_by_flag_set': 3, 'treatments_by_flag_sets': 10, 'treatments_with_config_by_flag_set': 7, 'treatments_with_config_by_flag_sets': 6, 'track': 3}})
 
         await storage.add_tag('tag1')
         await storage.add_tag('tag2')
         tags = await storage.pop_tags()
-        assert(storage._tags == [])
-        assert(tags == ['tag1', 'tag2'])
+        assert (storage._tags == [])
+        assert (tags == ['tag1', 'tag2'])
 
         [await storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, str(i)) for i in [500, 501, 502]]
         [await storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.SPLIT, str(i)) for i in [400, 401, 402]]
@@ -1845,34 +1854,34 @@ class InMemoryTelemetryStorageAsyncTests(object):
         await storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.TELEMETRY, '505')
         [await storage.record_sync_error(ModelTelemetry.HTTPExceptionsAndLatencies.TOKEN, '502') for i in range(5)]
         http_errors = await storage.pop_http_errors()
-        assert(http_errors == {'httpErrors': {'split': {'400': 1, '401': 1, '402': 1}, 'segment': {'500': 1, '501': 1, '502': 1},
-                                        'impression': {'502': 1}, 'impressionCount': {'501': 1, '502': 1},
-                                        'event': {'501': 1}, 'telemetry': {'505': 1}, 'token': {'502': 5}}})
-        assert(storage._http_sync_errors._split == {})
-        assert(storage._http_sync_errors._segment == {})
-        assert(storage._http_sync_errors._impression == {})
-        assert(storage._http_sync_errors._impression_count == {})
-        assert(storage._http_sync_errors._event == {})
-        assert(storage._http_sync_errors._telemetry == {})
+        assert (http_errors == {'httpErrors': {'split': {'400': 1, '401': 1, '402': 1}, 'segment': {'500': 1, '501': 1, '502': 1},
+                                               'impression': {'502': 1}, 'impressionCount': {'501': 1, '502': 1},
+                                               'event': {'501': 1}, 'telemetry': {'505': 1}, 'token': {'502': 5}}})
+        assert (storage._http_sync_errors._split == {})
+        assert (storage._http_sync_errors._segment == {})
+        assert (storage._http_sync_errors._impression == {})
+        assert (storage._http_sync_errors._impression_count == {})
+        assert (storage._http_sync_errors._event == {})
+        assert (storage._http_sync_errors._telemetry == {})
 
         await storage.record_auth_rejections()
         await storage.record_auth_rejections()
         auth_rejections = await storage.pop_auth_rejections()
-        assert(storage._counters._auth_rejections == 0)
-        assert(auth_rejections == 2)
+        assert (storage._counters._auth_rejections == 0)
+        assert (auth_rejections == 2)
 
         await storage.record_token_refreshes()
         await storage.record_token_refreshes()
         token_refreshes = await storage.pop_token_refreshes()
-        assert(storage._counters._token_refreshes == 0)
-        assert(token_refreshes == 2)
+        assert (storage._counters._token_refreshes == 0)
+        assert (token_refreshes == 2)
 
         await storage.record_streaming_event((ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED, 'split', 1234))
         await storage.record_streaming_event((ModelTelemetry.StreamingEventTypes.OCCUPANCY_PRI, 'split', 1234))
         streaming_events = await storage.pop_streaming_events()
-        assert(storage._streaming_events._streaming_events == [])
-        assert(streaming_events == {'streamingEvents': [{'e': ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED.value, 'd': 'split', 't': 1234},
-                                    {'e': ModelTelemetry.StreamingEventTypes.OCCUPANCY_PRI.value, 'd': 'split', 't': 1234}]})
+        assert (storage._streaming_events._streaming_events == [])
+        assert (streaming_events == {'streamingEvents': [{'e': ModelTelemetry.StreamingEventTypes.CONNECTION_ESTABLISHED.value, 'd': 'split', 't': 1234},
+                                                         {'e': ModelTelemetry.StreamingEventTypes.OCCUPANCY_PRI.value, 'd': 'split', 't': 1234}]})
 
     @pytest.mark.asyncio
     async def test_pop_latencies(self):
@@ -1889,25 +1898,25 @@ class InMemoryTelemetryStorageAsyncTests(object):
         [await storage.record_latency(ModelTelemetry.MethodExceptionsAndLatencies.TRACK, i) for i in [1, 10, 100]]
         latencies = await storage.pop_latencies()
 
-        assert(storage._method_latencies._treatment == [0] * 23)
-        assert(storage._method_latencies._treatments == [0] * 23)
-        assert(storage._method_latencies._treatment_with_config == [0] * 23)
-        assert(storage._method_latencies._treatments_with_config == [0] * 23)
-        assert(storage._method_latencies._treatments_by_flag_set == [0] * 23)
-        assert(storage._method_latencies._treatments_by_flag_sets == [0] * 23)
-        assert(storage._method_latencies._treatments_with_config_by_flag_set == [0] * 23)
-        assert(storage._method_latencies._treatments_with_config_by_flag_sets == [0] * 23)
-        assert(storage._method_latencies._track == [0] * 23)
-        assert(latencies ==  {'methodLatencies': {
-                    'treatment': [4] + [0] * 22,
-                    'treatments': [4] + [0] * 22,
-                    'treatment_with_config': [1] + [0] * 22,
-                    'treatments_with_config': [2] + [0] * 22,
-                    'treatments_by_flag_set': [2] + [0] * 22,
-                    'treatments_by_flag_sets': [2] + [0] * 22,
-                    'treatments_with_config_by_flag_set': [1] + [0] * 22,
-                    'treatments_with_config_by_flag_sets': [2] + [0] * 22,
-                    'track': [3] + [0] * 22}})
+        assert (storage._method_latencies._treatment == [0] * 23)
+        assert (storage._method_latencies._treatments == [0] * 23)
+        assert (storage._method_latencies._treatment_with_config == [0] * 23)
+        assert (storage._method_latencies._treatments_with_config == [0] * 23)
+        assert (storage._method_latencies._treatments_by_flag_set == [0] * 23)
+        assert (storage._method_latencies._treatments_by_flag_sets == [0] * 23)
+        assert (storage._method_latencies._treatments_with_config_by_flag_set == [0] * 23)
+        assert (storage._method_latencies._treatments_with_config_by_flag_sets == [0] * 23)
+        assert (storage._method_latencies._track == [0] * 23)
+        assert (latencies == {'methodLatencies': {
+            'treatment': [4] + [0] * 22,
+            'treatments': [4] + [0] * 22,
+            'treatment_with_config': [1] + [0] * 22,
+            'treatments_with_config': [2] + [0] * 22,
+            'treatments_by_flag_set': [2] + [0] * 22,
+            'treatments_by_flag_sets': [2] + [0] * 22,
+            'treatments_with_config_by_flag_set': [1] + [0] * 22,
+            'treatments_with_config_by_flag_sets': [2] + [0] * 22,
+            'track': [3] + [0] * 22}})
 
         [await storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.SPLIT, i) for i in [50, 10, 20, 40]]
         [await storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.SEGMENT, i) for i in [70, 100, 40, 30]]
@@ -1918,15 +1927,16 @@ class InMemoryTelemetryStorageAsyncTests(object):
         [await storage.record_sync_latency(ModelTelemetry.HTTPExceptionsAndLatencies.TOKEN, i) for i in [10, 15, 100]]
         sync_latency = await storage.pop_http_latencies()
 
-        assert(storage._http_latencies._split == [0] * 23)
-        assert(storage._http_latencies._segment == [0] * 23)
-        assert(storage._http_latencies._impression == [0] * 23)
-        assert(storage._http_latencies._impression_count == [0] * 23)
-        assert(storage._http_latencies._telemetry == [0] * 23)
-        assert(storage._http_latencies._token == [0] * 23)
-        assert(sync_latency == {'httpLatencies': {'split': [4] + [0] * 22, 'segment': [4] + [0] * 22,
-                                'impression': [2] + [0] * 22, 'impressionCount': [2] + [0] * 22, 'event': [2] + [0] * 22,
-                                'telemetry': [3] + [0] * 22, 'token': [3] + [0] * 22}})
+        assert (storage._http_latencies._split == [0] * 23)
+        assert (storage._http_latencies._segment == [0] * 23)
+        assert (storage._http_latencies._impression == [0] * 23)
+        assert (storage._http_latencies._impression_count == [0] * 23)
+        assert (storage._http_latencies._telemetry == [0] * 23)
+        assert (storage._http_latencies._token == [0] * 23)
+        assert (sync_latency == {'httpLatencies': {'split': [4] + [0] * 22, 'segment': [4] + [0] * 22,
+                                                   'impression': [2] + [0] * 22, 'impressionCount': [2] + [0] * 22, 'event': [2] + [0] * 22,
+                                                   'telemetry': [3] + [0] * 22, 'token': [3] + [0] * 22}})
+
 
 class InMemoryRuleBasedSegmentStorageTests(object):
     """In memory rule based segment storage test cases."""
@@ -1961,26 +1971,26 @@ class InMemoryRuleBasedSegmentStorageTests(object):
         assert storage.get_change_number() == -1
         storage.update([], [], 5)
         assert storage.get_change_number() == 5
-        
+
     def test_contains(self):
         raw = {
             "changeNumber": 123,
             "name": "segment1",
             "status": "ACTIVE",
             "trafficTypeName": "user",
-            "excluded":{
-            "keys":[],
-            "segments":[]
+            "excluded": {
+                "keys": [],
+                "segments": []
             },
             "conditions": []
         }
-        segment1 =  rule_based_segments.from_raw(raw)  
+        segment1 = rule_based_segments.from_raw(raw)
         raw2 = copy.deepcopy(raw)
         raw2["name"] = "segment2"
-        segment2 =  rule_based_segments.from_raw(raw2)
+        segment2 = rule_based_segments.from_raw(raw2)
         raw3 = copy.deepcopy(raw)
         raw3["name"] = "segment3"
-        segment3 =  rule_based_segments.from_raw(raw3)
+        segment3 = rule_based_segments.from_raw(raw3)
         events_queue = queue.Queue()
         storage = InMemoryRuleBasedSegmentStorage(events_queue)
         storage.update([segment1, segment2, segment3], [], -1)
@@ -2013,6 +2023,7 @@ class InMemoryRuleBasedSegmentStorageTests(object):
         assert event.internal_event == SdkInternalEvent.RB_SEGMENTS_UPDATED
         assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
+
 
 class InMemoryRuleBasedSegmentStorageAsyncTests(object):
     """In memory rule based segment storage test cases."""
@@ -2055,19 +2066,19 @@ class InMemoryRuleBasedSegmentStorageAsyncTests(object):
             "name": "segment1",
             "status": "ACTIVE",
             "trafficTypeName": "user",
-            "excluded":{
-            "keys":[],
-            "segments":[]
+            "excluded": {
+                "keys": [],
+                "segments": []
             },
             "conditions": []
         }
-        segment1 =  rule_based_segments.from_raw(raw)  
+        segment1 = rule_based_segments.from_raw(raw)
         raw2 = copy.deepcopy(raw)
         raw2["name"] = "segment2"
-        segment2 =  rule_based_segments.from_raw(raw2)
+        segment2 = rule_based_segments.from_raw(raw2)
         raw3 = copy.deepcopy(raw)
         raw3["name"] = "segment3"
-        segment3 =  rule_based_segments.from_raw(raw3)
+        segment3 = rule_based_segments.from_raw(raw3)
         storage = InMemoryRuleBasedSegmentStorageAsync(asyncio.Queue())
         await storage.update([segment1, segment2, segment3], [], -1)
         assert await storage.contains(["segment1"])
@@ -2101,4 +2112,3 @@ class InMemoryRuleBasedSegmentStorageAsyncTests(object):
         assert event.internal_event == SdkInternalEvent.RB_SEGMENTS_UPDATED
         assert event.metadata.get_type() == SdkEventType.SEGMENTS_UPDATE
         assert len(event.metadata.get_names()) == 0
-

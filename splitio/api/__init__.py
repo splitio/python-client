@@ -14,12 +14,14 @@ class APIException(Exception):
         """Return HTTP status code."""
         return self._status_code
 
+
 class APIUriException(APIException):
     """Exception to raise when an API call fails due to 414  http error."""
 
     def __init__(self, custom_message, status_code=None):
         """Constructor."""
         APIException.__init__(self, custom_message, status_code)
+
 
 def headers_from_metadata(sdk_metadata, client_key=None):
     """

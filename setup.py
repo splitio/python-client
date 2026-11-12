@@ -36,16 +36,16 @@ INSTALL_REQUIRES = [
 ]
 
 with open(path.join(path.abspath(path.dirname(__file__)), 'splitio', 'version.py')) as f:
-    exec(f.read())  # pylint: disable=exec-used
+    exec(f.read())
 
 setup(
     name='splitio_client',
-    version=__version__,  # pylint: disable=undefined-variable
+    version=__version__,  # noqa: F821
     description='Split.io Python Client',
     author='Patricio Echague, Sebastian Arrubia',
     author_email='pato@split.io, sebastian@split.io',
     url='https://github.com/splitio/python-client',
-    download_url=('https://github.com/splitio/python-client/tarball/' + __version__),  # pylint: disable=undefined-variable
+    download_url=('https://github.com/splitio/python-client/tarball/' + __version__),  # noqa: F821
     license='Apache License 2.0',
     python_requires='>=3.7',
     install_requires=INSTALL_REQUIRES,

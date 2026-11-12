@@ -46,7 +46,6 @@ class SegmentWorkerTests(object):
     def test_handler(self):
         q = queue.Queue()
         segment_worker = SegmentWorker(handler_sync, q)
-        global change_number_received
         assert not segment_worker.is_running()
         segment_worker.start()
         assert segment_worker.is_running()
@@ -59,6 +58,7 @@ class SegmentWorkerTests(object):
 
         segment_worker.stop()
         assert not segment_worker.is_running()
+
 
 class SegmentWorkerAsyncTests(object):
 
@@ -79,11 +79,11 @@ class SegmentWorkerAsyncTests(object):
             segment_worker._handler()
 
         assert segment_worker.is_running()
-        assert(self._worker_running())
+        assert (self._worker_running())
         await segment_worker.stop()
         await asyncio.sleep(.1)
         assert not segment_worker.is_running()
-        assert(not self._worker_running())
+        assert (not self._worker_running())
 
     def _worker_running(self):
         worker_running = False
@@ -97,7 +97,6 @@ class SegmentWorkerAsyncTests(object):
     async def test_handler(self):
         q = asyncio.Queue()
         segment_worker = SegmentWorkerAsync(handler_sync, q)
-        global change_number_received
         assert not segment_worker.is_running()
         segment_worker.start()
         assert segment_worker.is_running()
@@ -110,4 +109,4 @@ class SegmentWorkerAsyncTests(object):
 
         await segment_worker.stop()
         await asyncio.sleep(.1)
-        assert(not self._worker_running())
+        assert (not self._worker_running())

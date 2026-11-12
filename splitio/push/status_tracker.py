@@ -18,7 +18,7 @@ class Status(Enum):
     PUSH_NONRETRYABLE_ERROR = 3
 
 
-class LastEventTimestamps(object):  # pylint:disable=too-few-public-methods
+class LastEventTimestamps(object):
     """Simple class to keep track of the last time multiple events occurred."""
 
     def __init__(self):
@@ -49,7 +49,7 @@ class PushStatusTrackerBase(object):
         """
         Reset the status to initial conditions.
 
-        This asssumes a healthy connection until proven wrong.
+        This assumes a healthy connection until proven wrong.
         """
         self._publishers.update({'control_pri': 2, 'control_sec': 2})
         self._last_control_message = ControlType.STREAMING_ENABLED
@@ -109,6 +109,7 @@ class PushStatusTrackerBase(object):
                 return self._propagate_status(Status.PUSH_NONRETRYABLE_ERROR), SSEStreamingStatus.DISABLED.value
 
         return None, None
+
 
 class PushStatusTracker(PushStatusTrackerBase):
     """Tracks status of notification manager/publishers."""
@@ -192,7 +193,8 @@ class PushStatusTracker(PushStatusTrackerBase):
         # 2. RETRYABLE_ERROR is propagated and the connection is closed on the clint side.
         # By doing this we guarantee that only one error will be propagated
         self.notify_sse_shutdown_expected()
-        self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.ABLY_ERROR, event.code, event.timestamp))
+        self._telemetry_runtime_producer.record_streaming_event(
+            (StreamingEventTypes.ABLY_ERROR, event.code, event.timestamp))
 
         if event.is_retryable():
             _LOGGER.info('received retryable error message. '
@@ -211,7 +213,8 @@ class PushStatusTracker(PushStatusTrackerBase):
         """
         next_status, telemetry_event_type = self._get_next_status()
         if next_status is not None:
-            self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.STREAMING_STATUS, telemetry_event_type, get_current_epoch_time_ms()))
+            self._telemetry_runtime_producer.record_streaming_event(
+                (StreamingEventTypes.STREAMING_STATUS, telemetry_event_type, get_current_epoch_time_ms()))
             return next_status
 
         return None
@@ -228,11 +231,14 @@ class PushStatusTracker(PushStatusTrackerBase):
         :rtype: Optional[Status]
         """
         if not self._shutdown_expected:
-            self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SSE_CONNECTION_ERROR, SSEConnectionError.NON_REQUESTED.value, get_current_epoch_time_ms()))
+            self._telemetry_runtime_producer.record_streaming_event(
+                (StreamingEventTypes.SSE_CONNECTION_ERROR, SSEConnectionError.NON_REQUESTED.value, get_current_epoch_time_ms()))
             return self._propagate_status(Status.PUSH_RETRYABLE_ERROR)
 
-        self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.SSE_CONNECTION_ERROR, SSEConnectionError.REQUESTED.value,  get_current_epoch_time_ms()))
+        self._telemetry_runtime_producer.record_streaming_event(
+            (StreamingEventTypes.SSE_CONNECTION_ERROR, SSEConnectionError.REQUESTED.value,  get_current_epoch_time_ms()))
         return None
+
 
 class PushStatusTrackerAsync(PushStatusTrackerBase):
     """Tracks status of notification manager/publishers."""

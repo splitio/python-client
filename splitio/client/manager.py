@@ -18,7 +18,7 @@ class SplitManager(object):
         :type factory: splitio.client.factory.SplitFactory
         """
         self._factory = factory
-        self._storage = factory._get_storage('splits')  # pylint: disable=protected-access
+        self._storage = factory._get_storage('splits')
         self._telemetry_init_producer = factory._telemetry_init_producer
 
     def split_names(self):
@@ -73,7 +73,7 @@ class SplitManager(object):
         """
         Get the splitView of feature_name. Subclasses need to override this method.
 
-        :param feature_name: Name of the feture to retrieve.
+        :param feature_name: Name of the feature to retrieve.
         :type feature_name: str
 
         :return: The SplitView instance.
@@ -102,6 +102,7 @@ class SplitManager(object):
 
         return feature_flag.to_split_view() if feature_flag is not None else None
 
+
 class SplitManagerAsync(object):
     """Split Manager. Gives insights on data cached by splits."""
 
@@ -113,7 +114,7 @@ class SplitManagerAsync(object):
         :type factory: splitio.client.factory.SplitFactory
         """
         self._factory = factory
-        self._storage = factory._get_storage('splits')  # pylint: disable=protected-access
+        self._storage = factory._get_storage('splits')
         self._telemetry_init_producer = factory._telemetry_init_producer
 
     async def split_names(self):
@@ -168,7 +169,7 @@ class SplitManagerAsync(object):
         """
         Get the splitView of feature_name. Subclasses need to override this method.
 
-        :param feature_name: Name of the feture to retrieve.
+        :param feature_name: Name of the feature to retrieve.
         :type feature_name: str
 
         :return: The SplitView instance.

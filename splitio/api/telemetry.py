@@ -7,14 +7,15 @@ from splitio.models.telemetry import HTTPExceptionsAndLatencies
 
 _LOGGER = logging.getLogger(__name__)
 
-class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
+
+class TelemetryAPI(object):
     """Class that uses an httpClient to communicate with the Telemetry API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: HttpClient
         :param sdk_key: User sdk_key token.
         :type sdk_key: string
@@ -23,7 +24,8 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.TELEMETRY, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.TELEMETRY, self._telemetry_runtime_producer)
 
     def record_unique_keys(self, uniques):
         """
@@ -66,7 +68,7 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             )
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
-        except HttpClientException as exc:
+        except HttpClientException:
             _LOGGER.debug(
                 'Error posting init config because an exception was raised by the HTTPClient'
             )
@@ -97,14 +99,14 @@ class TelemetryAPI(object):  # pylint: disable=too-few-public-methods
             raise APIException('Runtime stats not flushed properly.') from exc
 
 
-class TelemetryAPIAsync(object):  # pylint: disable=too-few-public-methods
+class TelemetryAPIAsync(object):
     """Async Class that uses an httpClient to communicate with the Telemetry API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: HttpClient
         :param sdk_key: User sdk_key token.
         :type sdk_key: string
@@ -113,7 +115,8 @@ class TelemetryAPIAsync(object):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.TELEMETRY, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.TELEMETRY, self._telemetry_runtime_producer)
 
     async def record_unique_keys(self, uniques):
         """
@@ -156,7 +159,7 @@ class TelemetryAPIAsync(object):  # pylint: disable=too-few-public-methods
             )
             if not 200 <= response.status_code < 300:
                 raise APIException(response.body, response.status_code)
-        except HttpClientException as exc:
+        except HttpClientException:
             _LOGGER.debug(
                 'Error posting init config because an exception was raised by the HTTPClient'
             )

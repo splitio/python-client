@@ -46,6 +46,20 @@ pipeline:
                       pip --version
               - step:
                   type: Run
+                  name: Lint
+                  identifier: Lint
+                  when:
+                    stageStatus: Success
+                    condition: <+matrix.pythonVersion> == "latest"
+                  spec:
+                    shell: Bash
+                    command: |-
+                      export PATH="$HOME/.local/bin:$PATH"
+                      eval "$(mise activate bash)"
+                      pip install flake8
+                      flake8
+              - step:
+                  type: Run
                   name: Start Redis
                   identifier: Start_Redis
                   spec:

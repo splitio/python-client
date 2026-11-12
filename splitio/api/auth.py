@@ -4,9 +4,7 @@ import logging
 import json
 
 from splitio.api import APIException, headers_from_metadata
-from splitio.api.commons import headers_from_metadata, record_telemetry
 from splitio.spec import SPEC_VERSION
-from splitio.util.time import get_current_epoch_time_ms
 from splitio.api.client import HttpClientException
 from splitio.models.token import from_raw
 from splitio.models.telemetry import HTTPExceptionsAndLatencies
@@ -14,14 +12,14 @@ from splitio.models.telemetry import HTTPExceptionsAndLatencies
 _LOGGER = logging.getLogger(__name__)
 
 
-class AuthAPI(object):  # pylint: disable=too-few-public-methods
+class AuthAPI(object):
     """Class that uses an httpClient to communicate with the SDK Auth Service API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: HttpClient
         :param sdk_key: User sdk key.
         :type sdk_key: string
@@ -32,7 +30,8 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.TOKEN, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.TOKEN, self._telemetry_runtime_producer)
 
     def authenticate(self):
         """
@@ -61,14 +60,15 @@ class AuthAPI(object):  # pylint: disable=too-few-public-methods
             _LOGGER.debug('Exception information: ', exc_info=True)
             raise APIException('Could not perform authentication.') from exc
 
-class AuthAPIAsync(object):  # pylint: disable=too-few-public-methods
+
+class AuthAPIAsync(object):
     """Async Class that uses an httpClient to communicate with the SDK Auth Service API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: HttpClient
         :param sdk_key: User sdk key.
         :type sdk_key: string
@@ -79,7 +79,8 @@ class AuthAPIAsync(object):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.TOKEN, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.TOKEN, self._telemetry_runtime_producer)
 
     async def authenticate(self):
         """

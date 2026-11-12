@@ -4,6 +4,7 @@ from splitio.models.grammar import condition
 from splitio.models.grammar import partitions
 from splitio.models.grammar import matchers
 
+
 class ConditionTests(object):
     """Test the condition object model."""
 
@@ -55,10 +56,10 @@ class ConditionTests(object):
             {'treatment': 'on', 'size': 50},
             {'treatment': 'off', 'size': 50}
         ]
-        assert as_json['conditionType'] ==  'WHITELIST'
+        assert as_json['conditionType'] == 'WHITELIST'
         assert as_json['label'] == 'some_label'
         assert as_json['matcherGroup']['matchers'][0]['matcherType'] == 'ALL_KEYS'
-        assert as_json['matcherGroup']['matchers'][0]['negate'] == False
+        assert as_json['matcherGroup']['matchers'][0]['negate'] is False
         assert as_json['matcherGroup']['combiner'] == 'AND'
 
     def test_matches(self, mocker):
@@ -73,6 +74,6 @@ class ConditionTests(object):
             [partitions.Partition('on', 50), partitions.Partition('off', 50)],
             'some_label'
         )
-        assert cond.matches('some_key', {'a': 1}, {'some_context_option': 0}) == True
+        assert cond.matches('some_key', {'a': 1}, {'some_context_option': 0}) is True
         assert matcher1_mock.evaluate.mock_calls == [mocker.call('some_key', {'a': 1}, {'some_context_option': 0})]
         assert matcher2_mock.evaluate.mock_calls == [mocker.call('some_key', {'a': 1}, {'some_context_option': 0})]

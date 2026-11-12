@@ -9,6 +9,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class ImpressionSynchronizer(object):
     """Impressions synchronizer class."""
+
     def __init__(self, impressions_api, storage, bulk_size):
         """
         Class constructor.
@@ -85,7 +86,7 @@ class ImpressionsCountSynchronizer(object):
     def synchronize_counters(self):
         """Send impressions from both the failed and new queues."""
 
-        if self._impressions_counter == None:
+        if self._impressions_counter is None:
             return
 
         to_send = self._impressions_counter.pop_all()
@@ -101,6 +102,7 @@ class ImpressionsCountSynchronizer(object):
 
 class ImpressionSynchronizerAsync(object):
     """Impressions async synchronizer class."""
+
     def __init__(self, impressions_api, storage, bulk_size):
         """
         Class constructor.
@@ -177,7 +179,7 @@ class ImpressionsCountSynchronizerAsync(object):
     async def synchronize_counters(self):
         """Send impressions from both the failed and new queues."""
 
-        if self._impressions_counter == None:
+        if self._impressions_counter is None:
             return
 
         to_send = self._impressions_counter.pop_all()

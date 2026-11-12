@@ -12,14 +12,14 @@ from splitio.models.telemetry import HTTPExceptionsAndLatencies
 _LOGGER = logging.getLogger(__name__)
 
 
-class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
+class SegmentsAPI(object):
     """Class that uses an httpClient to communicate with the segments API."""
 
     def __init__(self, http_client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: client.HttpClient
         :param sdk_key: User sdk_key token.
         :type sdk_key: string
@@ -31,7 +31,8 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.SEGMENT, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.SEGMENT, self._telemetry_runtime_producer)
 
     def fetch_segment(self, segment_name, change_number, fetch_options):
         """
@@ -71,14 +72,14 @@ class SegmentsAPI(object):  # pylint: disable=too-few-public-methods
             raise APIException('Segments not fetched properly.') from exc
 
 
-class SegmentsAPIAsync(object):  # pylint: disable=too-few-public-methods
+class SegmentsAPIAsync(object):
     """Async Class that uses an httpClient to communicate with the segments API."""
 
     def __init__(self, http_client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: client.HttpClient
         :param sdk_key: User sdk_key token.
         :type sdk_key: string
@@ -90,7 +91,8 @@ class SegmentsAPIAsync(object):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.SEGMENT, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.SEGMENT, self._telemetry_runtime_producer)
 
     async def fetch_segment(self, segment_name, change_number, fetch_options):
         """

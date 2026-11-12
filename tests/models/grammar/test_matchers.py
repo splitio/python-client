@@ -1,12 +1,10 @@
 """Matchers tests module."""
-#pylint: disable=protected-access,line-too-long,unsubscriptable-object
 
 import abc
 import calendar
 import json
 import os.path
 import re
-import pytest
 
 from datetime import datetime
 
@@ -16,9 +14,9 @@ from splitio.models import splits
 from splitio.models import rule_based_segments
 from splitio.models.grammar import condition
 from splitio.models.grammar.matchers.utils.utils import Semver
-from splitio.storage import SegmentStorage
 from splitio.engine.evaluator import Evaluator, EvaluationContext
 from tests.integration import splits_json
+
 
 class MatcherTestsBase(object):
     """Abstract class to make sure we test all relevant methods."""
@@ -28,17 +26,14 @@ class MatcherTestsBase(object):
     @abc.abstractmethod
     def test_from_raw(self, mocker):
         """Test parsing from raw json/dict."""
-        pass
 
     @abc.abstractmethod
     def test_matcher_behaviour(self, mocker):
         """Test if the matcher works properly."""
-        pass
 
     @abc.abstractmethod
     def test_to_json(self):
         """Test that the object serializes to JSON properly."""
-        pass
 
 
 class AllKeysMatcherTests(MatcherTestsBase):
@@ -123,7 +118,6 @@ class BetweenMatcherTests(MatcherTestsBase):
         assert parsed_number.evaluate(True) is False
         assert parsed_number.evaluate(object()) is False
 
-
         parsed_date = matchers.BetweenMatcher(self.raw_date)
         assert parsed_date.evaluate(int(calendar.timegm((datetime(2019, 12, 20, 9, 30)).timetuple()))) is False
         assert parsed_date.evaluate(int(calendar.timegm((datetime(2019, 12, 21, 9, 30, 45)).timetuple()))) is True
@@ -207,7 +201,6 @@ class EqualToMatcherTests(MatcherTestsBase):
         assert matcher_date.evaluate(True) is False
         assert matcher_date.evaluate(object()) is False
 
-
     def test_to_json(self):
         """Test that the object serializes to JSON properly."""
         as_json_number = matchers.from_raw(self.raw_number).to_json()
@@ -267,7 +260,6 @@ class GreaterOrEqualMatcherTests(MatcherTestsBase):
         assert parsed_date.evaluate({}) is False
         assert parsed_date.evaluate(True) is False
         assert parsed_date.evaluate(object()) is False
-
 
     def test_matcher_behaviour(self, mocker):
         """Test if the matcher works properly."""
@@ -355,7 +347,6 @@ class LessOrEqualMatcherTests(MatcherTestsBase):
         assert matcher_number.evaluate(True) is False
         assert matcher_number.evaluate(object()) is False
 
-
         matcher_date = matchers.LessThanOrEqualMatcher(self.raw_date)
         assert matcher_date.evaluate(int(calendar.timegm((datetime(2019, 12, 20, 0, 0, 0)).timetuple()))) is True
         assert matcher_date.evaluate(int(calendar.timegm((datetime(2019, 12, 21, 0, 0, 0)).timetuple()))) is True
@@ -367,7 +358,6 @@ class LessOrEqualMatcherTests(MatcherTestsBase):
         assert matcher_date.evaluate({}) is False
         assert matcher_date.evaluate(True) is False
         assert matcher_date.evaluate(object()) is False
-
 
     def test_to_json(self):
         """Test that the object serializes to JSON properly."""
@@ -406,7 +396,7 @@ class UserDefinedSegmentMatcherTests(MatcherTestsBase):
         matcher = matchers.UserDefinedSegmentMatcher(self.raw)
 
         # Test that if the key if the storage wrapper finds the key in the segment, it matches.
-        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([],{'some_segment': True}, {})}) is True
+        assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([], {'some_segment': True}, {})}) is True
         # Test that if the key if the storage wrapper doesn't find the key in the segment, it fails.
         assert matcher.evaluate('some_key', {}, {'evaluator': None, 'ec': EvaluationContext([], {'some_segment': False}, {})}) is False
 
@@ -780,7 +770,7 @@ class DependencyMatcherTests(MatcherTestsBase):
         parsed = matchers.DependencyMatcher(cond_raw)
         evaluator = mocker.Mock(spec=Evaluator)
 
-        cond = condition.from_raw(splits_json["splitChange1_1"]['ff']['d'][0]['conditions'][0])
+        condition.from_raw(splits_json["splitChange1_1"]['ff']['d'][0]['conditions'][0])
         split = splits.from_raw(splits_json["splitChange1_1"]['ff']['d'][0])
 
         evaluator.eval_with_context.return_value = {'treatment': 'on'}
@@ -881,6 +871,7 @@ class RegexMatcherTests(MatcherTestsBase):
         assert as_json['matcherType'] == 'MATCHES_STRING'
         assert as_json['stringMatcherData'] == "^[a-z][A-Z][0-9]$"
 
+
 class EqualToSemverMatcherTests(MatcherTestsBase):
     """Semver equalto matcher test cases."""
 
@@ -922,6 +913,7 @@ class EqualToSemverMatcherTests(MatcherTestsBase):
         """Test that the object serializes to str properly."""
         as_str = matchers.EqualToSemverMatcher(self.raw)
         assert str(as_str) == "equal semver 2.1.8"
+
 
 class GreaterThanOrEqualToSemverMatcherTests(MatcherTestsBase):
     """Semver greater or equalto matcher test cases."""
@@ -966,6 +958,7 @@ class GreaterThanOrEqualToSemverMatcherTests(MatcherTestsBase):
         as_str = matchers.GreaterThanOrEqualToSemverMatcher(self.raw)
         assert str(as_str) == "greater than or equal to semver 2.1.8"
 
+
 class LessThanOrEqualToSemverMatcherTests(MatcherTestsBase):
     """Semver less or equalto matcher test cases."""
 
@@ -1008,6 +1001,7 @@ class LessThanOrEqualToSemverMatcherTests(MatcherTestsBase):
         """Test that the object serializes to str properly."""
         as_str = matchers.LessThanOrEqualToSemverMatcher(self.raw)
         assert str(as_str) == "less than or equal to semver 2.1.8"
+
 
 class BetweenSemverMatcherTests(MatcherTestsBase):
     """Semver between matcher test cases."""
@@ -1058,6 +1052,7 @@ class BetweenSemverMatcherTests(MatcherTestsBase):
         as_str = matchers.BetweenSemverMatcher(self.raw)
         assert str(as_str) == "between semver 2.1.8 and 2.1.11"
 
+
 class InListSemverMatcherTests(MatcherTestsBase):
     """Semver inlist matcher test cases."""
 
@@ -1098,17 +1093,18 @@ class InListSemverMatcherTests(MatcherTestsBase):
         as_str = matchers.InListSemverMatcher(self.raw)
         assert str(as_str) == "in list semver ['2.1.8', '2.1.11']"
 
+
 class RuleBasedMatcherTests(MatcherTestsBase):
     """Rule based segment matcher test cases."""
 
-    raw ={
+    raw = {
         "keySelector": {
-        "trafficType": "user"
+            "trafficType": "user"
         },
         "matcherType": "IN_RULE_BASED_SEGMENT",
         "negate": False,
         "userDefinedSegmentMatcherData": {
-        "segmentName": "sample_rule_based_segment"
+            "segmentName": "sample_rule_based_segment"
         }
     }
 
@@ -1130,15 +1126,16 @@ class RuleBasedMatcherTests(MatcherTestsBase):
 
         rbs = rule_based_segments.from_raw(data["rbs"]["d"][0])
         matcher = matchers.RuleBasedSegmentMatcher(self.raw)
-        ec ={'ec': EvaluationContext(
-                    {},
-                    {"segment1": False},
-                    {"sample_rule_based_segment": rbs}
-                )}
+        ec = {'ec': EvaluationContext(
+            {},
+            {"segment1": False},
+            {"sample_rule_based_segment": rbs}
+        )}
         assert matcher._match(None, context=ec) is False
         assert matcher._match('bilal@split.io', context=ec) is False
         assert matcher._match('bilal@split.io', {'email': 'bilal@split.io'}, context=ec) is True
-        
+
+
 class PrerequisitesMatcherTests(MatcherTestsBase):
     """tests for prerequisites matcher."""
 
@@ -1160,7 +1157,6 @@ class PrerequisitesMatcherTests(MatcherTestsBase):
         prereq = splits.from_raw_prerequisites(data['ff']['d'][3]['prerequisites'])
         parsed = PrerequisitesMatcher(prereq)
         evaluator = mocker.Mock(spec=Evaluator)
-
 
         evaluator.eval_with_context.return_value = {'treatment': 'on'}
         assert parsed.match('SPLIT_2', {}, {'evaluator': evaluator, 'ec': [{'flags': ['prereq_chain'], 'segment_memberships': {}}]}) is True

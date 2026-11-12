@@ -1,5 +1,4 @@
 """Redis storage end to end tests."""
-#pylint: disable=no-self-use,protected-access,line-too-long,too-few-public-methods
 import pytest
 import json
 import os
@@ -131,6 +130,7 @@ class RedisSplitStorageTests(object):
                 'SPLITIO.split.dependency_test'
             )
 
+
 class RedisSegmentStorageTests(object):
     """Redis Segment storage e2e tests."""
 
@@ -165,7 +165,6 @@ class RedisImpressionsStorageTests(object):
             impressions.Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None),
             impressions.Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ])
-
 
     def test_put_fetch_contains(self):
         """Test storing and retrieving splits in redis."""
@@ -202,6 +201,7 @@ class RedisImpressionsStorageTests(object):
 
 class RedisEventsStorageTests(object):
     """Redis Events storage e2e tests."""
+
     def _put_events(self, adapter, metadata):
         storage = RedisEventsStorage(adapter, metadata)
         storage.put([
@@ -249,6 +249,7 @@ class RedisEventsStorageTests(object):
                 assert event['m']['n'] == 'NA'
         finally:
             adapter.delete('SPLITIO.events')
+
 
 class RedisSplitStorageAsyncTests(object):
     """Redis Split storage e2e tests."""
@@ -364,6 +365,7 @@ class RedisSplitStorageAsyncTests(object):
                 'SPLITIO.split.dependency_test'
             )
 
+
 class RedisSegmentStorageAsyncTests(object):
     """Redis Segment storage e2e tests."""
 
@@ -388,6 +390,7 @@ class RedisSegmentStorageAsyncTests(object):
         finally:
             await adapter.delete('SPLITIO.segment.some_segment', 'SPLITIO.segment.some_segment.till')
 
+
 class RedisImpressionsStorageAsyncTests(object):
     """Redis Impressions storage e2e tests."""
 
@@ -398,7 +401,6 @@ class RedisImpressionsStorageAsyncTests(object):
             impressions.Impression('key2', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None),
             impressions.Impression('key3', 'feature1', 'on', 'l1', 123456, 'b1', 321654, None, None)
         ])
-
 
     @pytest.mark.asyncio
     async def test_put_fetch_contains(self):
@@ -437,6 +439,7 @@ class RedisImpressionsStorageAsyncTests(object):
 
 class RedisEventsStorageAsyncTests(object):
     """Redis Events storage e2e tests."""
+
     async def _put_events(self, adapter, metadata):
         storage = RedisEventsStorageAsync(adapter, metadata)
         await storage.put([

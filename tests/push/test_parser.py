@@ -3,24 +3,25 @@ import json
 import pytest
 
 from splitio.push.sse import SSEEvent
-from splitio.push.parser import parse_incoming_event, BaseUpdate, AblyError, OccupancyMessage, \
-    SegmentChangeUpdate, SplitChangeUpdate, SplitKillUpdate, EventParsingException
+from splitio.push.parser import parse_incoming_event, AblyError, OccupancyMessage, SegmentChangeUpdate, \
+    SplitChangeUpdate, SplitKillUpdate, EventParsingException
 
 
 def make_message(channel, data):
     return SSEEvent('123', 'message', None, json.dumps({
-        'id':'ZlalwoKlXW:0:0',
-        'timestamp':1591996755043,
-        'encoding':'json',
+        'id': 'ZlalwoKlXW:0:0',
+        'timestamp': 1591996755043,
+        'encoding': 'json',
         'channel': channel,
         'data': json.dumps(data)
     }))
 
+
 def make_occupancy(channel, data):
     return SSEEvent('123', 'message', None, json.dumps({
-        'id':'ZlalwoKlXW:0:0',
-        'timestamp':1591996755043,
-        'encoding':'json',
+        'id': 'ZlalwoKlXW:0:0',
+        'timestamp': 1591996755043,
+        'encoding': 'json',
         'channel': channel,
         'name': '[meta]occupancy',
         'data': json.dumps(data)
@@ -40,16 +41,16 @@ class ParserTests(object):
 
         with pytest.raises(EventParsingException):
             parse_incoming_event(json.dumps({
-            'data': {'a':1},
-            'event': 'some'
-        }))
+                'data': {'a': 1},
+                'event': 'some'
+            }))
 
     def test_event_parsing(self):
         """Test parse Update event."""
 
         e0 = make_message(
             'NDA5ODc2MTAyNg==_MzAyODY0NDkyOA==_splits',
-            {'type':'SPLIT_KILL','changeNumber':1591996754396,'defaultTreatment':'some','splitName':'test'},
+            {'type': 'SPLIT_KILL', 'changeNumber': 1591996754396, 'defaultTreatment': 'some', 'splitName': 'test'},
         )
         parsed0 = parse_incoming_event(e0)
         assert isinstance(parsed0, SplitKillUpdate)
@@ -59,7 +60,7 @@ class ParserTests(object):
 
         e1 = make_message(
             'NDA5ODc2MTAyNg==_MzAyODY0NDkyOA==_splits',
-            {'type':'SPLIT_UPDATE','changeNumber':1591996685190, 'pcn': 12, 'c': 2, 'd': 'eJzEUtFu2kAQ/BU0z4d0hw2Be0MFRVGJIx'},
+            {'type': 'SPLIT_UPDATE', 'changeNumber': 1591996685190, 'pcn': 12, 'c': 2, 'd': 'eJzEUtFu2kAQ/BU0z4d0hw2Be0MFRVGJIx'},
         )
         parsed1 = parse_incoming_event(e1)
         assert isinstance(parsed1, SplitChangeUpdate)
@@ -70,18 +71,18 @@ class ParserTests(object):
 
         e1 = make_message(
             'NDA5ODc2MTAyNg==_MzAyODY0NDkyOA==_splits',
-            {'type':'SPLIT_UPDATE','changeNumber':1591996685190},
+            {'type': 'SPLIT_UPDATE', 'changeNumber': 1591996685190},
         )
         parsed1 = parse_incoming_event(e1)
         assert isinstance(parsed1, SplitChangeUpdate)
         assert parsed1.change_number == 1591996685190
-        assert parsed1.previous_change_number == None
-        assert parsed1.compression == None
-        assert parsed1.object_definition == None
+        assert parsed1.previous_change_number is None
+        assert parsed1.compression is None
+        assert parsed1.object_definition is None
 
         e2 = make_message(
             'NDA5ODc2MTAyNg==_MzAyODY0NDkyOA==_segments',
-            {'type':'SEGMENT_UPDATE','changeNumber':1591988398533,'segmentName':'some'},
+            {'type': 'SEGMENT_UPDATE', 'changeNumber': 1591988398533, 'segmentName': 'some'},
         )
         parsed2 = parse_incoming_event(e2)
         assert isinstance(parsed2, SegmentChangeUpdate)

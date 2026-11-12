@@ -12,12 +12,13 @@ from splitio.models.rule_based_segments import SegmentType
 from splitio.optional.loaders import asyncio
 
 CONTROL = 'control'
-EvaluationContext = namedtuple('EvaluationContext', ['flags', 'segment_memberships', 'rbs_segments'])
+EvaluationContext = namedtuple(
+    'EvaluationContext', ['flags', 'segment_memberships', 'rbs_segments'])
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class Evaluator(object):  # pylint: disable=too-few-public-methods
+class Evaluator(object):
     """Split Evaluator class."""
 
     def __init__(self, splitter, fallback_treatment_calculator=None):
@@ -62,16 +63,19 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
                 label = Label.KILLED
                 _treatment = feature.default_treatment
             else:
-                label, _treatment = self._check_prerequisites(feature, bucketing, key, attrs, ctx, label, _treatment)
-                label, _treatment = self._get_treatment(feature, bucketing, key, attrs, ctx, label, _treatment)
+                label, _treatment = self._check_prerequisites(
+                    feature, bucketing, key, attrs, ctx, label, _treatment)
+                label, _treatment = self._get_treatment(
+                    feature, bucketing, key, attrs, ctx, label, _treatment)
             if _treatment == CONTROL:
-                fallback_treatment = self._fallback_treatment_calculator.resolve(feature_name, label)
+                fallback_treatment = self._fallback_treatment_calculator.resolve(
+                    feature_name, label)
                 label = fallback_treatment.label
                 _treatment = fallback_treatment.treatment
                 config = fallback_treatment.config
             else:
                 config = feature.get_configurations_for(_treatment)
-                    
+
         return {
             'treatment': _treatment,
             'configurations': config,
@@ -81,7 +85,7 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
             },
             'impressions_disabled': feature.impressions_disabled if feature else None
         }
-    
+
     def _get_treatment(self, feature, bucketing, key, attrs, ctx, label, _treatment):
         if _treatment == CONTROL:
             treatment, label = self._treatment_for_flag(feature, key, bucketing, attrs, ctx)
@@ -90,21 +94,20 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
                 _treatment = feature.default_treatment
             else:
                 _treatment = treatment
-        
-        return label, _treatment                
+
+        return label, _treatment
 
     def _check_prerequisites(self, feature, bucketing, key, attrs, ctx, label, _treatment):
         if feature.prerequisites is not None:
             prerequisites_matcher = PrerequisitesMatcher(feature.prerequisites)
             if not prerequisites_matcher.match(key, attrs, {
-                                                            'evaluator': self,
-                                                            'bucketing_key': bucketing,
-                                                            'ec': ctx}):
+                'evaluator': self,
+                'bucketing_key': bucketing,
+                    'ec': ctx}):
                 label = Label.PREREQUISITES_NOT_MET
                 _treatment = feature.default_treatment
-       
+
         return label, _treatment
-        
 
     def _treatment_for_flag(self, flag, key, bucketing, attributes, ctx):
         """
@@ -115,7 +118,8 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
         for condition in flag.conditions:
             if not rollout and condition.condition_type == ConditionType.ROLLOUT:
                 if flag.traffic_allocation < 100:
-                    bucket = self._splitter.get_bucket(bucketing, flag.traffic_allocation_seed, flag.algo)
+                    bucket = self._splitter.get_bucket(
+                        bucketing, flag.traffic_allocation_seed, flag.algo)
                     if bucket > flag.traffic_allocation:
                         return flag.default_treatment, Label.NOT_IN_SPLIT
 
@@ -125,11 +129,12 @@ class Evaluator(object):  # pylint: disable=too-few-public-methods
                 'evaluator': self,
                 'bucketing_key': bucketing,
                 'ec': ctx,
-                }):
+            }):
 
                 return self._splitter.get_treatment(bucketing, flag.seed, condition.partitions, flag.algo), condition.label
 
         return flag.default_treatment, Label.NO_CONDITION_MATCHED
+
 
 class EvaluationDataFactory:
 
@@ -155,24 +160,27 @@ class EvaluationDataFactory:
         while pending or pending_rbs:
             fetched = self._flag_storage.fetch_many(list(pending))
             fetched_rbs = self._rbs_segment_storage.fetch_many(list(pending_rbs))
-            features, rbsegments, splits, rb_segments = update_objects(fetched, fetched_rbs, splits, rb_segments)
-            pending, pending_memberships, pending_rbs = get_pending_objects(features, splits, rbsegments, rb_segments, pending_memberships)
-                        
+            features, rbsegments, splits, rb_segments = update_objects(
+                fetched, fetched_rbs, splits, rb_segments)
+            pending, pending_memberships, pending_rbs = get_pending_objects(
+                features, splits, rbsegments, rb_segments, pending_memberships)
+
         return EvaluationContext(
-            splits, 
-            { segment: self._segment_storage.segment_contains(segment, key)
+            splits,
+            {segment: self._segment_storage.segment_contains(segment, key)
                 for segment in pending_memberships
-            },
+             },
             rb_segments
         )
-        
+
+
 class AsyncEvaluationDataFactory:
 
     def __init__(self, split_storage, segment_storage, rbs_segment_storage):
         self._flag_storage = split_storage
         self._segment_storage = segment_storage
         self._rbs_segment_storage = rbs_segment_storage
-        
+
     async def context_for(self, key, feature_names):
         """
         Recursively iterate & fetch all data required to evaluate these flags.
@@ -190,20 +198,23 @@ class AsyncEvaluationDataFactory:
         while pending or pending_rbs:
             fetched = await self._flag_storage.fetch_many(list(pending))
             fetched_rbs = await self._rbs_segment_storage.fetch_many(list(pending_rbs))
-            features, rbsegments, splits, rb_segments = update_objects(fetched, fetched_rbs, splits, rb_segments)
-            pending, pending_memberships, pending_rbs = get_pending_objects(features, splits, rbsegments, rb_segments, pending_memberships)
+            features, rbsegments, splits, rb_segments = update_objects(
+                fetched, fetched_rbs, splits, rb_segments)
+            pending, pending_memberships, pending_rbs = get_pending_objects(
+                features, splits, rbsegments, rb_segments, pending_memberships)
 
         segment_names = list(pending_memberships)
         segment_memberships = await asyncio.gather(*[
             self._segment_storage.segment_contains(segment, key)
             for segment in segment_names
         ])
-        
+
         return EvaluationContext(
-            splits, 
+            splits,
             dict(zip(segment_names, segment_memberships)),
             rb_segments
         )
+
 
 def get_dependencies(object):
     """
@@ -214,17 +225,19 @@ def get_dependencies(object):
     rbs_segment_names = []
     for condition in object.conditions:
         for matcher in condition.matchers:
-            if isinstance(matcher,RuleBasedSegmentMatcher):
+            if isinstance(matcher, RuleBasedSegmentMatcher):
                 rbs_segment_names.append(matcher._rbs_segment_name)
-            if isinstance(matcher,UserDefinedSegmentMatcher):
+            if isinstance(matcher, UserDefinedSegmentMatcher):
                 segment_names.append(matcher._segment_name)
             elif isinstance(matcher, DependencyMatcher):
                 feature_names.append(matcher._split_name)
 
     return feature_names, segment_names, rbs_segment_names
 
+
 def filter_missing(features):
     return {k: v for (k, v) in features.items() if v is not None}
+
 
 def get_pending_objects(features, splits, rbsegments, rb_segments, pending_memberships):
     pending = set()
@@ -246,16 +259,18 @@ def get_pending_objects(features, splits, rbsegments, rb_segments, pending_membe
             else:
                 pending_rbs.update(filter(lambda f: f not in rb_segments, [excluded_segment.name]))
         pending_rbs.update(filter(lambda f: f not in rb_segments, crbs))
-    
+
     return pending, pending_memberships, pending_rbs
-    
+
+
 def update_objects(fetched, fetched_rbs, splits, rb_segments):
     features = filter_missing(fetched)
     rbsegments = filter_missing(fetched_rbs)
     splits.update(features)
     rb_segments.update(rbsegments)
-    
+
     return features, rbsegments, splits, rb_segments
-    
+
+
 def get_prerequisites(feature):
     return [prerequisite.feature_flag_name for prerequisite in feature.prerequisites]

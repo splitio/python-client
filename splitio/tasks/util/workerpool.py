@@ -8,6 +8,7 @@ from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class WorkerPool(object):
     """Worker pool class to implement single producer/multiple consumer."""
 
@@ -37,7 +38,7 @@ class WorkerPool(object):
     @staticmethod
     def _safe_run(func, message):
         """
-        Execute the user funcion for a given message without raising exceptions.
+        Execute the user function for a given message without raising exceptions.
 
         :param func: User defined function.
         :type func: callable
@@ -50,7 +51,7 @@ class WorkerPool(object):
         try:
             func(message)
             return True
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             _LOGGER.error("Something went wrong when processing message %s", message)
             _LOGGER.debug('Original traceback: ', exc_info=True)
             return False
@@ -79,7 +80,7 @@ class WorkerPool(object):
                 # If the task is successfully executed, the ack is done AFTERWARDS,
                 # to avoid race conditions on SDK initialization.
                 _LOGGER.debug("processing message '%s'", message)
-                ok = self._safe_run(func, message)  # pylint: disable=invalid-name
+                ok = self._safe_run(func, message)
                 if not ok:
                     self._failed = True
                     _LOGGER.error(
@@ -165,8 +166,8 @@ class WorkerPoolAsync(object):
     async def _do_work(self, message):
         """process a single message."""
         try:
-            await self._semaphore.acquire() # wait until "there's a free worker"
-            if self._aborted: # check in case the pool was shutdown while we were waiting for a worker
+            await self._semaphore.acquire()  # wait until "there's a free worker"
+            if self._aborted:  # check in case the pool was shutdown while we were waiting for a worker
                 return
             await self._handler(message._message)
         except Exception:
@@ -174,7 +175,7 @@ class WorkerPoolAsync(object):
             _LOGGER.debug('Original traceback: ', exc_info=True)
             message._failed = True
         message._complete.set()
-        self._semaphore.release() # signal worker is idle
+        self._semaphore.release()  # signal worker is idle
 
     def start(self):
         """Start the workers."""
@@ -206,6 +207,7 @@ class WorkerPoolAsync(object):
 
 class TaskCompletionWraper:
     """Task completion class"""
+
     def __init__(self, message):
         self._message = message
         self._complete = asyncio.Event()
@@ -221,6 +223,7 @@ class TaskCompletionWraper:
 
 class BatchCompletionWrapper:
     """Batch completion class"""
+
     def __init__(self, tasks):
         self._tasks = tasks
 

@@ -1,6 +1,7 @@
 """Telemetry Sync Class."""
 import abc
 
+
 class TelemetrySynchronizer(object):
     """Telemetry synchronizer class."""
 
@@ -38,7 +39,7 @@ class TelemetrySubmitter(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def synchronize_config(self):
-        """synchronize initial config data classe."""
+        """synchronize initial config data class."""
 
     @abc.abstractmethod
     def synchronize_stats(self):
@@ -58,7 +59,7 @@ class InMemoryTelemetrySubmitter(TelemetrySubmitter):
         self._segment_storage = segment_storage
 
     def synchronize_config(self):
-        """synchronize initial config data classe."""
+        """synchronize initial config data class."""
         self._telemetry_api.record_init(self._telemetry_init_consumer.get_config_stats())
 
     def synchronize_stats(self):
@@ -95,7 +96,7 @@ class InMemoryTelemetrySubmitterAsync(TelemetrySubmitter):
         self._segment_storage = segment_storage
 
     async def synchronize_config(self):
-        """synchronize initial config data classe."""
+        """synchronize initial config data class."""
         await self._telemetry_api.record_init(await self._telemetry_init_consumer.get_config_stats())
 
     async def synchronize_stats(self):
@@ -118,6 +119,7 @@ class InMemoryTelemetrySubmitterAsync(TelemetrySubmitter):
         merged_dict.update(await self._telemetry_evaluation_consumer.pop_formatted_stats())
         return merged_dict
 
+
 class RedisTelemetrySubmitter(object):
     """Telemetry sumbitter class."""
 
@@ -126,7 +128,7 @@ class RedisTelemetrySubmitter(object):
         self._telemetry_storage = telemetry_storage
 
     def synchronize_config(self):
-        """synchronize initial config data classe."""
+        """synchronize initial config data class."""
         self._telemetry_storage.push_config_stats()
 
     def synchronize_stats(self):
@@ -142,12 +144,13 @@ class RedisTelemetrySubmitterAsync(object):
         self._telemetry_storage = telemetry_storage
 
     async def synchronize_config(self):
-        """synchronize initial config data classe."""
+        """synchronize initial config data class."""
         await self._telemetry_storage.push_config_stats()
 
     async def synchronize_stats(self):
         """No implementation."""
         pass
+
 
 class LocalhostTelemetrySubmitter(object):
     """Telemetry sumbitter class."""
@@ -159,6 +162,7 @@ class LocalhostTelemetrySubmitter(object):
     def synchronize_stats(self):
         """No implementation."""
         pass
+
 
 class LocalhostTelemetrySubmitterAsync(object):
     """Telemetry sumbitter class."""

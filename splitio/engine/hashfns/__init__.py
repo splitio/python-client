@@ -19,10 +19,10 @@ try:
         return mmh3cffi.hash_str_128(key, seed)[0]
 
 except ImportError:
-    # Fallback to interpreted python hash algoritm (slower)
-    from splitio.engine.hashfns import murmur3py  # pylint: disable=ungrouped-imports
-    _murmur_hash = murmur3py.murmur32_py  # pylint: disable=invalid-name
-    _murmur_hash128 = lambda k, s: murmur3py.hash128_x64(k, s)[0]  # pylint: disable=invalid-name
+    # Fallback to interpreted python hash algorithm (slower)
+    from splitio.engine.hashfns import murmur3py
+    _murmur_hash = murmur3py.murmur32_py
+    def _murmur_hash128(k, s): return murmur3py.hash128_x64(k, s)[0]
 
 
 _HASH_ALGORITHMS = {
@@ -30,14 +30,14 @@ _HASH_ALGORITHMS = {
     HashAlgorithm.MURMUR: _murmur_hash
 }
 
-murmur_128 = _murmur_hash128  # pylint: disable=invalid-name
+murmur_128 = _murmur_hash128
 
 
 def get_hash_fn(algo):
     """
     Return appropriate hash function for requested algorithm.
 
-    :param algo: Algoritm to use
+    :param algo: Algorithm to use
     :type algo: int
     :return: Hash function
     :rtype: function

@@ -1,6 +1,7 @@
 """Base storage interfaces."""
 import abc
 
+
 class SplitStorage(object, metaclass=abc.ABCMeta):
     """Split storage interface implemented as an abstract class."""
 
@@ -264,15 +265,16 @@ class EventStorage(object, metaclass=abc.ABCMeta):
         """
         pass
 
+
 class TelemetryStorage(object, metaclass=abc.ABCMeta):
     """Telemetry storage interface."""
 
     @abc.abstractmethod
     def record_config(self, config):
         """
-        initilize telemetry objects
+        initialize telemetry objects
 
-        :param congif: factory configuration parameters
+        :param config: factory configuration parameters
         :type config: splitio.client.config
         """
         pass
@@ -315,6 +317,7 @@ class TelemetryStorage(object, metaclass=abc.ABCMeta):
         """
         pass
 
+
 class FlagSetsFilter(object):
     """Config Flagsets Filter storage."""
 
@@ -355,10 +358,11 @@ class FlagSetsFilter(object):
             return False
 
         return any(self.flag_sets.intersection(flag_sets))
-    
+
+
 class RuleBasedSegmentsStorage(object, metaclass=abc.ABCMeta):
     """SplitRule based segment storage interface implemented as an abstract class."""
- 
+
     @abc.abstractmethod
     def get(self, segment_name):
         """
@@ -405,7 +409,7 @@ class RuleBasedSegmentsStorage(object, metaclass=abc.ABCMeta):
         :return: True if segment names exists. False otherwise.
         :rtype: bool
         """
-        pass    
+        pass
 
     @abc.abstractmethod
     def get_segment_names(self):

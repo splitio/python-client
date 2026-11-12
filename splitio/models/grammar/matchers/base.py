@@ -71,7 +71,7 @@ class Matcher(object, metaclass=abc.ABCMeta):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         pass
@@ -94,7 +94,7 @@ class Matcher(object, metaclass=abc.ABCMeta):
         """
         Add matcher specific properties to base dict before returning it.
 
-        :return: Dictionary with matcher specific prooperties.
+        :return: Dictionary with matcher specific properties.
         :rtype: dict
         """
         pass

@@ -1,4 +1,4 @@
-"""Impressions syncrhonization task."""
+"""Impressions synchronization task."""
 import logging
 
 from splitio.tasks import BaseSynchronizationTask
@@ -71,7 +71,7 @@ class ImpressionsSyncTaskAsync(ImpressionsSyncTaskBase):
         """
         self._period = period
         self._task = AsyncTaskAsync(synchronize_impressions, self._period,
-                               on_stop=synchronize_impressions)
+                                    on_stop=synchronize_impressions)
 
     async def stop(self, event=None):
         """Stop executing the impressions synchronization task."""
@@ -134,7 +134,8 @@ class ImpressionsCountSyncTaskAsync(ImpressionsCountSyncTaskBase):
         :type synchronize_counters: func
 
         """
-        self._task = AsyncTaskAsync(synchronize_counters, self._PERIOD, on_stop=synchronize_counters)
+        self._task = AsyncTaskAsync(synchronize_counters, self._PERIOD,
+                                    on_stop=synchronize_counters)
 
     async def stop(self):
         """Stop executing the impressions synchronization task."""

@@ -2,10 +2,10 @@
 from splitio.util.backoff import Backoff
 
 
-class BackOffTests(object):  # pylint:disable=too-few-public-methods
+class BackOffTests(object):
     """Backoff test cases."""
 
-    def test_basic_functionality(self):  # pylint:disable=no-self-use
+    def test_basic_functionality(self):
         """Test basic working."""
         backoff = Backoff()
         assert backoff.get() == 1

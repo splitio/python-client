@@ -1,13 +1,13 @@
 """HTTPClient test module."""
 from requests_kerberos import HTTPKerberosAuth
 import pytest
-import unittest.mock as mock
 import requests
 
 from splitio.client.config import AuthenticateScheme
 from splitio.api import client
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
+
 
 class HttpClientTests(object):
     """Http Client test cases."""
@@ -83,7 +83,6 @@ class HttpClientTests(object):
         assert response.status_code == 200
         assert response.body == 'ok'
         assert get_mock.mock_calls == [call]
-
 
     def test_post(self, mocker):
         """Test HTTP GET verb requests."""
@@ -178,6 +177,7 @@ class HttpClientTests(object):
 
         self.metric1 = None
         self.cur_time = 0
+
         def record_successful_sync(metric_name, cur_time):
             self.metric1 = metric_name
             self.cur_time = cur_time
@@ -185,6 +185,7 @@ class HttpClientTests(object):
 
         self.metric2 = None
         self.elapsed = 0
+
         def record_sync_latency(metric_name, elapsed):
             self.metric2 = metric_name
             self.elapsed = elapsed
@@ -192,6 +193,7 @@ class HttpClientTests(object):
 
         self.metric3 = None
         self.status = 0
+
         def record_sync_error(metric_name, elapsed):
             self.metric3 = metric_name
             self.status = elapsed
@@ -278,6 +280,7 @@ class HttpClientTests(object):
         )
         assert post_mock.mock_calls == [call]
 
+
 class HttpClientKerberosTests(object):
     """Http Client test cases."""
 
@@ -292,6 +295,7 @@ class HttpClientKerberosTests(object):
         theaders = None
         tparams = None
         ttimeout = None
+
         class get_mock(object):
             def __init__(self, url, headers, params, timeout):
                 global turl
@@ -319,7 +323,7 @@ class HttpClientKerberosTests(object):
         assert turl == 'https://sdk.com/test1'
         assert theaders == {'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'}
         assert tparams == {'param1': 123}
-        assert ttimeout == None
+        assert ttimeout is None
         assert response.status_code == 200
         assert response.body == 'ok'
 
@@ -333,7 +337,7 @@ class HttpClientKerberosTests(object):
         assert turl == 'https://sdk.com/test1'
         assert theaders == {'Authorization': 'Bearer some_api_key', 'h1': 'abc', 'Content-Type': 'application/json'}
         assert tparams == {'param1': 123}
-        assert ttimeout == None
+        assert ttimeout is None
 
         assert response.status_code == 200
         assert response.body == 'ok'
@@ -348,6 +352,7 @@ class HttpClientKerberosTests(object):
         tparams = None
         ttimeout = None
         tjson = None
+
         class post_mock(object):
             def __init__(self, url, params, headers, json, timeout):
                 global turl
@@ -404,44 +409,45 @@ class HttpClientKerberosTests(object):
         httpclient = client.HttpClientKerberos(sdk_url='https://sdk.com', authentication_scheme=AuthenticateScheme.KERBEROS_SPNEGO, authentication_params=['bilal', 'split'])
         httpclient._set_authentication('sdk')
         for server in ['sdk', 'events', 'auth', 'telemetry']:
-            assert(httpclient._sessions[server].auth.principal == 'bilal')
-            assert(httpclient._sessions[server].auth.password == 'split')
-            assert(isinstance(httpclient._sessions[server].auth, HTTPKerberosAuth))
+            assert (httpclient._sessions[server].auth.principal == 'bilal')
+            assert (httpclient._sessions[server].auth.password == 'split')
+            assert (isinstance(httpclient._sessions[server].auth, HTTPKerberosAuth))
 
         httpclient._sessions['sdk'].close()
         httpclient._sessions['events'].close()
         httpclient._sessions['sdk'] = requests.Session()
         httpclient._sessions['events'] = requests.Session()
-        assert(httpclient._sessions['sdk'].auth == None)
-        assert(httpclient._sessions['events'].auth == None)
+        assert (httpclient._sessions['sdk'].auth is None)
+        assert (httpclient._sessions['events'].auth is None)
 
         httpclient._set_authentication('sdk')
-        assert(httpclient._sessions['sdk'].auth.principal == 'bilal')
-        assert(httpclient._sessions['sdk'].auth.password == 'split')
-        assert(isinstance(httpclient._sessions['sdk'].auth, HTTPKerberosAuth))
-        assert(httpclient._sessions['events'].auth == None)
+        assert (httpclient._sessions['sdk'].auth.principal == 'bilal')
+        assert (httpclient._sessions['sdk'].auth.password == 'split')
+        assert (isinstance(httpclient._sessions['sdk'].auth, HTTPKerberosAuth))
+        assert (httpclient._sessions['events'].auth is None)
 
         httpclient2 = client.HttpClientKerberos(sdk_url='https://sdk.com', authentication_scheme=AuthenticateScheme.KERBEROS_SPNEGO, authentication_params=[None, None])
         for server in ['sdk', 'events', 'auth', 'telemetry']:
-            assert(httpclient2._sessions[server].auth.principal == None)
-            assert(httpclient2._sessions[server].auth.password == None)
-            assert(isinstance(httpclient2._sessions[server].auth, HTTPKerberosAuth))
+            assert (httpclient2._sessions[server].auth.principal is None)
+            assert (httpclient2._sessions[server].auth.password is None)
+            assert (isinstance(httpclient2._sessions[server].auth, HTTPKerberosAuth))
 
         httpclient3 = client.HttpClientKerberos(sdk_url='https://sdk.com', authentication_scheme=AuthenticateScheme.KERBEROS_PROXY, authentication_params=['bilal', 'split'])
         for server in ['sdk', 'events', 'auth', 'telemetry']:
-            assert(httpclient3._sessions[server].adapters['https://']._principal == 'bilal')
-            assert(httpclient3._sessions[server].adapters['https://']._password == 'split')
-            assert(isinstance(httpclient3._sessions[server].adapters['https://'], client.HTTPAdapterWithProxyKerberosAuth))
+            assert (httpclient3._sessions[server].adapters['https://']._principal == 'bilal')
+            assert (httpclient3._sessions[server].adapters['https://']._password == 'split')
+            assert (isinstance(httpclient3._sessions[server].adapters['https://'], client.HTTPAdapterWithProxyKerberosAuth))
 
         httpclient4 = client.HttpClientKerberos(sdk_url='https://sdk.com', authentication_scheme=AuthenticateScheme.KERBEROS_PROXY, authentication_params=[None, None])
         for server in ['sdk', 'events', 'auth', 'telemetry']:
-            assert(httpclient4._sessions[server].adapters['https://']._principal == None)
-            assert(httpclient4._sessions[server].adapters['https://']._password == None)
-            assert(isinstance(httpclient4._sessions[server].adapters['https://'], client.HTTPAdapterWithProxyKerberosAuth))
+            assert (httpclient4._sessions[server].adapters['https://']._principal is None)
+            assert (httpclient4._sessions[server].adapters['https://']._password is None)
+            assert (isinstance(httpclient4._sessions[server].adapters['https://'], client.HTTPAdapterWithProxyKerberosAuth))
 
     def test_proxy_exception(self, mocker):
         global count
         count = 0
+
         class get_mock(object):
             def __init__(self, url, params, headers, timeout):
                 pass
@@ -468,6 +474,7 @@ class HttpClientKerberosTests(object):
         assert response.body == 'ok'
 
         count = 0
+
         class post_mock(object):
             def __init__(self, url, params, headers, json, timeout):
                 pass
@@ -493,8 +500,6 @@ class HttpClientKerberosTests(object):
         assert response.status_code == 200
         assert response.body == 'ok'
 
-
-
     def test_telemetry(self, mocker):
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
@@ -512,6 +517,7 @@ class HttpClientKerberosTests(object):
 
         self.metric1 = None
         self.cur_time = 0
+
         def record_successful_sync(metric_name, cur_time):
             self.metric1 = metric_name
             self.cur_time = cur_time
@@ -519,6 +525,7 @@ class HttpClientKerberosTests(object):
 
         self.metric2 = None
         self.elapsed = 0
+
         def record_sync_latency(metric_name, elapsed):
             self.metric2 = metric_name
             self.elapsed = elapsed
@@ -526,6 +533,7 @@ class HttpClientKerberosTests(object):
 
         self.metric3 = None
         self.status = 0
+
         def record_sync_error(metric_name, elapsed):
             self.metric3 = metric_name
             self.status = elapsed
@@ -562,6 +570,7 @@ class HttpClientKerberosTests(object):
         assert (self.metric3 == "metric")
         assert (self.status == 400)
 
+
 class MockResponse:
     def __init__(self, text, status, headers):
         self._text = text
@@ -576,6 +585,7 @@ class MockResponse:
 
     async def __aenter__(self):
         return self
+
 
 class HttpClientAsyncTests(object):
     """Http Client test cases."""
@@ -754,6 +764,7 @@ class HttpClientAsyncTests(object):
 
         self.metric1 = None
         self.cur_time = 0
+
         async def record_successful_sync(metric_name, cur_time):
             self.metric1 = metric_name
             self.cur_time = cur_time
@@ -761,6 +772,7 @@ class HttpClientAsyncTests(object):
 
         self.metric2 = None
         self.elapsed = 0
+
         async def record_sync_latency(metric_name, elapsed):
             self.metric2 = metric_name
             self.elapsed = elapsed
@@ -768,6 +780,7 @@ class HttpClientAsyncTests(object):
 
         self.metric3 = None
         self.status = 0
+
         async def record_sync_error(metric_name, elapsed):
             self.metric3 = metric_name
             self.status = elapsed

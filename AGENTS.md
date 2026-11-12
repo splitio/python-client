@@ -31,7 +31,7 @@ or `uv.lock`, so don't add them (that would make uv mandatory).
   `uv venv --seed --python 3.12` (`--seed` adds `pip` to `.venv`) and
   `uv pip install -e ".[test,redis,asyncio,kerberos]"`
 - **Using uv**: prefix commands with `uv run` to use `.venv` without activating it:
-  `uv run pytest`, `uv run flake8 splitio/`. Re-run the `uv pip install` command when `setup.py` dependencies change.
+  `uv run pytest`, `uv run flake8`. Re-run the `uv pip install` command when `setup.py` dependencies change.
 
 ## Testing
 
@@ -42,14 +42,21 @@ or `uv.lock`, so don't add them (that would make uv mandatory).
 - **Run async tests**: `pytest tests/ -k "async"`
 - **Test file pattern**: `tests/<module>/test_<name>.py`, classes named `*Tests`
 - **Redis tests**: `tests/integration/test_redis_integration.py` and other Redis-backed tests need a local `redis-server` on `localhost:6379`
-- **CI**: Harness pipeline (`.harness/orgs/PROD/projects/Harness_Split/pipelines/pythonclient.yaml`) installs with `pip install -e ".[test,redis,asyncio,kerberos]"`, starts `redis-server`, runs `python -m pytest` on Python 3.7.16 and latest stable, and reports coverage (`coverage.xml`)
+- **No real network in tests**: `tests/conftest.py` fails any test whose thread resolves a `*.split.io` host (message: "test contacted the Split backend"), and names the test that created the thread. Mock the HTTP layer (see the `_offline` fixture in `tests/client/test_factory.py`). Patches only last for the test: a factory's background sync threads can outlive them and hit the real backend during a later test, so the error shows up in an unrelated test. Read the "created in <test>" part of the message to find the origin; it is timing-dependent and may not reproduce on every run.
+- **Full suite takes about 6 minutes** and needs `redis-server` running. Run it in the background and, if a test errors only in the full run, rerun it alone to tell flaky leaks from real failures.
+- **CI**: Harness pipeline (`.harness/orgs/PROD/projects/Harness_Split/pipelines/pythonclient_hc.yaml`) installs with `pip install -e ".[test,redis,asyncio,kerberos]"`, starts `redis-server`, runs `python -m pytest` on Python 3.7.16 and latest stable, and reports coverage (`coverage.xml`)
 
 ## Linting & Formatting
 
-- **Lint check**: `flake8 splitio/`
-- **Max line length**: 100 characters
-- **Linting excludes**: `tests/`
+- **Lint check**: `flake8` from the repo root (`setup.cfg` restricts it to `splitio/` and `tests/` via `filename`, so it skips `.venv`, `build`, `dist`). Always run it bare or with a `./` prefix: `filename` patterns only match `./...` paths, so `flake8 splitio/` silently reports nothing (e.g. `flake8 ./splitio/client`).
+- **Max line length**: 100 characters is the target, but `E501` (line too long) is ignored in `setup.cfg` (`extend-ignore`), so flake8 does not enforce it
+- **Tests are linted too.** Never leave duplicate test names (F811): a later definition silently shadows the earlier one so it never runs. Remove identical copies; rename different ones (e.g. `*_async` for async variants, `*AsyncTests` for classes).
 - Run flake8 before committing to catch style issues early.
+- **Config lives in `setup.cfg`** (`[flake8]`), which the CLI and IDE extensions read. To relax a rule use `extend-ignore`, never `ignore`: `ignore` replaces flake8's default ignore list and re-enables checks that are off by default.
+- **Fixing style issues in bulk**: `pip install autopep8`, then `autopep8 --ignore-local-config --in-place --recursive --max-line-length 100 --ignore E501 splitio/ tests/` (`--ignore-local-config` is needed or autopep8 reads `setup.cfg` and may skip paths) for whitespace, blank-line, indentation and `== None` issues (add `--aggressive` for E711/E712 and review that diff). Fix F-codes and anything behavior-related by hand, then rerun `flake8` and `pytest`. Keep mechanical reformatting in its own commit, separate from functional changes.
+- **Pylint is not used.** Do not add `# pylint: disable=...` comments; flake8 ignores them and nothing enforces them.
+- **Intentional re-exports** (the compatibility shims `splitio/__init__.py`, `exceptions.py`, `factories.py`, `impressions.py`, `key.py`): declare `__all__` instead of `# noqa: F401`. This also documents the public API. Do not remove these modules or names; users import them.
+- **Unused imports**: remove them. If a test patches a name through another module (e.g. `splitio.client.factory.X`), patch it where it is defined (`splitio.tasks.impressions_sync.X`) and drop the import, rather than keeping an import only for the test.
 
 ## Git Workflow
 
@@ -72,7 +79,7 @@ or `uv.lock`, so don't add them (that would make uv mandatory).
 ## DOs
 
 - Always update `CHANGES.txt` when adding new features or fixing bugs. Follow the existing format: `version (date)\n- Description`.
-- Run `flake8 splitio/` before committing to check for style violations.
+- Run `flake8` before committing to check for style violations.
 - Run `pytest` before committing to verify tests pass.
 - Match existing code style — synchronous and async variants of classes live side by side in the same module, async ones suffixed `Async` (e.g., `Client` / `ClientAsync` in `splitio/client/client.py`, `InMemorySplitStorage` / `InMemorySplitStorageAsync` in `splitio/storage/inmemmory.py`), often sharing a `*Base` class.
 - When adding a new capability, check if both the sync and the `*Async` variant need updating, along with their tests.

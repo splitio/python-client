@@ -1,4 +1,4 @@
-"""Miscelaneous matchers that don't fall into other categories."""
+"""Miscellaneous matchers that don't fall into other categories."""
 import json
 
 from splitio.models.grammar.matchers.base import Matcher
@@ -28,14 +28,15 @@ class DependencyMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         evaluator = context.get('evaluator')
         assert evaluator is not None
 
         bucketing_key = context.get('bucketing_key')
-        result = evaluator.eval_with_context(key, bucketing_key, self._split_name, attributes, context['ec'])
+        result = evaluator.eval_with_context(
+            key, bucketing_key, self._split_name, attributes, context['ec'])
         return result['treatment'] in self._treatments
 
     def _add_matcher_specific_properties_to_json(self):
@@ -49,7 +50,7 @@ class DependencyMatcher(Matcher):
 
 
 class BooleanMatcher(Matcher):
-    """Matcher that returns true if the user submited value is similar to the stored boolean."""
+    """Matcher that returns true if the user submitted value is similar to the stored boolean."""
 
     def _build(self, raw_matcher):
         """
@@ -71,7 +72,7 @@ class BooleanMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = self._get_matcher_input(key, attributes)

@@ -10,7 +10,7 @@ DEFAULT_MAX_AGE = 5
 DEFAULT_MAX_SIZE = 100
 
 
-class LocalMemoryCacheBase(object):  # pylint: disable=too-many-instance-attributes
+class LocalMemoryCacheBase(object):
     """
     Key/Value local memory cache. with expiration & LRU eviction.
 
@@ -26,10 +26,10 @@ class LocalMemoryCacheBase(object):  # pylint: disable=too-many-instance-attribu
     None <---next--- || node ||  <---next--- || node || ... <---next--- || node ||
     """
 
-    class _Node(object):  # pylint: disable=too-few-public-methods
+    class _Node(object):
         """Links to previous an next items in the circular list."""
 
-        def __init__(self, key, value, last_update, previous_element, next_element):  # pylint: disable=too-many-arguments
+        def __init__(self, key, value, last_update, previous_element, next_element):
             """Class constructor."""
             self.key = key  # we also keep the key for O(1) access when removing the LRU.
             self.value = value
@@ -116,8 +116,10 @@ class LocalMemoryCacheBase(object):  # pylint: disable=too-many-instance-attribu
             node = node.previous
         return '<MRU>\n' + '\n'.join(nodes) + '\n<LRU>'
 
-class LocalMemoryCache(LocalMemoryCacheBase):  # pylint: disable=too-many-instance-attributes
+
+class LocalMemoryCache(LocalMemoryCacheBase):
     """Local cache for threading"""
+
     def __init__(
             self,
             key_func,
@@ -156,7 +158,6 @@ class LocalMemoryCache(LocalMemoryCacheBase):  # pylint: disable=too-many-instan
             self._rollover()
             return node.value
 
-
     def remove_expired(self):
         """Remove expired elements."""
         with self._lock:
@@ -165,8 +166,10 @@ class LocalMemoryCache(LocalMemoryCacheBase):  # pylint: disable=too-many-instan
                 if not self._is_expired(value)
             }
 
-class LocalMemoryCacheAsync(LocalMemoryCacheBase):  # pylint: disable=too-many-instance-attributes
+
+class LocalMemoryCacheAsync(LocalMemoryCacheBase):
     """Local cache for asyncio"""
+
     def __init__(
             self,
             key_func,
@@ -217,6 +220,7 @@ class LocalMemoryCacheAsync(LocalMemoryCacheBase):  # pylint: disable=too-many-i
             self._data[key] = node
             self._rollover()
 
+
 def decorate(key_func, max_age_seconds=DEFAULT_MAX_AGE, max_size=DEFAULT_MAX_SIZE):
     """
     Decorate a function or method to cache results up  to `max_age_seconds`.
@@ -249,9 +253,12 @@ def decorate(key_func, max_age_seconds=DEFAULT_MAX_AGE, max_size=DEFAULT_MAX_SIZ
         :rtype: callable
         """
         _cache = LocalMemoryCache(key_func, user_function, max_age_seconds, max_size)
-        # The lambda below IS necessary, otherwise update_wrapper fails since the function
+
+        # The wrapper below IS necessary, otherwise update_wrapper fails since the function
         # is an instance method and has no reference to the __module__ namespace.
-        wrapper = lambda *args, **kwargs: _cache.get(*args, **kwargs)  # pylint: disable=unnecessary-lambda
+        def wrapper(*args, **kwargs):
+            return _cache.get(*args, **kwargs)
+
         return update_wrapper(wrapper, user_function)
 
     return _decorator

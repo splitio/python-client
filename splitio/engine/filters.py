@@ -3,6 +3,7 @@ import threading
 
 from bloom_filter2 import BloomFilter as BloomFilter2
 
+
 class BaseFilter(object, metaclass=abc.ABCMeta):
     """Impressions Filter interface."""
 
@@ -30,6 +31,7 @@ class BaseFilter(object, metaclass=abc.ABCMeta):
         """
         pass
 
+
 class BloomFilter(BaseFilter):
     """Optimized mode strategy."""
 
@@ -45,7 +47,8 @@ class BloomFilter(BaseFilter):
         """
         self._max_elements = max_elements
         self._error_rate = error_rate
-        self._imps_bloom_filter = BloomFilter2(max_elements=self._max_elements, error_rate=self._error_rate)
+        self._imps_bloom_filter = BloomFilter2(
+            max_elements=self._max_elements, error_rate=self._error_rate)
         self._lock = threading.RLock()
 
     def add(self, data):
@@ -82,4 +85,5 @@ class BloomFilter(BaseFilter):
         """
         with self._lock:
             self._imps_bloom_filter.close()
-            self._imps_bloom_filter = BloomFilter2(max_elements=self._max_elements, error_rate=self._error_rate)
+            self._imps_bloom_filter = BloomFilter2(
+                max_elements=self._max_elements, error_rate=self._error_rate)

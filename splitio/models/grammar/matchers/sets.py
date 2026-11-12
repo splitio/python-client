@@ -25,7 +25,7 @@ class ContainsAllOfSetMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = self._get_matcher_input(key, attributes)
@@ -77,7 +77,7 @@ class ContainsAnyOfSetMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = self._get_matcher_input(key, attributes)
@@ -128,7 +128,7 @@ class EqualToSetMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = self._get_matcher_input(key, attributes)
@@ -179,7 +179,7 @@ class PartOfSetMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = self._get_matcher_input(key, attributes)

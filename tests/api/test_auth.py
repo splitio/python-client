@@ -1,7 +1,6 @@
 """Split API tests module."""
 
 import pytest
-import unittest.mock as mock
 
 from splitio.api import auth, client, APIException
 from splitio.client.util import get_metadata
@@ -9,6 +8,7 @@ from splitio.client.config import DEFAULT_CONFIG
 from splitio.version import __version__
 from splitio.engine.telemetry import TelemetryStorageProducer, TelemetryStorageProducerAsync
 from splitio.storage.inmemmory import InMemoryTelemetryStorage, InMemoryTelemetryStorageAsync
+
 
 class AuthAPITests(object):
     """Auth API test cases."""
@@ -28,7 +28,7 @@ class AuthAPITests(object):
         auth_api = auth.AuthAPI(httpclient, 'some_api_key', sdk_metadata, telemetry_runtime_producer)
         response = auth_api.authenticate()
 
-        assert response.push_enabled == True
+        assert response.push_enabled is True
         assert response.token == token
 
         call_made = httpclient.get.mock_calls[0]
@@ -44,6 +44,7 @@ class AuthAPITests(object):
         }
 
         httpclient.reset_mock()
+
         def raise_exception(*args, **kwargs):
             raise client.HttpClientException('some_message')
         httpclient.get.side_effect = raise_exception
@@ -72,6 +73,7 @@ class AuthAPIAsyncTests(object):
         self.url = None
         self.key = None
         self.headers = None
+
         async def get(verb, url, key, extra_headers):
             self.url = url
             self.verb = verb
@@ -83,7 +85,7 @@ class AuthAPIAsyncTests(object):
         httpclient.get = get
 
         response = await auth_api.authenticate()
-        assert response.push_enabled == True
+        assert response.push_enabled is True
         assert response.token == self.token
 
         # validate positional arguments
@@ -97,6 +99,7 @@ class AuthAPIAsyncTests(object):
         }
 
         httpclient.reset_mock()
+
         def raise_exception(*args, **kwargs):
             raise client.HttpClientException('some_message')
 

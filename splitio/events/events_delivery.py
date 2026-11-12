@@ -5,6 +5,7 @@ from splitio.events import EventsDeliveryInterface
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class EventsDelivery(EventsDeliveryInterface):
     """Events Manager class."""
 

@@ -5,6 +5,7 @@ from splitio.spec import SPEC_VERSION
 _CACHE_CONTROL = 'Cache-Control'
 _CACHE_CONTROL_NO_CACHE = 'no-cache'
 
+
 def headers_from_metadata(sdk_metadata, client_key=None):
     """
     Generate a dict with headers required by data-recording API endpoints.
@@ -32,6 +33,7 @@ def headers_from_metadata(sdk_metadata, client_key=None):
 
     return metadata
 
+
 def record_telemetry(status_code, elapsed, metric_name, telemetry_runtime_producer):
     """
     Record Telemetry info
@@ -53,6 +55,7 @@ def record_telemetry(status_code, elapsed, metric_name, telemetry_runtime_produc
         telemetry_runtime_producer.record_successful_sync(metric_name, get_current_epoch_time_ms())
         return
     telemetry_runtime_producer.record_sync_error(metric_name, status_code)
+
 
 class FetchOptions(object):
     """Fetch Options object."""
@@ -114,10 +117,10 @@ class FetchOptions(object):
 
         if self._sets != other._sets:
             return False
-        
+
         if self._spec != other._spec:
             return False
-        
+
         return True
 
 

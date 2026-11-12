@@ -7,6 +7,7 @@ from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class UniqueKeysTrackerBase(object, metaclass=abc.ABCMeta):
     """Unique Keys Tracker base class."""
 

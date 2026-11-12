@@ -16,6 +16,7 @@ except ImportError:
         )
     StrictRedis = Sentinel = aioredis = missing_redis_dependencies
 
+
 class RedisAdapterException(Exception):
     """Exception to be thrown when a redis command fails with an exception."""
 
@@ -108,6 +109,7 @@ class PrefixHelper(object):
         raise RedisAdapterException(
             "Cannot remove prefix correctly. Wrong type for key(s) provided"
         )
+
 
 class RedisAdapterBase(object, metaclass=abc.ABCMeta):
     """Redis adapter template."""
@@ -208,7 +210,8 @@ class RedisAdapterBase(object, metaclass=abc.ABCMeta):
     def pipeline(self):
         """Mimic original redis pipeline."""
 
-class RedisAdapter(RedisAdapterBase):  # pylint: disable=too-many-public-methods
+
+class RedisAdapter(RedisAdapterBase):
     """
     Instance decorator for Redis clients such as StrictRedis.
 
@@ -408,13 +411,15 @@ class RedisAdapter(RedisAdapterBase):  # pylint: disable=too-many-public-methods
         except RedisError as exc:
             raise RedisAdapterException('Error executing ttl operation') from exc
 
-class RedisAdapterAsync(RedisAdapterBase):  # pylint: disable=too-many-public-methods
+
+class RedisAdapterAsync(RedisAdapterBase):
     """
     Instance decorator for asyncio Redis clients such as StrictRedis.
 
     Adds an extra layer handling addition/removal of user prefix when handling
     keys
     """
+
     def __init__(self, decorated, prefix=None):
         """
         Store the user prefix and the redis client instance.
@@ -613,6 +618,7 @@ class RedisAdapterAsync(RedisAdapterBase):  # pylint: disable=too-many-public-me
         await self._decorated.close()
         await self._decorated.connection_pool.disconnect(inuse_connections=True)
 
+
 class RedisPipelineAdapterBase(object):
     """
     Base decorator for Redis Pipeline.
@@ -620,6 +626,7 @@ class RedisPipelineAdapterBase(object):
     Adds an extra layer handling addition/removal of user prefix when handling
     keys
     """
+
     def __init__(self, decorated, prefix_helper):
         """
         Store the user prefix and the redis client instance.
@@ -646,6 +653,7 @@ class RedisPipelineAdapterBase(object):
         """Mimic original redis function but using user custom prefix."""
         self._pipe.smembers(self._prefix_helper.add_prefix(name))
 
+
 class RedisPipelineAdapter(RedisPipelineAdapterBase):
     """
     Instance decorator for Redis Pipeline.
@@ -653,6 +661,7 @@ class RedisPipelineAdapter(RedisPipelineAdapterBase):
     Adds an extra layer handling addition/removal of user prefix when handling
     keys
     """
+
     def __init__(self, decorated, prefix_helper):
         """
         Store the user prefix and the redis client instance.
@@ -669,6 +678,7 @@ class RedisPipelineAdapter(RedisPipelineAdapterBase):
         except RedisError as exc:
             raise RedisAdapterException('Error executing pipeline operation') from exc
 
+
 class RedisPipelineAdapterAsync(RedisPipelineAdapterBase):
     """
     Instance decorator for Asyncio Redis Pipeline.
@@ -676,6 +686,7 @@ class RedisPipelineAdapterAsync(RedisPipelineAdapterBase):
     Adds an extra layer handling addition/removal of user prefix when handling
     keys
     """
+
     def __init__(self, decorated, prefix_helper):
         """
         Store the user prefix and the redis client instance.
@@ -692,7 +703,8 @@ class RedisPipelineAdapterAsync(RedisPipelineAdapterBase):
         except RedisError as exc:
             raise RedisAdapterException('Error executing pipeline operation') from exc
 
-def _build_default_client(config):  # pylint: disable=too-many-locals
+
+def _build_default_client(config):
     """
     Build a redis adapter.
 
@@ -750,7 +762,8 @@ def _build_default_client(config):  # pylint: disable=too-many-locals
     )
     return RedisAdapter(redis, prefix=prefix)
 
-async def _build_default_client_async(config):  # pylint: disable=too-many-locals
+
+async def _build_default_client_async(config):
     """
     Build a redis asyncio adapter.
 
@@ -783,7 +796,7 @@ async def _build_default_client_async(config):  # pylint: disable=too-many-local
     max_connections = config.get('redisMaxConnections', None)
     prefix = config.get('redisPrefix')
 
-    if connection_pool == None:
+    if connection_pool is None:
         connection_pool = aioredis.ConnectionPool.from_url(
             "redis://" + host + ":" + str(port),
             db=database,
@@ -811,7 +824,7 @@ async def _build_default_client_async(config):  # pylint: disable=too-many-local
     return RedisAdapterAsync(redis, prefix=prefix)
 
 
-def _build_sentinel_client(config):  # pylint: disable=too-many-locals
+def _build_sentinel_client(config):
     """
     Build a redis client with sentinel replication.
 
@@ -877,7 +890,8 @@ def _build_sentinel_client(config):  # pylint: disable=too-many-locals
     redis = sentinel.master_for(master_service)
     return RedisAdapter(redis, prefix=prefix)
 
-async def _build_sentinel_client_async(config):  # pylint: disable=too-many-locals
+
+async def _build_sentinel_client_async(config):
     """
     Build a redis client with sentinel replication.
 
@@ -943,6 +957,7 @@ async def _build_sentinel_client_async(config):  # pylint: disable=too-many-loca
     )
     return RedisAdapterAsync(redis, prefix=prefix)
 
+
 async def build_async(config):
     """
     Build a async redis storage according to the configuration received.
@@ -957,6 +972,7 @@ async def build_async(config):
         return await _build_sentinel_client_async(config)
 
     return await _build_default_client_async(config)
+
 
 def build(config):
     """

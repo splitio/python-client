@@ -3,8 +3,7 @@ import logging
 import threading
 from collections import Counter
 from enum import Enum
-from urllib.parse import urlparse
-import queue 
+import queue
 
 from splitio.optional.loaders import asyncio
 from splitio.client.client import Client, ClientAsync
@@ -36,7 +35,7 @@ from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStora
     InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
 from splitio.storage.adapters import redis
 from splitio.storage.redis import RedisSplitStorage, RedisSegmentStorage, RedisImpressionsStorage, \
-    RedisEventsStorage, RedisTelemetryStorage, RedisSplitStorageAsync, RedisEventsStorageAsync,\
+    RedisEventsStorage, RedisTelemetryStorage, RedisSplitStorageAsync, RedisEventsStorageAsync, \
     RedisSegmentStorageAsync, RedisImpressionsStorageAsync, RedisTelemetryStorageAsync, \
     RedisRuleBasedSegmentsStorage, RedisRuleBasedSegmentsStorageAsync
 from splitio.storage.pluggable import PluggableEventsStorage, PluggableImpressionsStorage, PluggableSegmentStorage, \
@@ -57,22 +56,20 @@ from splitio.util.time import get_current_epoch_time_ms
 # Tasks
 from splitio.tasks.split_sync import SplitSynchronizationTask, SplitSynchronizationTaskAsync
 from splitio.tasks.segment_sync import SegmentSynchronizationTask, SegmentSynchronizationTaskAsync
-from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsCountSyncTask,\
-    ImpressionsCountSyncTaskAsync, ImpressionsSyncTaskAsync
+from splitio.tasks.impressions_sync import ImpressionsSyncTask, ImpressionsSyncTaskAsync
 from splitio.tasks.events_sync import EventsSyncTask, EventsSyncTaskAsync
 from splitio.tasks.telemetry_sync import TelemetrySyncTask, TelemetrySyncTaskAsync
 
 # Synchronizer
 from splitio.sync.synchronizer import SplitTasks, SplitSynchronizers, Synchronizer, \
-    LocalhostSynchronizer, RedisSynchronizer, PluggableSynchronizer,\
+    LocalhostSynchronizer, RedisSynchronizer, \
     SynchronizerAsync, RedisSynchronizerAsync, LocalhostSynchronizerAsync
 from splitio.sync.manager import Manager, RedisManager, ManagerAsync, RedisManagerAsync
-from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode,\
+from splitio.sync.split import SplitSynchronizer, LocalSplitSynchronizer, LocalhostMode, \
     SplitSynchronizerAsync, LocalSplitSynchronizerAsync
-from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer, SegmentSynchronizerAsync,\
+from splitio.sync.segment import SegmentSynchronizer, LocalSegmentSynchronizer, SegmentSynchronizerAsync, \
     LocalSegmentSynchronizerAsync
-from splitio.sync.impression import ImpressionSynchronizer, ImpressionsCountSynchronizer, \
-    ImpressionsCountSynchronizerAsync, ImpressionSynchronizerAsync
+from splitio.sync.impression import ImpressionSynchronizer, ImpressionSynchronizerAsync
 from splitio.sync.event import EventSynchronizer, EventSynchronizerAsync
 from splitio.sync.telemetry import TelemetrySynchronizer, InMemoryTelemetrySubmitter, \
     LocalhostTelemetrySubmitter, RedisTelemetrySubmitter, LocalhostTelemetrySubmitterAsync, \
@@ -110,7 +107,7 @@ class TimeoutException(Exception):
     pass
 
 
-class SplitFactoryBase(object):  # pylint: disable=too-many-instance-attributes
+class SplitFactoryBase(object):
     """Split Factory/Container class."""
 
     def __init__(self, sdk_key, storages):
@@ -135,7 +132,7 @@ class SplitFactoryBase(object):  # pylint: disable=too-many-instance-attributes
         """
         Return whether the factory is ready.
 
-        :return: True if the factory is ready. False otherwhise.
+        :return: True if the factory is ready. False otherwise.
         :rtype: bool
         """
         return self._status == Status.READY
@@ -165,10 +162,10 @@ class SplitFactoryBase(object):  # pylint: disable=too-many-instance-attributes
         return self._status == Status.WAITING_FORK
 
 
-class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attributes
+class SplitFactory(SplitFactoryBase):
     """Split Factory/Container class."""
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
             self,
             sdk_key,
             storages,
@@ -236,20 +233,25 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
             ready_updater.start()
         else:
             self._status = Status.READY
-            self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_READY, None))
-            
+            self._internal_events_queue.put(
+                SdkInternalEventNotification(SdkInternalEvent.SDK_READY, None))
+
     def _update_status_when_ready(self):
         """Wait until the sdk is ready and update the status."""
         self._sdk_internal_ready_flag.wait()
         self._status = Status.READY
         self._sdk_ready_flag.set()
-        self._internal_events_queue.put(SdkInternalEventNotification(SdkInternalEvent.SDK_READY, None))
+        self._internal_events_queue.put(
+            SdkInternalEventNotification(SdkInternalEvent.SDK_READY, None))
 
-        self._telemetry_init_producer.record_ready_time(get_current_epoch_time_ms() - self._ready_time)
+        self._telemetry_init_producer.record_ready_time(
+            get_current_epoch_time_ms() - self._ready_time)
         redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
-        self._telemetry_init_producer.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+        self._telemetry_init_producer.record_active_and_redundant_factories(
+            active_factory_count, redundant_factory_count)
 
-        config_post_thread = threading.Thread(target=self._telemetry_submitter.synchronize_config(), name="PostConfigData")
+        config_post_thread = threading.Thread(
+            target=self._telemetry_submitter.synchronize_config(), name="PostConfigData")
         config_post_thread.setDaemon(True)
         config_post_thread.start()
 
@@ -343,10 +345,10 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         self._start_status_updater()
 
 
-class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-attributes
+class SplitFactoryAsync(SplitFactoryBase):
     """Split Factory/Container async class."""
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
             self,
             sdk_key,
             storages,
@@ -493,6 +495,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         """
         return ClientAsync(self, self._recorder, self._events_manager, self._labels_enabled, self._fallback_treatment_calculator)
 
+
 def _wrap_impression_listener(listener, metadata):
     """
     Wrap the impression listener if any.
@@ -506,6 +509,7 @@ def _wrap_impression_listener(listener, metadata):
         return ImpressionListenerWrapper(listener, metadata)
 
     return None
+
 
 def _wrap_impression_listener_async(listener, metadata):
     """
@@ -521,7 +525,8 @@ def _wrap_impression_listener_async(listener, metadata):
 
     return None
 
-def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pylint:disable=too-many-arguments,too-many-locals
+
+def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,
                              auth_api_base_url=None, streaming_api_base_url=None, telemetry_api_base_url=None,
                              total_flag_sets=0, invalid_flag_sets=0):
     """Build and return a split factory tailored to the supplied config."""
@@ -552,15 +557,15 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
             auth_url=auth_api_base_url,
             telemetry_url=telemetry_api_base_url,
             timeout=cfg.get('connectionTimeout'),
-            authentication_scheme = cfg.get("httpAuthenticateScheme"),
-            authentication_params = authentication_params
+            authentication_scheme=cfg.get("httpAuthenticateScheme"),
+            authentication_params=authentication_params
         )
     else:
         proxies = {}
         if cfg.get('proxyUrl'):
             proxies['https'] = cfg.get("proxyUrl")
             proxies['http'] = cfg.get("proxyUrl")
-            
+
         http_client = HttpClient(
             sdk_url=sdk_url,
             events_url=events_url,
@@ -579,7 +584,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'events': EventsAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
         'telemetry': TelemetryAPI(http_client, api_key, sdk_metadata, telemetry_runtime_producer),
     }
-  
+
     internal_events_queue = queue.Queue()
     events_manager = EventsManager(EventsManagerConfig(), EventsDelivery())
     internal_events_task = EventsTask(events_manager.notify_internal_event, internal_events_queue)
@@ -591,20 +596,23 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         'events': InMemoryEventStorage(cfg['eventsQueueSize'], telemetry_runtime_producer),
     }
 
-    telemetry_submitter = InMemoryTelemetrySubmitter(telemetry_consumer, storages['splits'], storages['segments'], apis['telemetry'])
+    telemetry_submitter = InMemoryTelemetrySubmitter(
+        telemetry_consumer, storages['splits'], storages['segments'], apis['telemetry'])
 
     imp_counter = ImpressionsCounter()
     unique_keys_tracker = UniqueKeysTracker(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
-    clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy, none_strategy = set_classes('MEMORY', cfg['impressionsMode'], apis, imp_counter, unique_keys_tracker)
+        clear_filter_task, impressions_count_sync, impressions_count_task, \
+        imp_strategy, none_strategy = set_classes(
+            'MEMORY', cfg['impressionsMode'], apis, imp_counter, unique_keys_tracker)
 
     imp_manager = ImpressionsManager(
         imp_strategy, none_strategy, telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(
         SplitSynchronizer(apis['splits'], storages['splits'], storages['rule_based_segments']),
-        SegmentSynchronizer(apis['segments'], storages['splits'], storages['segments'], storages['rule_based_segments']),
+        SegmentSynchronizer(apis['segments'], storages['splits'],
+                            storages['segments'], storages['rule_based_segments']),
         ImpressionSynchronizer(apis['impressions'], storages['impressions'],
                                cfg['impressionsBulkSize']),
         EventSynchronizer(apis['events'], storages['events'], cfg['eventsBulkSize']),
@@ -629,7 +637,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
         ),
         EventsSyncTask(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
         impressions_count_task,
-        TelemetrySyncTask(synchronizers.telemetry_sync.synchronize_stats, cfg['metricsRefreshRate']),
+        TelemetrySyncTask(synchronizers.telemetry_sync.synchronize_stats,
+                          cfg['metricsRefreshRate']),
         unique_keys_task,
         clear_filter_task,
         internal_events_task
@@ -659,7 +668,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     telemetry_init_producer.record_config(cfg, extra_cfg, total_flag_sets, invalid_flag_sets)
     internal_events_task.start()
-    
+
     if preforked_initialization:
         synchronizer.sync_all(max_retry_attempts=_MAX_RETRY_SYNC_ALL)
         synchronizer._split_synchronizers._segment_sync.shutdown()
@@ -668,17 +677,19 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
                             recorder, internal_events_queue, events_manager, manager, None, telemetry_producer, telemetry_init_producer, telemetry_submitter, preforked_initialization=preforked_initialization,
                             fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']))
 
-    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
+    initialization_thread = threading.Thread(
+        target=manager.start, name="SDKInitializer", daemon=True)
     initialization_thread.start()
 
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
                         recorder, internal_events_queue, events_manager, manager, sdk_ready_flag,
                         telemetry_producer, telemetry_init_producer,
-                        telemetry_submitter, fallback_treatment_calculator = FallbackTreatmentCalculator(cfg['fallbackTreatments']))
+                        telemetry_submitter, fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']))
 
-async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=None,  # pylint:disable=too-many-arguments,too-many-localsa
-                             auth_api_base_url=None, streaming_api_base_url=None, telemetry_api_base_url=None,
-                             total_flag_sets=0, invalid_flag_sets=0):
+
+async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=None,
+                                         auth_api_base_url=None, streaming_api_base_url=None, telemetry_api_base_url=None,
+                                         total_flag_sets=0, invalid_flag_sets=0):
     """Build and return a split factory tailored to the supplied config in async mode."""
     if not input_validator.validate_factory_instantiation(api_key):
         return None
@@ -720,7 +731,8 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     }
     internal_events_queue = asyncio.Queue()
     events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
-    internal_events_task = EventsTaskAsync(events_manager.notify_internal_event, internal_events_queue)
+    internal_events_task = EventsTaskAsync(
+        events_manager.notify_internal_event, internal_events_queue)
 
     storages = {
         'splits': InMemorySplitStorageAsync(internal_events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
@@ -730,22 +742,25 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
         'events': InMemoryEventStorageAsync(cfg['eventsQueueSize'], telemetry_runtime_producer),
     }
 
-    telemetry_submitter = InMemoryTelemetrySubmitterAsync(telemetry_consumer, storages['splits'], storages['segments'], apis['telemetry'])
+    telemetry_submitter = InMemoryTelemetrySubmitterAsync(
+        telemetry_consumer, storages['splits'], storages['segments'], apis['telemetry'])
 
     imp_counter = ImpressionsCounter()
     unique_keys_tracker = UniqueKeysTrackerAsync(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
-    clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy, none_strategy = set_classes_async('MEMORY', cfg['impressionsMode'], apis, imp_counter, unique_keys_tracker)
+        clear_filter_task, impressions_count_sync, impressions_count_task, \
+        imp_strategy, none_strategy = set_classes_async(
+            'MEMORY', cfg['impressionsMode'], apis, imp_counter, unique_keys_tracker)
 
     imp_manager = ImpressionsManager(
         imp_strategy, none_strategy, telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(
         SplitSynchronizerAsync(apis['splits'], storages['splits'], storages['rule_based_segments']),
-        SegmentSynchronizerAsync(apis['segments'], storages['splits'], storages['segments'], storages['rule_based_segments']),
+        SegmentSynchronizerAsync(apis['segments'], storages['splits'],
+                                 storages['segments'], storages['rule_based_segments']),
         ImpressionSynchronizerAsync(apis['impressions'], storages['impressions'],
-                               cfg['impressionsBulkSize']),
+                                    cfg['impressionsBulkSize']),
         EventSynchronizerAsync(apis['events'], storages['events'], cfg['eventsBulkSize']),
         impressions_count_sync,
         TelemetrySynchronizerAsync(telemetry_submitter),
@@ -768,7 +783,8 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
         ),
         EventsSyncTaskAsync(synchronizers.events_sync.synchronize_events, cfg['eventsPushRate']),
         impressions_count_task,
-        TelemetrySyncTaskAsync(synchronizers.telemetry_sync.synchronize_stats, cfg['metricsRefreshRate']),
+        TelemetrySyncTaskAsync(synchronizers.telemetry_sync.synchronize_stats,
+                               cfg['metricsRefreshRate']),
         unique_keys_task,
         clear_filter_task,
         internal_events_task
@@ -777,7 +793,7 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     synchronizer = SynchronizerAsync(synchronizers, tasks)
 
     manager = ManagerAsync(synchronizer, apis['auth'], cfg['streamingEnabled'],
-                      sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:], proxy=proxies.get('https'))
+                           sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:], proxy=proxies.get('https'))
 
     storages['events'].set_queue_full_hook(tasks.events_task.flush)
     storages['impressions'].set_queue_full_hook(tasks.impressions_task.flush)
@@ -799,10 +815,11 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     manager_start_task = asyncio.get_running_loop().create_task(manager.start())
 
     return SplitFactoryAsync(api_key, storages, cfg['labelsEnabled'],
-                        recorder, internal_events_queue, events_manager, manager,
-                        telemetry_producer, telemetry_init_producer,
-                        telemetry_submitter, manager_start_task=manager_start_task,
-                        api_client=http_client, fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']))
+                             recorder, internal_events_queue, events_manager, manager,
+                             telemetry_producer, telemetry_init_producer,
+                             telemetry_submitter, manager_start_task=manager_start_task,
+                             api_client=http_client, fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']))
+
 
 def _build_redis_factory(api_key, cfg):
     """Build and return a split factory with redis-based storage."""
@@ -813,7 +830,7 @@ def _build_redis_factory(api_key, cfg):
     storages = {
         'splits': RedisSplitStorage(redis_adapter, cache_enabled, cache_ttl, []),
         'segments': RedisSegmentStorage(redis_adapter),
-        'rule_based_segments': RedisRuleBasedSegmentsStorage(redis_adapter),        
+        'rule_based_segments': RedisRuleBasedSegmentsStorage(redis_adapter),
         'impressions': RedisImpressionsStorage(redis_adapter, sdk_metadata),
         'events': RedisEventsStorage(redis_adapter, sdk_metadata),
         'telemetry': RedisTelemetryStorage(redis_adapter, sdk_metadata)
@@ -832,26 +849,27 @@ def _build_redis_factory(api_key, cfg):
     imp_counter = ImpressionsCounter()
     unique_keys_tracker = UniqueKeysTracker(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
-    clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy, none_strategy = set_classes('REDIS', cfg['impressionsMode'], redis_adapter, imp_counter, unique_keys_tracker)
+        clear_filter_task, impressions_count_sync, impressions_count_task, \
+        imp_strategy, none_strategy = set_classes(
+            'REDIS', cfg['impressionsMode'], redis_adapter, imp_counter, unique_keys_tracker)
 
     imp_manager = ImpressionsManager(
         imp_strategy, none_strategy,
         telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(None, None, None, None,
-        impressions_count_sync,
-        None,
-        unique_keys_synchronizer,
-        clear_filter_sync
-    )
+                                       impressions_count_sync,
+                                       None,
+                                       unique_keys_synchronizer,
+                                       clear_filter_sync
+                                       )
 
     tasks = SplitTasks(None, None, None, None,
-        impressions_count_task,
-        None,
-        unique_keys_task,
-        clear_filter_task
-    )
+                       impressions_count_task,
+                       None,
+                       unique_keys_task,
+                       clear_filter_task
+                       )
 
     synchronizer = RedisSynchronizer(synchronizers, tasks)
     recorder = PipelinedRecorder(
@@ -867,7 +885,8 @@ def _build_redis_factory(api_key, cfg):
     )
 
     manager = RedisManager(synchronizer)
-    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
+    initialization_thread = threading.Thread(
+        target=manager.start, name="SDKInitializer", daemon=True)
     initialization_thread.start()
 
     telemetry_init_producer.record_config(cfg, {}, 0, 0)
@@ -888,10 +907,12 @@ def _build_redis_factory(api_key, cfg):
         fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments'])
     )
     redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
-    storages['telemetry'].record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+    storages['telemetry'].record_active_and_redundant_factories(
+        active_factory_count, redundant_factory_count)
     telemetry_submitter.synchronize_config()
 
     return split_factory
+
 
 async def _build_redis_factory_async(api_key, cfg):
     """Build and return a split factory with redis-based storage."""
@@ -902,7 +923,7 @@ async def _build_redis_factory_async(api_key, cfg):
     storages = {
         'splits': RedisSplitStorageAsync(redis_adapter, cache_enabled, cache_ttl),
         'segments': RedisSegmentStorageAsync(redis_adapter),
-        'rule_based_segments': RedisRuleBasedSegmentsStorageAsync(redis_adapter),        
+        'rule_based_segments': RedisRuleBasedSegmentsStorageAsync(redis_adapter),
         'impressions': RedisImpressionsStorageAsync(redis_adapter, sdk_metadata),
         'events': RedisEventsStorageAsync(redis_adapter, sdk_metadata),
         'telemetry': await RedisTelemetryStorageAsync.create(redis_adapter, sdk_metadata)
@@ -921,26 +942,27 @@ async def _build_redis_factory_async(api_key, cfg):
     imp_counter = ImpressionsCounter()
     unique_keys_tracker = UniqueKeysTrackerAsync(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
-    clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy, none_strategy = set_classes_async('REDIS', cfg['impressionsMode'], redis_adapter, imp_counter, unique_keys_tracker)
+        clear_filter_task, impressions_count_sync, impressions_count_task, \
+        imp_strategy, none_strategy = set_classes_async(
+            'REDIS', cfg['impressionsMode'], redis_adapter, imp_counter, unique_keys_tracker)
 
     imp_manager = ImpressionsManager(
         imp_strategy, none_strategy,
         telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(None, None, None, None,
-        impressions_count_sync,
-        None,
-        unique_keys_synchronizer,
-        clear_filter_sync
-    )
+                                       impressions_count_sync,
+                                       None,
+                                       unique_keys_synchronizer,
+                                       clear_filter_sync
+                                       )
 
     tasks = SplitTasks(None, None, None, None,
-        impressions_count_task,
-        None,
-        unique_keys_task,
-        clear_filter_task
-    )
+                       impressions_count_task,
+                       None,
+                       unique_keys_task,
+                       clear_filter_task
+                       )
 
     synchronizer = RedisSynchronizerAsync(synchronizers, tasks)
     recorder = PipelinedRecorderAsync(
@@ -980,6 +1002,7 @@ async def _build_redis_factory_async(api_key, cfg):
 
     return split_factory
 
+
 def _build_pluggable_factory(api_key, cfg):
     """Build and return a split factory with pluggable storage."""
     sdk_metadata = util.get_metadata(cfg)
@@ -991,7 +1014,7 @@ def _build_pluggable_factory(api_key, cfg):
     storages = {
         'splits': PluggableSplitStorage(pluggable_adapter, storage_prefix, []),
         'segments': PluggableSegmentStorage(pluggable_adapter, storage_prefix),
-        'rule_based_segments': PluggableRuleBasedSegmentsStorage(pluggable_adapter, storage_prefix),                
+        'rule_based_segments': PluggableRuleBasedSegmentsStorage(pluggable_adapter, storage_prefix),
         'impressions': PluggableImpressionsStorage(pluggable_adapter, sdk_metadata, storage_prefix),
         'events': PluggableEventsStorage(pluggable_adapter, sdk_metadata, storage_prefix),
         'telemetry': PluggableTelemetryStorage(pluggable_adapter, sdk_metadata, storage_prefix)
@@ -1005,26 +1028,27 @@ def _build_pluggable_factory(api_key, cfg):
     imp_counter = ImpressionsCounter()
     unique_keys_tracker = UniqueKeysTracker(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
-    clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy, none_strategy = set_classes('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, imp_counter, unique_keys_tracker, storage_prefix)
+        clear_filter_task, impressions_count_sync, impressions_count_task, \
+        imp_strategy, none_strategy = set_classes(
+            'PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, imp_counter, unique_keys_tracker, storage_prefix)
 
     imp_manager = ImpressionsManager(
         imp_strategy, none_strategy,
         telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(None, None, None, None,
-        impressions_count_sync,
-        None,
-        unique_keys_synchronizer,
-        clear_filter_sync
-    )
+                                       impressions_count_sync,
+                                       None,
+                                       unique_keys_synchronizer,
+                                       clear_filter_sync
+                                       )
 
     tasks = SplitTasks(None, None, None, None,
-        impressions_count_task,
-        None,
-        unique_keys_task,
-        clear_filter_task
-    )
+                       impressions_count_task,
+                       None,
+                       unique_keys_task,
+                       clear_filter_task
+                       )
 
     # Using same class as redis for consumer mode only
     synchronizer = RedisSynchronizer(synchronizers, tasks)
@@ -1041,7 +1065,8 @@ def _build_pluggable_factory(api_key, cfg):
 
     # Using same class as redis for consumer mode only
     manager = RedisManager(synchronizer)
-    initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
+    initialization_thread = threading.Thread(
+        target=manager.start, name="SDKInitializer", daemon=True)
     initialization_thread.start()
 
     telemetry_init_producer.record_config(cfg, {}, 0, 0)
@@ -1062,10 +1087,12 @@ def _build_pluggable_factory(api_key, cfg):
         fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments'])
     )
     redundant_factory_count, active_factory_count = _get_active_and_redundant_count()
-    storages['telemetry'].record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+    storages['telemetry'].record_active_and_redundant_factories(
+        active_factory_count, redundant_factory_count)
     telemetry_submitter.synchronize_config()
 
     return split_factory
+
 
 async def _build_pluggable_factory_async(api_key, cfg):
     """Build and return a split factory with pluggable storage."""
@@ -1078,7 +1105,7 @@ async def _build_pluggable_factory_async(api_key, cfg):
     storages = {
         'splits': PluggableSplitStorageAsync(pluggable_adapter, storage_prefix),
         'segments': PluggableSegmentStorageAsync(pluggable_adapter, storage_prefix),
-        'rule_based_segments': PluggableRuleBasedSegmentsStorageAsync(pluggable_adapter, storage_prefix),   
+        'rule_based_segments': PluggableRuleBasedSegmentsStorageAsync(pluggable_adapter, storage_prefix),
         'impressions': PluggableImpressionsStorageAsync(pluggable_adapter, sdk_metadata, storage_prefix),
         'events': PluggableEventsStorageAsync(pluggable_adapter, sdk_metadata, storage_prefix),
         'telemetry': await PluggableTelemetryStorageAsync.create(pluggable_adapter, sdk_metadata, storage_prefix)
@@ -1092,26 +1119,27 @@ async def _build_pluggable_factory_async(api_key, cfg):
     imp_counter = ImpressionsCounter()
     unique_keys_tracker = UniqueKeysTrackerAsync(_UNIQUE_KEYS_CACHE_SIZE)
     unique_keys_synchronizer, clear_filter_sync, unique_keys_task, \
-    clear_filter_task, impressions_count_sync, impressions_count_task, \
-    imp_strategy, none_strategy = set_classes_async('PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, imp_counter, unique_keys_tracker, storage_prefix)
+        clear_filter_task, impressions_count_sync, impressions_count_task, \
+        imp_strategy, none_strategy = set_classes_async(
+            'PLUGGABLE', cfg['impressionsMode'], pluggable_adapter, imp_counter, unique_keys_tracker, storage_prefix)
 
     imp_manager = ImpressionsManager(
         imp_strategy, none_strategy,
         telemetry_runtime_producer)
 
     synchronizers = SplitSynchronizers(None, None, None, None,
-        impressions_count_sync,
-        None,
-        unique_keys_synchronizer,
-        clear_filter_sync
-    )
+                                       impressions_count_sync,
+                                       None,
+                                       unique_keys_synchronizer,
+                                       clear_filter_sync
+                                       )
 
     tasks = SplitTasks(None, None, None, None,
-        impressions_count_task,
-        None,
-        unique_keys_task,
-        clear_filter_task
-    )
+                       impressions_count_task,
+                       None,
+                       unique_keys_task,
+                       clear_filter_task
+                       )
 
     # Using same class as redis for consumer mode only
     synchronizer = RedisSynchronizerAsync(synchronizers, tasks)
@@ -1152,6 +1180,7 @@ async def _build_pluggable_factory_async(api_key, cfg):
 
     return split_factory
 
+
 def _build_localhost_factory(cfg):
     """Build and return a localhost factory for testing/development purposes."""
     telemetry_storage = LocalhostTelemetryStorage()
@@ -1162,12 +1191,14 @@ def _build_localhost_factory(cfg):
     internal_events_queue = queue.Queue()
     storages = {
         'splits': InMemorySplitStorage(internal_events_queue, cfg['flagSetsFilter'] if cfg['flagSetsFilter'] is not None else []),
-        'segments': InMemorySegmentStorage(internal_events_queue),  # not used, just to avoid possible future errors.
-        'rule_based_segments': InMemoryRuleBasedSegmentStorage(internal_events_queue),   
+        # not used, just to avoid possible future errors.
+        'segments': InMemorySegmentStorage(internal_events_queue),
+        'rule_based_segments': InMemoryRuleBasedSegmentStorage(internal_events_queue),
         'impressions': LocalhostImpressionsStorage(),
         'events': LocalhostEventsStorage(),
     }
-    localhost_mode = LocalhostMode.JSON if cfg['splitFile'][-5:].lower() == '.json' else LocalhostMode.LEGACY
+    localhost_mode = LocalhostMode.JSON if cfg['splitFile'][-5:].lower(
+    ) == '.json' else LocalhostMode.LEGACY
     synchronizers = SplitSynchronizers(
         LocalSplitSynchronizer(cfg['splitFile'],
                                storages['splits'],
@@ -1200,11 +1231,13 @@ def _build_localhost_factory(cfg):
     sdk_metadata = util.get_metadata(cfg)
     ready_event = threading.Event()
     synchronizer = LocalhostSynchronizer(synchronizers, tasks, localhost_mode)
-    manager = Manager(ready_event, synchronizer, None, False, sdk_metadata, telemetry_runtime_producer)
+    manager = Manager(ready_event, synchronizer, None, False,
+                      sdk_metadata, telemetry_runtime_producer)
 
 # TODO: BUR is only applied for Localhost JSON mode, in future legacy and yaml will also use BUR
     if localhost_mode == LocalhostMode.JSON:
-        initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
+        initialization_thread = threading.Thread(
+            target=manager.start, name="SDKInitializer", daemon=True)
         initialization_thread.start()
     else:
         manager.start()
@@ -1233,6 +1266,7 @@ def _build_localhost_factory(cfg):
         fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments'])
     )
 
+
 async def _build_localhost_factory_async(cfg):
     """Build and return a localhost async factory for testing/development purposes."""
     telemetry_storage = LocalhostTelemetryStorageAsync()
@@ -1242,22 +1276,26 @@ async def _build_localhost_factory_async(cfg):
 
     internal_events_queue = asyncio.Queue()
     events_manager = EventsManagerAsync(EventsManagerConfig(), EventsDelivery())
-    internal_events_task = EventsTaskAsync(events_manager.notify_internal_event, internal_events_queue)
+    internal_events_task = EventsTaskAsync(
+        events_manager.notify_internal_event, internal_events_queue)
 
     storages = {
         'splits': InMemorySplitStorageAsync(internal_events_queue),
-        'segments': InMemorySegmentStorageAsync(internal_events_queue),  # not used, just to avoid possible future errors.
+        # not used, just to avoid possible future errors.
+        'segments': InMemorySegmentStorageAsync(internal_events_queue),
         'rule_based_segments': InMemoryRuleBasedSegmentStorageAsync(internal_events_queue),
         'impressions': LocalhostImpressionsStorageAsync(),
         'events': LocalhostEventsStorageAsync(),
     }
-    localhost_mode = LocalhostMode.JSON if cfg['splitFile'][-5:].lower() == '.json' else LocalhostMode.LEGACY
+    localhost_mode = LocalhostMode.JSON if cfg['splitFile'][-5:].lower(
+    ) == '.json' else LocalhostMode.LEGACY
     synchronizers = SplitSynchronizers(
         LocalSplitSynchronizerAsync(cfg['splitFile'],
-                               storages['splits'],
-                               storages['rule_based_segments'],
-                               localhost_mode),
-        LocalSegmentSynchronizerAsync(cfg['segmentDirectory'], storages['splits'], storages['segments']),
+                                    storages['splits'],
+                                    storages['rule_based_segments'],
+                                    localhost_mode),
+        LocalSegmentSynchronizerAsync(cfg['segmentDirectory'],
+                                      storages['splits'], storages['segments']),
         None, None, None,
     )
 
@@ -1296,7 +1334,7 @@ async def _build_localhost_factory_async(cfg):
         storages['impressions'],
         telemetry_evaluation_producer,
         telemetry_runtime_producer
-    )        
+    )
     internal_events_task.start()
 
     return SplitFactoryAsync(
@@ -1313,6 +1351,7 @@ async def _build_localhost_factory_async(cfg):
         manager_start_task=manager_start_task,
         fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments'])
     )
+
 
 def get_factory(api_key, **kwargs):
     """Build and return the appropriate factory."""
@@ -1344,24 +1383,25 @@ def get_factory(api_key, **kwargs):
     config = sanitize_config(api_key, config_raw)
 
     if config['operationMode'] == 'localhost':
-        split_factory =  _build_localhost_factory(config)
+        split_factory = _build_localhost_factory(config)
     elif config['storageType'] == 'redis':
         split_factory = _build_redis_factory(api_key, config)
     elif config['storageType'] == 'pluggable':
         split_factory = _build_pluggable_factory(api_key, config)
     else:
         split_factory = _build_in_memory_factory(
-        api_key,
-        config,
-        kwargs.get('sdk_api_base_url'),
-        kwargs.get('events_api_base_url'),
-        kwargs.get('auth_api_base_url'),
-        kwargs.get('streaming_api_base_url'),
-        kwargs.get('telemetry_api_base_url'),
-        total_flag_sets,
-        invalid_flag_sets)
+            api_key,
+            config,
+            kwargs.get('sdk_api_base_url'),
+            kwargs.get('events_api_base_url'),
+            kwargs.get('auth_api_base_url'),
+            kwargs.get('streaming_api_base_url'),
+            kwargs.get('telemetry_api_base_url'),
+            total_flag_sets,
+            invalid_flag_sets)
 
     return split_factory
+
 
 async def get_factory_async(api_key, **kwargs):
     """Build and return the appropriate factory."""
@@ -1392,23 +1432,24 @@ async def get_factory_async(api_key, **kwargs):
 
     config = sanitize_config(api_key, config_raw)
     if config['operationMode'] == 'localhost':
-        split_factory =  await _build_localhost_factory_async(config)
+        split_factory = await _build_localhost_factory_async(config)
     elif config['storageType'] == 'redis':
         split_factory = await _build_redis_factory_async(api_key, config)
     elif config['storageType'] == 'pluggable':
         split_factory = await _build_pluggable_factory_async(api_key, config)
     else:
         split_factory = await _build_in_memory_factory_async(
-        api_key,
-        config,
-        kwargs.get('sdk_api_base_url'),
-        kwargs.get('events_api_base_url'),
-        kwargs.get('auth_api_base_url'),
-        kwargs.get('streaming_api_base_url'),
-        kwargs.get('telemetry_api_base_url'),
-        total_flag_sets,
-        invalid_flag_sets)
+            api_key,
+            config,
+            kwargs.get('sdk_api_base_url'),
+            kwargs.get('events_api_base_url'),
+            kwargs.get('auth_api_base_url'),
+            kwargs.get('streaming_api_base_url'),
+            kwargs.get('telemetry_api_base_url'),
+            total_flag_sets,
+            invalid_flag_sets)
     return split_factory
+
 
 def _get_active_and_redundant_count():
     redundant_factory_count = 0
@@ -1420,11 +1461,13 @@ def _get_active_and_redundant_count():
     _INSTANTIATED_FACTORIES_LOCK.release()
     return redundant_factory_count, active_factory_count
 
+
 def _get_total_and_invalid_flag_sets(config_raw):
     total_flag_sets = 0
     invalid_flag_sets = 0
     if config_raw.get('flagSetsFilter') is not None and isinstance(config_raw.get('flagSetsFilter'), list):
         total_flag_sets = len(config_raw.get('flagSetsFilter'))
-        invalid_flag_sets = total_flag_sets - len(input_validator.validate_flag_sets(config_raw.get('flagSetsFilter'), 'Telemetry Init'))
+        invalid_flag_sets = total_flag_sets - \
+            len(input_validator.validate_flag_sets(config_raw.get('flagSetsFilter'), 'Telemetry Init'))
 
     return total_flag_sets, invalid_flag_sets

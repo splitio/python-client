@@ -11,9 +11,10 @@ from splitio.api import headers_from_metadata
 from splitio.optional.loaders import asyncio
 
 if sys.version_info.major == 3 and sys.version_info.minor < 10:
-  from splitio.optional.loaders import _anext as anext
+    from splitio.optional.loaders import _anext as anext
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class SplitSSEClientBase(object, metaclass=abc.ABCMeta):
     """Split streaming endpoint SSE base client."""
@@ -76,7 +77,7 @@ class SplitSSEClientBase(object, metaclass=abc.ABCMeta):
         """Abort the ongoing connection."""
 
 
-class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-attributes
+class SplitSSEClient(SplitSSEClientBase):
     """Split streaming endpoint SSE client."""
 
     def __init__(self, event_callback, sdk_metadata, first_event_callback=None,
@@ -85,7 +86,7 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
         """
         Construct a split sse client.
 
-        :param callback: fuction to call when an event is received.
+        :param callback: function to call when an event is received.
         :type callback: callable
 
         :param sdk_metadata: SDK version & machine name & IP.
@@ -94,7 +95,7 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
         :param first_event_callback: function to call when the first event is received.
         :type first_event_callback: callable
 
-        :param connection_closed_callback: funciton to call when the connection ends.
+        :param connection_closed_callback: function to call when the connection ends.
         :type connection_closed_callback: callable
 
         :param base_url: scheme + :// + host
@@ -179,7 +180,8 @@ class SplitSSEClient(SplitSSEClientBase):  # pylint: disable=too-many-instance-a
         if blocking:
             self._sse_connection_closed.wait(timeout)
 
-class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-instance-attributes
+
+class SplitSSEClientAsync(SplitSSEClientBase):
     """Split streaming endpoint SSE client."""
 
     def __init__(self, sdk_metadata, client_key=None, base_url='https://streaming.split.io', proxy=None):
@@ -221,7 +223,8 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
         url = self._build_url(token)
         try:
             self._event_source_ended.clear()
-            self._event_source = self._client.start(url, extra_headers=self._metadata, proxy_url=self._proxy)
+            self._event_source = self._client.start(
+                url, extra_headers=self._metadata, proxy_url=self._proxy)
             first_event = await anext(self._event_source)
             yield first_event
             self.status = SplitSSEClient._Status.CONNECTED
@@ -229,7 +232,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
             async for event in self._event_source:
                 if event.data is not None:
                     yield event
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             _LOGGER.error('SplitSSE Client Exception')
             _LOGGER.debug('stack trace: ', exc_info=True)
         finally:
@@ -248,7 +251,7 @@ class SplitSSEClientAsync(SplitSSEClientBase):  # pylint: disable=too-many-insta
 # catching exception to avoid task hanging
         try:
             await self._event_source_ended.wait()
-        except asyncio.CancelledError as e:
+        except asyncio.CancelledError:
             _LOGGER.debug("Exception waiting for event source ended")
             _LOGGER.debug('stack trace: ', exc_info=True)
             pass

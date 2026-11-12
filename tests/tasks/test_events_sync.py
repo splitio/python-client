@@ -14,7 +14,7 @@ from splitio.optional.loaders import asyncio
 
 
 class EventsSyncTests(object):
-    """Impressions Syncrhonization task test cases."""
+    """Impressions Synchronization task test cases."""
 
     def test_normal_operation(self, mocker):
         """Test that the task works properly under normal circumstances."""
@@ -46,7 +46,7 @@ class EventsSyncTests(object):
 
 
 class EventsSyncAsyncTests(object):
-    """Impressions Syncrhonization task async test cases."""
+    """Impressions Synchronization task async test cases."""
 
     @pytest.mark.asyncio
     async def test_normal_operation(self, mocker):
@@ -60,6 +60,7 @@ class EventsSyncAsyncTests(object):
         ]
         storage = mocker.Mock(spec=EventStorage)
         self.called = False
+
         async def pop_many(*args):
             self.called = True
             return self.events
@@ -68,6 +69,7 @@ class EventsSyncAsyncTests(object):
         api = mocker.Mock(spec=EventsAPI)
         self.flushed_events = None
         self.count = 0
+
         async def flush_events(events):
             self.count += 1
             self.flushed_events = events

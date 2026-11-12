@@ -5,14 +5,14 @@ from threading import Event, Condition
 class EventGroup(object):
     """EventGroup that can be waited with an OR condition."""
 
-    class Event(Event):  # pylint:disable=too-few-public-methods
+    class Event(Event):
         """Threading event meant to be used in an group."""
 
         def __init__(self, shared_condition):
             """
             Construct an event.
 
-            :param shared_condition: shared condition varaible.
+            :param shared_condition: shared condition variable.
             :type shared_condition: threading.Condition
             """
             Event.__init__(self)

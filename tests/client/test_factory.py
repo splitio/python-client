@@ -1,6 +1,4 @@
 """Split factory test module."""
-# pylint: disable=no-self-use,protected-access,line-too-long,too-many-statements
-# pylint: disable=too-many-locals, too-many-arguments
 
 import os
 import time
@@ -10,36 +8,27 @@ import queue
 
 from splitio.optional.loaders import asyncio
 from splitio.api.client import HttpResponse
-from splitio.client.factory import get_factory, get_factory_async, SplitFactory, _INSTANTIATED_FACTORIES, Status,\
-    _LOGGER as _logger, SplitFactoryAsync
-from splitio.client.config import DEFAULT_CONFIG
-from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
+from splitio.client.factory import get_factory, get_factory_async, SplitFactory, _INSTANTIATED_FACTORIES, Status, \
+    SplitFactoryAsync
+from splitio.engine.telemetry import TelemetryStorageProducer
 from splitio.engine.impressions.impressions import Manager as ImpressionsManager
-from splitio.engine.impressions.manager import Counter as ImpressionsCounter
-from splitio.engine.impressions.unique_keys_tracker import UniqueKeysTracker, UniqueKeysTrackerAsync
-from splitio.engine.telemetry import TelemetryStorageConsumer, TelemetryStorageProducer, TelemetryStorageProducerAsync
-from splitio.engine.evaluator import Evaluator, EvaluationContext
-from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode, StrategyOptimizedMode
+from splitio.engine.impressions.strategies import StrategyDebugMode, StrategyNoneMode
 from splitio.events.events_task import EventsTask
 from splitio.events.events_manager import EventsManagerAsync
-from splitio.models.splits import from_raw
-from splitio.models.fallback_config import FallbackTreatmentsConfiguration, FallbackTreatmentCalculator
+from splitio.models.fallback_config import FallbackTreatmentsConfiguration
 from splitio.models.fallback_treatment import FallbackTreatment
 from splitio.models.events import SdkInternalEvent
 from splitio.recorder.recorder import PipelinedRecorder, StandardRecorder, StandardRecorderAsync
 from splitio.storage import redis, inmemmory, pluggable, EventStorage
 from splitio.storage.inmemmory import InMemorySplitStorage, InMemorySegmentStorage, \
-    InMemoryImpressionStorage, InMemoryTelemetryStorage, InMemorySplitStorageAsync, \
-    InMemoryImpressionStorageAsync, InMemorySegmentStorageAsync, InMemoryTelemetryStorageAsync, InMemoryEventStorageAsync, \
-    InMemoryRuleBasedSegmentStorage, InMemoryRuleBasedSegmentStorageAsync
+    InMemoryImpressionStorage, InMemoryTelemetryStorage, InMemoryRuleBasedSegmentStorage
 from splitio.sync.manager import Manager, ManagerAsync
 from splitio.sync.synchronizer import Synchronizer, SynchronizerAsync, SplitSynchronizers, SplitTasks
 from splitio.sync.split import SplitSynchronizer, SplitSynchronizerAsync
 from splitio.sync.segment import SegmentSynchronizer, SegmentSynchronizerAsync
-from splitio.storage.adapters.redis import RedisAdapter, RedisPipelineAdapter
+from splitio.storage.adapters.redis import RedisPipelineAdapter
 from splitio.tasks.util import asynctask
 from tests.storage.test_pluggable import StorageMockAdapter, StorageMockAdapterAsync
-from tests.integration import splits_json
 
 
 class SplitFactoryTests(object):
@@ -62,7 +51,7 @@ class SplitFactoryTests(object):
             if thread.name in ('SDKInitializer', 'SDKReadyFlagUpdater'):
                 thread.join(2)
 
-    def test_flag_sets_counts(self):      
+    def test_flag_sets_counts(self):
         factory = get_factory("none", config={
             'flagSetsFilter': ['set1', 'set2', 'set3']
         })
@@ -72,7 +61,7 @@ class SplitFactoryTests(object):
         event = threading.Event()
         factory.destroy(event)
         event.wait()
-        
+
         factory = get_factory("none", config={
             'flagSetsFilter': ['s#et1', 'set2', 'set3']
         })
@@ -94,6 +83,7 @@ class SplitFactoryTests(object):
     def test_inmemory_client_creation_streaming_false(self, mocker):
         """Test that a client with in-memory storage is created correctly."""
         # Setup synchronizer
+
         def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None, proxy=None):
             synchronizer = mocker.Mock(spec=Synchronizer)
             synchronizer.sync_all.return_values = None
@@ -106,6 +96,7 @@ class SplitFactoryTests(object):
 
         # Start factory and make assertions
         factory = get_factory('some_api_key')
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -127,7 +118,7 @@ class SplitFactoryTests(object):
         assert factory._labels_enabled is True
         try:
             factory.block_until_ready(1)
-        except:
+        except Exception:
             pass
         assert factory.ready
         factory.destroy()
@@ -164,6 +155,7 @@ class SplitFactoryTests(object):
             'fallbackTreatments': fallback_treatments_configuration
         }
         factory = get_factory('some_api_key', config=config)
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -214,7 +206,7 @@ class SplitFactoryTests(object):
 
         try:
             factory.block_until_ready(1)
-        except:
+        except Exception:
             pass
         assert factory.ready
         factory.destroy()
@@ -265,7 +257,7 @@ class SplitFactoryTests(object):
 
         def _imppression_count_task_init_mock(self, synchronize_counters):
             self._task = imp_count_async_task_mock
-        mocker.patch('splitio.client.factory.ImpressionsCountSyncTask.__init__',
+        mocker.patch('splitio.tasks.impressions_sync.ImpressionsCountSyncTask.__init__',
                      new=_imppression_count_task_init_mock)
 
         telemetry_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
@@ -297,6 +289,7 @@ class SplitFactoryTests(object):
         # Start factory and make assertions
         # Using invalid key should result in a timeout exception
         factory = get_factory('some_api_key')
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -304,7 +297,7 @@ class SplitFactoryTests(object):
 
         try:
             factory.block_until_ready(1)
-        except:
+        except Exception:
             pass
         assert factory.ready
         assert factory.destroyed is False
@@ -366,7 +359,7 @@ class SplitFactoryTests(object):
 
         def _imppression_count_task_init_mock(self, synchronize_counters):
             self._task = imp_count_async_task_mock
-        mocker.patch('splitio.client.factory.ImpressionsCountSyncTask.__init__',
+        mocker.patch('splitio.tasks.impressions_sync.ImpressionsCountSyncTask.__init__',
                      new=_imppression_count_task_init_mock)
 
         telemetry_async_task_mock = mocker.Mock(spec=asynctask.AsyncTask)
@@ -401,6 +394,7 @@ class SplitFactoryTests(object):
 
         # Start factory and make assertions
         factory = get_factory('some_api_key')
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -408,7 +402,7 @@ class SplitFactoryTests(object):
 
         try:
             factory.block_until_ready(1)
-        except:
+        except Exception:
             pass
         assert factory._status == Status.READY
         assert factory.destroyed is False
@@ -439,6 +433,7 @@ class SplitFactoryTests(object):
         }
 
         factory = get_factory("none", config=config)
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -451,6 +446,7 @@ class SplitFactoryTests(object):
         assert len(build_redis.mock_calls) == 1
 
         factory = get_factory("none", config=config)
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -501,6 +497,7 @@ class SplitFactoryTests(object):
         _INSTANTIATED_FACTORIES.clear()  # Clear all factory counters for testing purposes
 
         factory1 = get_factory('some_api_key')
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -510,6 +507,7 @@ class SplitFactoryTests(object):
         assert factory_module_logger.warning.mock_calls == []
 
         factory2 = get_factory('some_api_key')
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -526,6 +524,7 @@ class SplitFactoryTests(object):
 
         factory_module_logger.reset_mock()
         factory3 = get_factory('some_api_key')
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -542,6 +541,7 @@ class SplitFactoryTests(object):
 
         factory_module_logger.reset_mock()
         factory4 = get_factory('some_other_api_key')
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -612,6 +612,7 @@ class SplitFactoryTests(object):
             'preforkedInitialization': True,
         }
         factory = get_factory("none", config=config)
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -619,7 +620,7 @@ class SplitFactoryTests(object):
 
         try:
             factory.block_until_ready(10)
-        except:
+        except Exception:
             pass
         assert factory._status == Status.WAITING_FORK
         assert len(sync_all_mock.mock_calls) == 1
@@ -643,6 +644,7 @@ class SplitFactoryTests(object):
 
         filename = os.path.join(os.path.dirname(__file__), '../integration/files', 'file2.yaml')
         factory = get_factory('localhost', config={'splitFile': filename})
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -650,7 +652,7 @@ class SplitFactoryTests(object):
 
         try:
             factory.block_until_ready(1)
-        except:
+        except Exception:
             pass
         _logger = mocker.Mock()
         mocker.patch('splitio.client.factory._LOGGER', new=_logger)
@@ -668,6 +670,7 @@ class SplitFactoryTests(object):
             'flagSetsFilter': ['set_1']
         }
         factory = get_factory('some_api_key', config=config)
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -692,7 +695,7 @@ class SplitFactoryTests(object):
 
         try:
             factory.block_until_ready(1)
-        except:
+        except Exception:
             pass
         assert factory.ready
         factory.destroy()
@@ -708,6 +711,7 @@ class SplitFactoryTests(object):
         }
 
         factory = get_factory("none", config=config)
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -719,6 +723,7 @@ class SplitFactoryTests(object):
         assert factory.destroyed
 
         factory = get_factory("none", config=config)
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -727,10 +732,11 @@ class SplitFactoryTests(object):
         factory.destroy(None)
         time.sleep(0.1)
         assert factory.destroyed
-        
+
     def test_internal_ready_event_notification(self, mocker):
         """Test that a client with in-memory storage is sending internal events correctly."""
         # Setup synchronizer
+
         def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None, proxy=None):
             synchronizer = mocker.Mock(spec=Synchronizer)
             synchronizer.sync_all.return_values = None
@@ -742,7 +748,7 @@ class SplitFactoryTests(object):
         mocker.patch('splitio.sync.manager.Manager.__init__', new=_split_synchronizer)
 
         # Start factory and make assertions
-        
+
         telemetry_storage = InMemoryTelemetryStorage()
         telemetry_producer = TelemetryStorageProducer(telemetry_storage)
         events_queue = queue.Queue()
@@ -758,21 +764,21 @@ class SplitFactoryTests(object):
         destroyed_property.return_value = False
         recorder = StandardRecorder(impmanager, event_storage, impression_storage, telemetry_producer.get_telemetry_evaluation_producer(), telemetry_producer.get_telemetry_runtime_producer())
         factory = SplitFactory("some key",
-            {'splits': split_storage,
-            'segments': segment_storage,
-            'rule_based_segments': rb_segment_storage,
-            'impressions': impression_storage,
-            'events': event_storage},
-            mocker.Mock(),
-            recorder,
-            events_queue,
-            mocker.Mock(),
-            mocker.Mock(),
-            mocker.Mock(),
-            telemetry_producer,
-            telemetry_producer.get_telemetry_init_producer(),
-            mocker.Mock()
-        )
+                               {'splits': split_storage,
+                                'segments': segment_storage,
+                                'rule_based_segments': rb_segment_storage,
+                                'impressions': impression_storage,
+                                'events': event_storage},
+                               mocker.Mock(),
+                               recorder,
+                               events_queue,
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               mocker.Mock(),
+                               telemetry_producer,
+                               telemetry_producer.get_telemetry_init_producer(),
+                               mocker.Mock()
+                               )
 
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
@@ -781,21 +787,22 @@ class SplitFactoryTests(object):
 
         try:
             factory.block_until_ready(1)
-        except:
+        except Exception:
             pass
 
         assert factory.ready
         event = events_queue.get()
         assert event.internal_event == SdkInternalEvent.SDK_READY
-        assert event.metadata == None
+        assert event.metadata is None
         factory.destroy()
-        
+
     def test_uwsgi_forked_client_creation(self, mocker):
         """Test client with preforked initialization."""
         # No real network: the initial sync is stubbed (it would retry against sdk.split.io with backoff).
         sync_all = mocker.patch('splitio.sync.synchronizer.Synchronizer.sync_all')
         factory = get_factory('some_api_key', config={'preforkedInitialization': True})
         sync_all.assert_called_once()
+
         class TelemetrySubmitterMock():
             def synchronize_config(*_):
                 pass
@@ -819,6 +826,7 @@ class SplitFactoryTests(object):
         factory.destroy()
         time.sleep(0.1)
         assert factory.destroyed
+
 
 class SplitFactoryAsyncTests(object):
     """Split factory async test cases."""
@@ -854,21 +862,23 @@ class SplitFactoryAsyncTests(object):
     async def test_inmemory_client_creation_streaming_false_async(self, mocker):
         """Test that a client with in-memory storage is created correctly for async."""
         # Setup synchronizer
+
         def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None, proxy=None):
             synchronizer = mocker.Mock(spec=SynchronizerAsync)
+
             async def sync_all(*_):
                 return None
             synchronizer.sync_all = sync_all
 
             def start_periodic_fetching():
-                pass        
+                pass
             synchronizer.start_periodic_fetching = start_periodic_fetching
 
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
             self._streaming_enabled = False
             self._telemetry_runtime_producer = telemetry_runtime_producer
-            
+
         mocker.patch('splitio.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
 
         async def synchronize_config(*_):
@@ -896,7 +906,7 @@ class SplitFactoryAsyncTests(object):
         assert factory2._labels_enabled is True
         try:
             await factory2.block_until_ready(1)
-        except:
+        except Exception:
             pass
         assert factory2._status == Status.READY
         await factory2.destroy()
@@ -948,7 +958,7 @@ class SplitFactoryAsyncTests(object):
 
         def _imppression_count_task_init_mock(self, synchronize_counters):
             self._task = imp_count_async_task_mock
-        mocker.patch('splitio.client.factory.ImpressionsCountSyncTaskAsync.__init__',
+        mocker.patch('splitio.tasks.impressions_sync.ImpressionsCountSyncTaskAsync.__init__',
                      new=_imppression_count_task_init_mock)
 
         telemetry_async_task_mock = mocker.Mock(spec=asynctask.AsyncTaskAsync)
@@ -960,11 +970,13 @@ class SplitFactoryAsyncTests(object):
                      new=_telemetry_task_init_mock)
 
         split_sync = mocker.Mock(spec=SplitSynchronizerAsync)
+
         async def synchronize_splits(*_):
             return []
         split_sync.synchronize_splits = synchronize_splits
 
         segment_sync = mocker.Mock(spec=SegmentSynchronizerAsync)
+
         async def synchronize_segments(*_):
             return True
         segment_sync.synchronize_segments = synchronize_segments
@@ -990,9 +1002,9 @@ class SplitFactoryAsyncTests(object):
         # Using invalid key should result in a timeout exception
         factory = await get_factory_async('some_api_key')
         self.manager_called = False
+
         async def stop(*_):
             self.manager_called = True
-            pass
         factory._sync_manager.stop = stop
 
         async def start(*_):
@@ -1001,7 +1013,7 @@ class SplitFactoryAsyncTests(object):
 
         try:
             await factory.block_until_ready(1)
-        except:
+        except Exception:
             pass
         assert factory._status == Status.READY
         assert factory.destroyed is False
@@ -1042,7 +1054,7 @@ class SplitFactoryAsyncTests(object):
         assert isinstance(factory._recorder._impression_storage, pluggable.PluggableImpressionsStorageAsync)
         try:
             await factory.block_until_ready(1)
-        except:
+        except Exception:
             pass
         assert factory._status == Status.READY
         await factory.destroy()
@@ -1051,6 +1063,7 @@ class SplitFactoryAsyncTests(object):
     async def test_destroy_redis_async(self, mocker):
         internal_events_queue = asyncio.Queue()
         events_manager = mocker.Mock(EventsManagerAsync)
+
         async def notify_internal_event(sdk_internal_event, event_metadata):
             pass
         events_manager.notify_internal_event = notify_internal_event
@@ -1079,35 +1092,36 @@ class SplitFactoryAsyncTests(object):
         await asyncio.sleep(0.5)
         assert factory.destroyed
         assert len(build_redis.mock_calls) == 2
-        
+
     @pytest.mark.asyncio
     async def test_internal_ready_event_notification(self, mocker):
         """Test that a client with in-memory storage is sending internal events correctly."""
         # Setup synchronizer
+
         def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None, proxy=None):
             synchronizer = mocker.Mock(spec=SynchronizerAsync)
+
             async def sync_all(*_):
                 return None
             synchronizer.sync_all = sync_all
 
             def start_periodic_fetching():
-                pass        
+                pass
             synchronizer.start_periodic_fetching = start_periodic_fetching
 
             def start_periodic_data_recording():
-                pass        
+                pass
             synchronizer.start_periodic_data_recording = start_periodic_data_recording
 
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
             self._streaming_enabled = False
             self._telemetry_runtime_producer = telemetry_runtime_producer
-            
+
         mocker.patch('splitio.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
 
         async def synchronize_config(*_):
             await asyncio.sleep(2)
-            pass
         mocker.patch('splitio.sync.telemetry.InMemoryTelemetrySubmitterAsync.synchronize_config', new=synchronize_config)
 
         async def record_ready_time(*_):
@@ -1125,19 +1139,21 @@ class SplitFactoryAsyncTests(object):
                 task.cancel()
         try:
             await factory.block_until_ready(3)
-        except:
+        except Exception:
             pass
         await asyncio.sleep(.2)
         event = await factory._internal_events_queue.get()
         assert event.internal_event == SdkInternalEvent.SDK_READY
-        assert event.metadata == None
+        assert event.metadata is None
         await factory.destroy()
 
     @pytest.mark.asyncio
     async def test_ready_not_blocked_by_telemetry_config_async(self, mocker):
         """Test that a slow telemetry config post does not delay SDK readiness."""
+
         def _split_synchronizer(self, ready_flag, some, auth_api, streaming_enabled, sdk_matadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_host=None, proxy_port=None, proxy=None):
             synchronizer = mocker.Mock(spec=SynchronizerAsync)
+
             async def sync_all(*_):
                 return None
             synchronizer.sync_all = sync_all
@@ -1158,6 +1174,7 @@ class SplitFactoryAsyncTests(object):
         mocker.patch('splitio.sync.manager.ManagerAsync.__init__', new=_split_synchronizer)
 
         config_posted = asyncio.Event()
+
         async def synchronize_config(*_):
             await asyncio.sleep(5)
             config_posted.set()

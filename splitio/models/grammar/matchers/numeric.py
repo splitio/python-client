@@ -9,13 +9,13 @@ from splitio.models import datatypes
 _LOGGER = logging.getLogger(__name__)
 
 
-class Sanitizer(object):  # pylint: disable=too-few-public-methods
+class Sanitizer(object):
     """Numeric input sanitizer."""
 
     @classmethod
     def ensure_int(cls, data):
         """
-        Do a best effort attempt to conver input to a int.
+        Do a best effort attempt to convert input to a int.
 
         :param input: user supplied input.
         :type input: mixed.
@@ -45,7 +45,7 @@ class Sanitizer(object):  # pylint: disable=too-few-public-methods
             return None
 
 
-class ZeroSecondDataMatcher(object):  # pylint: disable=too-few-public-methods
+class ZeroSecondDataMatcher(object):
     """Mixin to use in matchers that when dealing with datetimes, truncate seconds."""
 
     data_parsers = {
@@ -59,7 +59,7 @@ class ZeroSecondDataMatcher(object):  # pylint: disable=too-few-public-methods
     }
 
 
-class ZeroTimeDataMatcher(object):  # pylint: disable=no-init,too-few-public-methods
+class ZeroTimeDataMatcher(object):
     """Mixin to use in matchers that when dealing with datetimes, truncate time."""
 
     input_parsers = {
@@ -100,7 +100,7 @@ class BetweenMatcher(Matcher, ZeroSecondDataMatcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_int(self._get_matcher_input(key, attributes))
@@ -149,7 +149,7 @@ class EqualToMatcher(Matcher, ZeroTimeDataMatcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_int(self._get_matcher_input(key, attributes))
@@ -193,7 +193,7 @@ class GreaterThanOrEqualMatcher(Matcher, ZeroSecondDataMatcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_int(self._get_matcher_input(key, attributes))
@@ -237,7 +237,7 @@ class LessThanOrEqualMatcher(Matcher, ZeroSecondDataMatcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_int(self._get_matcher_input(key, attributes))

@@ -1,5 +1,4 @@
 """Cache testing module."""
-#pylint: disable=protected-access,no-self-use,line-too-long
 import time
 from random import choice
 
@@ -8,7 +7,8 @@ import pytest
 from splitio.storage.adapters import cache_trait
 from splitio.optional.loaders import asyncio
 
-class  CacheTraitTests(object):
+
+class CacheTraitTests(object):
     """Cache trait test cases."""
 
     def test_lru_behaviour(self, mocker):
@@ -138,4 +138,4 @@ class  CacheTraitTests(object):
         await cache.add_key('split', {'split_name': 'split'})
         assert await cache.get_key('split') == {'split_name': 'split'}
         await asyncio.sleep(1.2)
-        assert await cache.get_key('split') == None
+        assert await cache.get_key('split') is None

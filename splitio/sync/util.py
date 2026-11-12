@@ -3,6 +3,7 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
+
 def _get_sha(fetched):
     """
     Return sha256 of given string.
@@ -14,6 +15,7 @@ def _get_sha(fetched):
     :rtype: str
     """
     return hashlib.sha256(fetched.encode()).hexdigest()
+
 
 def _sanitize_object_element(object, object_name, element_name, default_value, lower_value=None, upper_value=None, in_list=None, not_in_list=None):
     """
@@ -38,31 +40,38 @@ def _sanitize_object_element(object, object_name, element_name, default_value, l
     :rtype: Dict
     """
     if element_name not in object or object[element_name] is None:
-            object[element_name] = default_value
-            _LOGGER.debug("Sanitized element [%s] to '%s' in %s: %s.", element_name, default_value, object_name, object['name'])
+        object[element_name] = default_value
+        _LOGGER.debug("Sanitized element [%s] to '%s' in %s: %s.",
+                      element_name, default_value, object_name, object['name'])
     if lower_value is not None and upper_value is not None:
         if object[element_name] < lower_value or object[element_name] > upper_value:
             object[element_name] = default_value
-            _LOGGER.debug("Sanitized element [%s] to '%s' in %s: %s.", element_name, default_value, object_name, object['name'])
+            _LOGGER.debug("Sanitized element [%s] to '%s' in %s: %s.",
+                          element_name, default_value, object_name, object['name'])
     elif lower_value is not None:
         if object[element_name] < lower_value:
             object[element_name] = default_value
-            _LOGGER.debug("Sanitized element [%s] to '%s' in %s: %s.", element_name, default_value, object_name, object['name'])
+            _LOGGER.debug("Sanitized element [%s] to '%s' in %s: %s.",
+                          element_name, default_value, object_name, object['name'])
     elif upper_value is not None:
         if object[element_name] > upper_value:
             object[element_name] = default_value
-            _LOGGER.debug("Sanitized element [%s] to '%s' in %s: %s.", element_name, default_value, object_name, object['name'])
+            _LOGGER.debug("Sanitized element [%s] to '%s' in %s: %s.",
+                          element_name, default_value, object_name, object['name'])
     if in_list is not None:
         if object[element_name] not in in_list:
             object[element_name] = default_value
-            _LOGGER.debug("Sanitized element [%s] to '%s' in %s: %s.", element_name, default_value, object_name, object['name'])
+            _LOGGER.debug("Sanitized element [%s] to '%s' in %s: %s.",
+                          element_name, default_value, object_name, object['name'])
     if not_in_list is not None:
         if object[element_name] in not_in_list:
             object[element_name] = default_value
-            _LOGGER.debug("Sanitized element [%s] to '%s' in %s: %s.", element_name, default_value, object_name, object['name'])
+            _LOGGER.debug("Sanitized element [%s] to '%s' in %s: %s.",
+                          element_name, default_value, object_name, object['name'])
 
     return object
 
+
 def convert_to_new_spec(body):
-    return {"ff": {"d": body["splits"], "s": body["since"], "t": body["till"]}, 
+    return {"ff": {"d": body["splits"], "s": body["since"], "t": body["till"]},
             "rbs": {"d": [], "s": -1, "t": -1}}

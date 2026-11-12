@@ -7,6 +7,7 @@ from splitio.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchron
 from splitio.sync.impression import ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
 from splitio.tasks.impressions_sync import ImpressionsCountSyncTask, ImpressionsCountSyncTaskAsync
 
+
 def set_classes(storage_mode, impressions_mode, api_adapter, imp_counter, unique_keys_tracker, prefix=None):
     """
     Createe and return instances based on storage, impressions and threading mode
@@ -70,7 +71,8 @@ def set_classes(storage_mode, impressions_mode, api_adapter, imp_counter, unique
         imp_strategy = StrategyOptimizedMode()
 
     return unique_keys_synchronizer, clear_filter_sync, unique_keys_task, clear_filter_task, \
-            impressions_count_sync, impressions_count_task, imp_strategy, none_strategy
+        impressions_count_sync, impressions_count_task, imp_strategy, none_strategy
+
 
 def set_classes_async(storage_mode, impressions_mode, api_adapter, imp_counter, unique_keys_tracker, prefix=None):
     """
@@ -123,7 +125,8 @@ def set_classes_async(storage_mode, impressions_mode, api_adapter, imp_counter, 
     unique_keys_task = UniqueKeysSyncTaskAsync(unique_keys_synchronizer.send_all)
     clear_filter_sync = ClearFilterSynchronizerAsync(unique_keys_tracker)
     impressions_count_sync = ImpressionsCountSynchronizerAsync(api_impressions_adapter, imp_counter)
-    impressions_count_task = ImpressionsCountSyncTaskAsync(impressions_count_sync.synchronize_counters)
+    impressions_count_task = ImpressionsCountSyncTaskAsync(
+        impressions_count_sync.synchronize_counters)
     clear_filter_task = ClearFilterSyncTaskAsync(clear_filter_sync.clear_all)
     unique_keys_tracker.set_queue_full_hook(unique_keys_task.flush)
 
@@ -135,4 +138,4 @@ def set_classes_async(storage_mode, impressions_mode, api_adapter, imp_counter, 
         imp_strategy = StrategyOptimizedMode()
 
     return unique_keys_synchronizer, clear_filter_sync, unique_keys_task, clear_filter_task, \
-            impressions_count_sync, impressions_count_task, imp_strategy, none_strategy
+        impressions_count_sync, impressions_count_task, imp_strategy, none_strategy

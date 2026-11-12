@@ -7,16 +7,17 @@ import threading
 from splitio.optional.loaders import asyncio
 from splitio.models import splits, segments, rule_based_segments
 from splitio.models.impressions import Impression
-from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS,\
+from splitio.models.telemetry import MethodExceptions, MethodLatencies, TelemetryConfig, MAX_TAGS, \
     MethodLatenciesAsync, MethodExceptionsAsync, TelemetryConfigAsync
 from splitio.storage import FlagSetsFilter, SplitStorage, SegmentStorage, ImpressionStorage, EventStorage, TelemetryStorage, RuleBasedSegmentsStorage
 from splitio.util.storage_helper import get_valid_flag_sets, combine_valid_flag_sets
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class PluggableRuleBasedSegmentsStorageBase(RuleBasedSegmentsStorage):
     """Pluggable storage for rule based segments."""
-        
+
     _TILL_LENGTH = 4
 
     def __init__(self, pluggable_adapter, prefix=None):
@@ -64,7 +65,7 @@ class PluggableRuleBasedSegmentsStorageBase(RuleBasedSegmentsStorage):
         :return: True if segment names exists. False otherwise.
         :rtype: bool
         """
-        pass    
+        pass
 
     def get_segment_names(self):
         """
@@ -95,11 +96,12 @@ class PluggableRuleBasedSegmentsStorageBase(RuleBasedSegmentsStorage):
         :return: List of segment names.
         :rtype: list(str)
         """
-        pass    
+        pass
+
 
 class PluggableRuleBasedSegmentsStorage(PluggableRuleBasedSegmentsStorageBase):
     """Pluggable storage for rule based segments."""
-        
+
     def __init__(self, pluggable_adapter, prefix=None):
         """
         Class constructor.
@@ -108,7 +110,7 @@ class PluggableRuleBasedSegmentsStorage(PluggableRuleBasedSegmentsStorageBase):
         :type redis_client: splitio.storage.adapters.redis.RedisAdapter
         """
         PluggableRuleBasedSegmentsStorageBase.__init__(self, pluggable_adapter, prefix)
-    
+
     def get(self, segment_name):
         """
         Retrieve a rule based segment.
@@ -143,7 +145,7 @@ class PluggableRuleBasedSegmentsStorage(PluggableRuleBasedSegmentsStorageBase):
             _LOGGER.error('Error getting change number in rule based segment storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
-        
+
     def contains(self, segment_names):
         """
         Return whether the segments exists in rule based segment in cache.
@@ -155,7 +157,7 @@ class PluggableRuleBasedSegmentsStorage(PluggableRuleBasedSegmentsStorageBase):
         :rtype: bool
         """
         return set(segment_names).issubset(self.get_segment_names())
-        
+
     def get_segment_names(self):
         """
         Retrieve a list of all rule based segments names.
@@ -174,7 +176,7 @@ class PluggableRuleBasedSegmentsStorage(PluggableRuleBasedSegmentsStorageBase):
             _LOGGER.error('Error getting rule based segments names from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
-        
+
     def fetch_many(self, rb_segment_names):
         """
         Retrieve rule based segments.
@@ -186,17 +188,19 @@ class PluggableRuleBasedSegmentsStorage(PluggableRuleBasedSegmentsStorageBase):
         :rtype: dict(rb_segment_names, splitio.models.rile_based_segment.RuleBasedSegment)
         """
         try:
-            prefix_added = [self._prefix.format(segment_name=rb_segment_name) for rb_segment_name in rb_segment_names]
+            prefix_added = [self._prefix.format(segment_name=rb_segment_name)
+                            for rb_segment_name in rb_segment_names]
             return {rb_segment['name']: rule_based_segments.from_raw(rb_segment) for rb_segment in self._pluggable_adapter.get_many(prefix_added)}
 
         except Exception:
             _LOGGER.error('Error getting rule based segments from storage')
             _LOGGER.debug('Error: ', exc_info=True)
-            return None        
+            return None
+
 
 class PluggableRuleBasedSegmentsStorageAsync(PluggableRuleBasedSegmentsStorageBase):
     """Pluggable storage for rule based segments."""
-        
+
     def __init__(self, pluggable_adapter, prefix=None):
         """
         Class constructor.
@@ -205,7 +209,7 @@ class PluggableRuleBasedSegmentsStorageAsync(PluggableRuleBasedSegmentsStorageBa
         :type redis_client: splitio.storage.adapters.redis.RedisAdapter
         """
         PluggableRuleBasedSegmentsStorageBase.__init__(self, pluggable_adapter, prefix)
-    
+
     async def get(self, segment_name):
         """
         Retrieve a rule based segment.
@@ -240,7 +244,7 @@ class PluggableRuleBasedSegmentsStorageAsync(PluggableRuleBasedSegmentsStorageBa
             _LOGGER.error('Error getting change number in rule based segment storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
-        
+
     async def contains(self, segment_names):
         """
         Return whether the segments exists in rule based segment in cache.
@@ -252,7 +256,7 @@ class PluggableRuleBasedSegmentsStorageAsync(PluggableRuleBasedSegmentsStorageBa
         :rtype: bool
         """
         return set(segment_names).issubset(await self.get_segment_names())
-        
+
     async def get_segment_names(self):
         """
         Retrieve a list of all rule based segments names.
@@ -283,13 +287,15 @@ class PluggableRuleBasedSegmentsStorageAsync(PluggableRuleBasedSegmentsStorageBa
         :rtype: dict(rb_segment_names, splitio.models.rile_based_segment.RuleBasedSegment)
         """
         try:
-            prefix_added = [self._prefix.format(segment_name=rb_segment_name) for rb_segment_name in rb_segment_names]
+            prefix_added = [self._prefix.format(segment_name=rb_segment_name)
+                            for rb_segment_name in rb_segment_names]
             return {rb_segment['name']: rule_based_segments.from_raw(rb_segment) for rb_segment in await self._pluggable_adapter.get_many(prefix_added)}
 
         except Exception:
             _LOGGER.error('Error getting rule based segments from storage')
             _LOGGER.debug('Error: ', exc_info=True)
-            return None        
+            return None
+
 
 class PluggableSplitStorageBase(SplitStorage):
     """InMemory implementation of a feature flag storage."""
@@ -371,7 +377,7 @@ class PluggableSplitStorageBase(SplitStorage):
 #        try:
 #            split = self.get(feature_flag_name)
 #            if not split:
-#                _LOGGER.warning("Tried to delete nonexistant split %s. Skipping", feature_flag_name)
+#                _LOGGER.warning("Tried to delete nonexistent split %s. Skipping", feature_flag_name)
 #                return False
 #            self._pluggable_adapter.delete(self._prefix.format(feature_flag_name=feature_flag_name))
 #            self._decrease_traffic_type_count(split.traffic_type_name)
@@ -510,6 +516,7 @@ class PluggableSplitStorageBase(SplitStorage):
         """
         pass
 
+
 class PluggableSplitStorage(PluggableSplitStorageBase):
     """InMemory implementation of a feature flag storage."""
 
@@ -534,7 +541,8 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         :rtype: splitio.models.splits.Split
         """
         try:
-            feature_flag = self._pluggable_adapter.get(self._prefix.format(feature_flag_name=feature_flag_name))
+            feature_flag = self._pluggable_adapter.get(
+                self._prefix.format(feature_flag_name=feature_flag_name))
             if not feature_flag:
                 return None
 
@@ -556,7 +564,8 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         :rtype: dict(feature_flag_name, splitio.models.splits.Split)
         """
         try:
-            prefix_added = [self._prefix.format(feature_flag_name=feature_flag_name) for feature_flag_name in feature_flag_names]
+            prefix_added = [self._prefix.format(feature_flag_name=feature_flag_name)
+                            for feature_flag_name in feature_flag_names]
             return {feature_flag['name']: splits.from_raw(feature_flag) for feature_flag in self._pluggable_adapter.get_many(prefix_added)}
 
         except Exception:
@@ -631,7 +640,7 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
         :rtype: bool
         """
         try:
-            return self._pluggable_adapter.get(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name)) != None
+            return self._pluggable_adapter.get(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name)) is not None
 
         except Exception:
             _LOGGER.error('Error getting feature flag info from storage')
@@ -674,6 +683,7 @@ class PluggableSplitStorage(PluggableSplitStorageBase):
             _LOGGER.error('Error getting traffic type info from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
+
 
 class PluggableSplitStorageAsync(PluggableSplitStorageBase):
     """InMemory async implementation of a feature flag storage."""
@@ -721,7 +731,8 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
         :rtype: dict(split_feature_flag, splitio.models.splits.Split)
         """
         try:
-            prefix_added = [self._prefix.format(feature_flag_name=feature_flag_name) for feature_flag_name in feature_flag_names]
+            prefix_added = [self._prefix.format(feature_flag_name=feature_flag_name)
+                            for feature_flag_name in feature_flag_names]
             return {feature_flag['name']: splits.from_raw(feature_flag) for feature_flag in await self._pluggable_adapter.get_many(prefix_added)}
 
         except Exception:
@@ -796,7 +807,7 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
         :rtype: bool
         """
         try:
-            return await self._pluggable_adapter.get(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name)) != None
+            return await self._pluggable_adapter.get(self._traffic_type_prefix.format(traffic_type_name=traffic_type_name)) is not None
 
         except Exception:
             _LOGGER.error('Error getting traffic type info from storage')
@@ -839,6 +850,7 @@ class PluggableSplitStorageAsync(PluggableSplitStorageBase):
             _LOGGER.error('Error getting feature flag info from storage')
             _LOGGER.debug('Error: ', exc_info=True)
             return None
+
 
 class PluggableSegmentStorageBase(SegmentStorage):
     """Pluggable async implementation of segment storage."""
@@ -1090,6 +1102,7 @@ class PluggableSegmentStorage(PluggableSegmentStorageBase):
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
+
 class PluggableSegmentStorageAsync(PluggableSegmentStorageBase):
     """Pluggable async implementation of segment storage."""
 
@@ -1179,6 +1192,7 @@ class PluggableSegmentStorageAsync(PluggableSegmentStorageBase):
             _LOGGER.debug('Error: ', exc_info=True)
             return None
 
+
 class PluggableImpressionsStorageBase(ImpressionStorage):
     """Pluggable Impressions storage class."""
 
@@ -1197,10 +1211,10 @@ class PluggableImpressionsStorageBase(ImpressionStorage):
         """
         self._pluggable_adapter = pluggable_adapter
         self._sdk_metadata = {
-                                's': sdk_metadata.sdk_version,
-                                'n': sdk_metadata.instance_name,
-                                'i': sdk_metadata.instance_ip,
-                            }
+            's': sdk_metadata.sdk_version,
+            'n': sdk_metadata.instance_name,
+            'i': sdk_metadata.instance_ip,
+        }
         self._impressions_queue_key = 'SPLITIO.impressions'
         if prefix is not None:
             self._impressions_queue_key = prefix + "." + self._impressions_queue_key
@@ -1301,7 +1315,8 @@ class PluggableImpressionsStorage(PluggableImpressionsStorageBase):
         """
         bulk_impressions = self._wrap_impressions(impressions)
         try:
-            total_keys = self._pluggable_adapter.push_items(self._impressions_queue_key, *bulk_impressions)
+            total_keys = self._pluggable_adapter.push_items(
+                self._impressions_queue_key, *bulk_impressions)
             self.expire_key(total_keys, len(bulk_impressions))
             return True
 
@@ -1320,7 +1335,8 @@ class PluggableImpressionsStorage(PluggableImpressionsStorageBase):
         :type inserted: int
         """
         if total_keys == inserted:
-            self._pluggable_adapter.expire(self._impressions_queue_key, self.IMPRESSIONS_KEY_DEFAULT_TTL)
+            self._pluggable_adapter.expire(self._impressions_queue_key,
+                                           self.IMPRESSIONS_KEY_DEFAULT_TTL)
 
 
 class PluggableImpressionsStorageAsync(PluggableImpressionsStorageBase):
@@ -1391,29 +1407,29 @@ class PluggableEventsStorageBase(EventStorage):
         """
         self._pluggable_adapter = pluggable_adapter
         self._sdk_metadata = {
-                                's': sdk_metadata.sdk_version,
-                                'n': sdk_metadata.instance_name,
-                                'i': sdk_metadata.instance_ip,
-                            }
+            's': sdk_metadata.sdk_version,
+            'n': sdk_metadata.instance_name,
+            'i': sdk_metadata.instance_ip,
+        }
         self._events_queue_key = 'SPLITIO.events'
         if prefix is not None:
             self._events_queue_key = prefix + "." + self._events_queue_key
 
     def _wrap_events(self, events):
         return [
-        json.dumps({
-            'e': {
-                'key': e.event.key,
-                'trafficTypeName': e.event.traffic_type_name,
-                'eventTypeId': e.event.event_type_id,
-                'value': e.event.value,
-                'timestamp': e.event.timestamp,
-                'properties': e.event.properties,
-            },
-            'm': self._sdk_metadata
-        })
-        for e in events
-    ]
+            json.dumps({
+                'e': {
+                    'key': e.event.key,
+                    'trafficTypeName': e.event.traffic_type_name,
+                    'eventTypeId': e.event.event_type_id,
+                    'value': e.event.value,
+                    'timestamp': e.event.timestamp,
+                    'properties': e.event.properties,
+                },
+                'm': self._sdk_metadata
+            })
+            for e in events
+        ]
 
     def put(self, events):
         """
@@ -1452,6 +1468,7 @@ class PluggableEventsStorageBase(EventStorage):
         Clear data.
         """
         raise NotImplementedError('Not supported for redis.')
+
 
 class PluggableEventsStorage(PluggableEventsStorageBase):
     """Pluggable Event storage class."""
@@ -1573,7 +1590,7 @@ class PluggableTelemetryStorageBase(TelemetryStorage):
 
     def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
-        initilize telemetry objects
+        initialize telemetry objects
 
         :param config: factory configuration parameters
         :type config: Dict
@@ -1679,7 +1696,8 @@ class PluggableTelemetryStorage(PluggableTelemetryStorageBase):
         :type prefix: str
         """
         self._pluggable_adapter = pluggable_adapter
-        self._sdk_metadata = sdk_metadata.sdk_version + '/' + sdk_metadata.instance_name + '/' + sdk_metadata.instance_ip
+        self._sdk_metadata = sdk_metadata.sdk_version + '/' + \
+            sdk_metadata.instance_name + '/' + sdk_metadata.instance_ip
         self._telemetry_config_key = 'SPLITIO.telemetry.init'
         self._telemetry_latencies_key = 'SPLITIO.telemetry.latencies'
         self._telemetry_exceptions_key = 'SPLITIO.telemetry.exceptions'
@@ -1712,7 +1730,7 @@ class PluggableTelemetryStorage(PluggableTelemetryStorageBase):
 
     def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
-        initilize telemetry objects
+        initialize telemetry objects
 
         :param config: factory configuration parameters
         :type config: Dict
@@ -1730,7 +1748,8 @@ class PluggableTelemetryStorage(PluggableTelemetryStorageBase):
 
     def push_config_stats(self):
         """push config stats to storage."""
-        self._pluggable_adapter.set(self._telemetry_config_key + "::" + self._sdk_metadata, str(self._format_config_stats()))
+        self._pluggable_adapter.set(self._telemetry_config_key + "::" +
+                                    self._sdk_metadata, str(self._format_config_stats()))
 
     def _format_config_stats(self):
         """format only selected config stats to json"""
@@ -1752,7 +1771,8 @@ class PluggableTelemetryStorage(PluggableTelemetryStorageBase):
         :param redundant_factory_count: redundant factory count
         :type redundant_factory_count: int
         """
-        self._tel_config.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+        self._tel_config.record_active_and_redundant_factories(
+            active_factory_count, redundant_factory_count)
 
     def record_latency(self, method, bucket):
         """
@@ -1763,7 +1783,8 @@ class PluggableTelemetryStorage(PluggableTelemetryStorageBase):
         :param latency: latency
         :type latency: int64
         """
-        latency_key = self._telemetry_latencies_key + '::' + self._sdk_metadata + '/' + method.value + '/' + str(bucket)
+        latency_key = self._telemetry_latencies_key + '::' + \
+            self._sdk_metadata + '/' + method.value + '/' + str(bucket)
         result = self._pluggable_adapter.increment(latency_key, 1)
         self.expire_keys(latency_key, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result)
 
@@ -1787,7 +1808,8 @@ class PluggableTelemetryStorage(PluggableTelemetryStorageBase):
         :param inserted: added keys.
         :type inserted: int
         """
-        self.expire_keys(self._telemetry_latencies_key, self._TELEMETRY_KEY_DEFAULT_TTL, total_keys, inserted)
+        self.expire_keys(self._telemetry_latencies_key,
+                         self._TELEMETRY_KEY_DEFAULT_TTL, total_keys, inserted)
 
     def expire_keys(self, queue_key, key_default_ttl, total_keys, inserted):
         """
@@ -1831,7 +1853,8 @@ class PluggableTelemetryStorageAsync(PluggableTelemetryStorageBase):
         """
         self = cls()
         self._pluggable_adapter = pluggable_adapter
-        self._sdk_metadata = sdk_metadata.sdk_version + '/' + sdk_metadata.instance_name + '/' + sdk_metadata.instance_ip
+        self._sdk_metadata = sdk_metadata.sdk_version + '/' + \
+            sdk_metadata.instance_name + '/' + sdk_metadata.instance_ip
         self._telemetry_config_key = 'SPLITIO.telemetry.init'
         self._telemetry_latencies_key = 'SPLITIO.telemetry.latencies'
         self._telemetry_exceptions_key = 'SPLITIO.telemetry.exceptions'
@@ -1865,7 +1888,7 @@ class PluggableTelemetryStorageAsync(PluggableTelemetryStorageBase):
 
     async def record_config(self, config, extra_config, total_flag_sets, invalid_flag_sets):
         """
-        initilize telemetry objects
+        initialize telemetry objects
 
         :param config: factory configuration parameters
         :type config: Dict
@@ -1915,7 +1938,8 @@ class PluggableTelemetryStorageAsync(PluggableTelemetryStorageBase):
         :param latency: latency
         :type latency: int64
         """
-        latency_key = self._telemetry_latencies_key + '::' + self._sdk_metadata + '/' + method.value + '/' + str(bucket)
+        latency_key = self._telemetry_latencies_key + '::' + \
+            self._sdk_metadata + '/' + method.value + '/' + str(bucket)
         result = await self._pluggable_adapter.increment(latency_key, 1)
         await self.expire_keys(latency_key, self._TELEMETRY_KEY_DEFAULT_TTL, 1, result)
 

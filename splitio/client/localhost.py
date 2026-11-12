@@ -14,15 +14,15 @@ _LOGGER = logging.getLogger(__name__)
 class LocalhostImpressionsStorage(ImpressionStorage):
     """Impression storage that doesn't cache anything."""
 
-    def put(self, *_, **__):  # pylint: disable=arguments-differ
+    def put(self, *_, **__):
         """Accept any arguments and do nothing."""
         pass
 
-    def pop_many(self, *_, **__):  # pylint: disable=arguments-differ
+    def pop_many(self, *_, **__):
         """Accept any arguments and do nothing."""
         pass
 
-    def clear(self, *_, **__):  # pylint: disable=arguments-differ
+    def clear(self, *_, **__):
         """Accept any arguments and do nothing."""
         pass
 
@@ -30,30 +30,31 @@ class LocalhostImpressionsStorage(ImpressionStorage):
 class LocalhostEventsStorage(EventStorage):
     """Impression storage that doesn't cache anything."""
 
-    def put(self, *_, **__):  # pylint: disable=arguments-differ
+    def put(self, *_, **__):
         """Accept any arguments and do nothing."""
         pass
 
-    def pop_many(self, *_, **__):  # pylint: disable=arguments-differ
+    def pop_many(self, *_, **__):
         """Accept any arguments and do nothing."""
         pass
 
-    def clear(self, *_, **__):  # pylint: disable=arguments-differ
+    def clear(self, *_, **__):
         """Accept any arguments and do nothing."""
         pass
+
 
 class LocalhostImpressionsStorageAsync(ImpressionStorage):
     """Impression storage that doesn't cache anything."""
 
-    async def put(self, *_, **__):  # pylint: disable=arguments-differ
+    async def put(self, *_, **__):
         """Accept any arguments and do nothing."""
         pass
 
-    async def pop_many(self, *_, **__):  # pylint: disable=arguments-differ
+    async def pop_many(self, *_, **__):
         """Accept any arguments and do nothing."""
         pass
 
-    async def clear(self, *_, **__):  # pylint: disable=arguments-differ
+    async def clear(self, *_, **__):
         """Accept any arguments and do nothing."""
         pass
 
@@ -61,14 +62,14 @@ class LocalhostImpressionsStorageAsync(ImpressionStorage):
 class LocalhostEventsStorageAsync(EventStorage):
     """Impression storage that doesn't cache anything."""
 
-    async def put(self, *_, **__):  # pylint: disable=arguments-differ
+    async def put(self, *_, **__):
         """Accept any arguments and do nothing."""
         pass
 
-    async def pop_many(self, *_, **__):  # pylint: disable=arguments-differ
+    async def pop_many(self, *_, **__):
         """Accept any arguments and do nothing."""
         pass
 
-    async def clear(self, *_, **__):  # pylint: disable=arguments-differ
+    async def clear(self, *_, **__):
         """Accept any arguments and do nothing."""
         pass

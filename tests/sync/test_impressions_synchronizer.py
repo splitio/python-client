@@ -1,7 +1,5 @@
 """Split Worker tests."""
 
-import threading
-import time
 import pytest
 
 from splitio.api.client import HttpResponse
@@ -74,6 +72,7 @@ class ImpressionsSynchronizerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_synchronize_impressions_error(self, mocker):
         storage = mocker.Mock(spec=ImpressionStorage)
+
         async def pop_many(*args):
             return [
                 Impression('key1', 'split1', 'on', 'l1', 123456, 'b1', 321654, None, None),
@@ -93,6 +92,7 @@ class ImpressionsSynchronizerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_synchronize_impressions_empty(self, mocker):
         storage = mocker.Mock(spec=ImpressionStorage)
+
         async def pop_many(*args):
             return []
         storage.pop_many = pop_many
@@ -111,6 +111,7 @@ class ImpressionsSynchronizerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_synchronize_impressions(self, mocker):
         storage = mocker.Mock(spec=ImpressionStorage)
+
         async def pop_many(*args):
             return [
                 Impression('key1', 'split1', 'on', 'l1', 123456, 'b1', 321654, None, None),

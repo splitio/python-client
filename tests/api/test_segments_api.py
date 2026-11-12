@@ -1,11 +1,11 @@
 """Segment API tests module."""
 
 import pytest
-import unittest.mock as mock
 
 from splitio.api import segments, client, APIException
 from splitio.api.commons import FetchOptions
 from splitio.client.util import SdkMetadata
+
 
 class SegmentAPITests(object):
     """Segment API test cases."""
@@ -51,6 +51,7 @@ class SegmentAPITests(object):
                                                          query={'since': 123, 'till': 123})]
 
         httpclient.reset_mock()
+
         def raise_exception(*args, **kwargs):
             raise client.HttpClientException('some_message')
         httpclient.get.side_effect = raise_exception
@@ -73,6 +74,7 @@ class SegmentAPIAsyncTests(object):
         self.key = None
         self.headers = None
         self.query = None
+
         async def get(verb, url, key, query, extra_headers):
             self.url = url
             self.verb = verb
@@ -123,6 +125,7 @@ class SegmentAPIAsyncTests(object):
         assert self.query == {'since': 123, 'till': 123}
 
         httpclient.reset_mock()
+
         def raise_exception(*args, **kwargs):
             raise client.HttpClientException('some_message')
         httpclient.get = raise_exception

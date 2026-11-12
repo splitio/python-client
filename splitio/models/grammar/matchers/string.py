@@ -9,13 +9,13 @@ from splitio.models.grammar.matchers.base import Matcher
 _LOGGER = logging.getLogger(__name__)
 
 
-class Sanitizer(object):  # pylint: disable=too-few-public-methods
+class Sanitizer(object):
     """Numeric input sanitizer."""
 
     @classmethod
     def ensure_string(cls, data):
         """
-        Do a best effort attempt to conver input to a string.
+        Do a best effort attempt to convert input to a string.
 
         :param input: user supplied input.
         :type input: mixed.
@@ -63,7 +63,7 @@ class WhitelistMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
@@ -110,7 +110,7 @@ class StartsWithMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
@@ -158,7 +158,7 @@ class EndsWithMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
@@ -206,7 +206,7 @@ class ContainsStringMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))
@@ -255,7 +255,7 @@ class RegexMatcher(Matcher):
         :param context: Evaluation context
         :type context: dict
 
-        :returns: Wheter the match is successful.
+        :returns: Whether the match is successful.
         :rtype: bool
         """
         matching_data = Sanitizer.ensure_string(self._get_matcher_input(key, attributes))

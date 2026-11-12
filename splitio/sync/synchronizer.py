@@ -18,11 +18,12 @@ _LOGGER = logging.getLogger(__name__)
 
 _SYNC_ALL_NO_RETRIES = -1
 
+
 class SplitSynchronizers(object):
     """SplitSynchronizers."""
 
-    def __init__(self, feature_flag_sync, segment_sync, impressions_sync, events_sync,  # pylint:disable=too-many-arguments
-                 impressions_count_sync, telemetry_sync=None, unique_keys_sync = None, clear_filter_sync = None):
+    def __init__(self, feature_flag_sync, segment_sync, impressions_sync, events_sync,
+                 impressions_count_sync, telemetry_sync=None, unique_keys_sync=None, clear_filter_sync=None):
         """
         Class constructor.
 
@@ -48,49 +49,50 @@ class SplitSynchronizers(object):
 
     @property
     def split_sync(self):
-        """Return split synchonizer."""
+        """Return split synchronizer."""
         return self._feature_flag_sync
 
     @property
     def segment_sync(self):
-        """Return segment synchonizer."""
+        """Return segment synchronizer."""
         return self._segment_sync
 
     @property
     def impressions_sync(self):
-        """Return impressions synchonizer."""
+        """Return impressions synchronizer."""
         return self._impressions_sync
 
     @property
     def events_sync(self):
-        """Return events synchonizer."""
+        """Return events synchronizer."""
         return self._events_sync
 
     @property
     def impressions_count_sync(self):
-        """Return impressions count synchonizer."""
+        """Return impressions count synchronizer."""
         return self._impressions_count_sync
 
     @property
     def unique_keys_sync(self):
-        """Return unique keys synchonizer."""
+        """Return unique keys synchronizer."""
         return self._unique_keys_sync
 
     @property
     def clear_filter_sync(self):
-        """Return clear filter synchonizer."""
+        """Return clear filter synchronizer."""
         return self._clear_filter_sync
 
     @property
     def telemetry_sync(self):
-        """Return clear filter synchonizer."""
+        """Return clear filter synchronizer."""
         return self._telemetry_sync
+
 
 class SplitTasks(object):
     """SplitTasks."""
 
-    def __init__(self, feature_flag_task, segment_task, impressions_task, events_task,  # pylint:disable=too-many-arguments
-                 impressions_count_task, telemetry_task=None, unique_keys_task = None, clear_filter_task = None, internal_events_task=None):
+    def __init__(self, feature_flag_task, segment_task, impressions_task, events_task,
+                 impressions_count_task, telemetry_task=None, unique_keys_task=None, clear_filter_task=None, internal_events_task=None):
         """
         Class constructor.
 
@@ -159,6 +161,7 @@ class SplitTasks(object):
     def internal_events_task(self):
         """Return internal events task."""
         return self._internal_events_task
+
 
 class BaseSynchronizer(object, metaclass=abc.ABCMeta):
     """Synchronizer interface."""
@@ -248,8 +251,8 @@ class SynchronizerInMemoryBase(BaseSynchronizer):
         :type split_tasks: splitio.sync.synchronizer.SplitTasks
         """
         self._backoff = Backoff(
-                                _ON_DEMAND_FETCH_BACKOFF_BASE,
-                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
+            _ON_DEMAND_FETCH_BACKOFF_BASE,
+            _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
         self._split_synchronizers = split_synchronizers
         self._split_tasks = split_tasks
         self._periodic_data_recording_tasks = [
@@ -399,11 +402,12 @@ class Synchronizer(SynchronizerInMemoryBase):
         try:
             new_segments = []
             for segment in self._split_synchronizers.split_sync.synchronize_splits(till):
-                    if not self._split_synchronizers.segment_sync.segment_exist_in_storage(segment):
-                        new_segments.append(segment)
+                if not self._split_synchronizers.segment_sync.segment_exist_in_storage(segment):
+                    new_segments.append(segment)
             if sync_segments and len(new_segments) != 0:
                 _LOGGER.debug('Synching Segments: %s', ','.join(new_segments))
-                success = self._split_synchronizers.segment_sync.synchronize_segments(new_segments, True)
+                success = self._split_synchronizers.segment_sync.synchronize_segments(
+                    new_segments, True)
                 if not success:
                     _LOGGER.error('Failed to schedule sync one or all segment(s) below.')
                     _LOGGER.error(','.join(new_segments))
@@ -445,7 +449,7 @@ class Synchronizer(SynchronizerInMemoryBase):
 
                 # All is good
                 return
-            except Exception as exc:  # pylint:disable=broad-except
+            except Exception as exc:
                 _LOGGER.error("Exception caught when trying to sync all data: %s", str(exc))
                 _LOGGER.debug('Error: ', exc_info=True)
                 if max_retry_attempts != _SYNC_ALL_NO_RETRIES:
@@ -455,7 +459,8 @@ class Synchronizer(SynchronizerInMemoryBase):
                 how_long = self._backoff.get()
                 time.sleep(how_long)
 
-        _LOGGER.error("Could not correctly synchronize feature flags and segments after %d attempts.", retry_attempts)
+        _LOGGER.error(
+            "Could not correctly synchronize feature flags and segments after %d attempts.", retry_attempts)
 
     def shutdown(self, blocking):
         """
@@ -515,6 +520,7 @@ class Synchronizer(SynchronizerInMemoryBase):
         """
         self._split_synchronizers.split_sync.kill_split(feature_flag_name, default_treatment,
                                                         change_number)
+
 
 class SynchronizerAsync(SynchronizerInMemoryBase):
     """Synchronizer async."""
@@ -614,7 +620,7 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
 
                 # All is good
                 return
-            except Exception as exc:  # pylint:disable=broad-except
+            except Exception as exc:
                 _LOGGER.error("Exception caught when trying to sync all data: %s", str(exc))
                 _LOGGER.debug('Error: ', exc_info=True)
                 if max_retry_attempts != _SYNC_ALL_NO_RETRIES:
@@ -625,7 +631,8 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
                 if not self._shutdown:
                     await asyncio.sleep(how_long)
 
-        _LOGGER.error("Could not correctly synchronize feature flags and segments after %d attempts.", retry_attempts)
+        _LOGGER.error(
+            "Could not correctly synchronize feature flags and segments after %d attempts.", retry_attempts)
 
     async def shutdown(self, blocking):
         """
@@ -656,7 +663,7 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
         _LOGGER.debug('Stopping periodic data recording')
         if self._split_tasks.internal_events_task:
             await self._split_tasks.internal_events_task.stop()
-        
+
         if blocking:
             await self._stop_periodic_data_recording()
             _LOGGER.debug('all tasks finished successfully.')
@@ -685,7 +692,8 @@ class SynchronizerAsync(SynchronizerInMemoryBase):
         :type change_number: int
         """
         await self._split_synchronizers.split_sync.kill_split(feature_flag_name, default_treatment,
-                                                        change_number)
+                                                              change_number)
+
 
 class RedisSynchronizerBase(BaseSynchronizer):
     """Redis Synchronizer."""
@@ -866,8 +874,8 @@ class LocalhostSynchronizerBase(BaseSynchronizer):
         self._split_tasks = split_tasks
         self._localhost_mode = localhost_mode
         self._backoff = Backoff(
-                                _ON_DEMAND_FETCH_BACKOFF_BASE,
-                                _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
+            _ON_DEMAND_FETCH_BACKOFF_BASE,
+            _ON_DEMAND_FETCH_BACKOFF_MAX_WAIT)
 
     def sync_all(self, till=None):
         """
@@ -969,8 +977,8 @@ class LocalhostSynchronizer(LocalhostSynchronizerBase):
         try:
             new_segments = []
             for segment in self._split_synchronizers.split_sync.synchronize_splits():
-                    if not self._split_synchronizers.segment_sync.segment_exist_in_storage(segment):
-                        new_segments.append(segment)
+                if not self._split_synchronizers.segment_sync.segment_exist_in_storage(segment):
+                    new_segments.append(segment)
             if len(new_segments) > 0:
                 _LOGGER.debug('Synching Segments: %s', ','.join(new_segments))
                 success = self._split_synchronizers.segment_sync.synchronize_segments(new_segments)
@@ -1036,18 +1044,18 @@ class LocalhostSynchronizerAsync(LocalhostSynchronizerBase):
         if self._split_tasks.split_task is not None:
             await self._split_tasks.split_task.stop()
         if self._split_tasks.segment_task is not None:
-            await self._split_tasks.segment_task.stop()        
+            await self._split_tasks.segment_task.stop()
         if self._split_tasks.internal_events_task is not None:
             _LOGGER.debug('Stopping internal events notification')
             await self._split_tasks.internal_events_task.stop()
-        
+
     async def synchronize_splits(self):
         """Synchronize all feature flags."""
         try:
             new_segments = []
             for segment in await self._split_synchronizers.split_sync.synchronize_splits():
-                    if not await self._split_synchronizers.segment_sync.segment_exist_in_storage(segment):
-                        new_segments.append(segment)
+                if not await self._split_synchronizers.segment_sync.segment_exist_in_storage(segment):
+                    new_segments.append(segment)
             if len(new_segments) > 0:
                 _LOGGER.debug('Synching Segments: %s', ','.join(new_segments))
                 success = await self._split_synchronizers.segment_sync.synchronize_segments(new_segments)
@@ -1073,7 +1081,7 @@ class LocalhostSynchronizerAsync(LocalhostSynchronizerBase):
 
 
 class PluggableSynchronizer(BaseSynchronizer):
-    """Plugable Synchronizer."""
+    """Pluggable Synchronizer."""
 
     def synchronize_segment(self, segment_name, till):
         """
@@ -1137,8 +1145,9 @@ class PluggableSynchronizer(BaseSynchronizer):
         """
         pass
 
+
 class PluggableSynchronizerAsync(BaseSynchronizer):
-    """Plugable Synchronizer."""
+    """Pluggable Synchronizer."""
 
     async def synchronize_segment(self, segment_name, till):
         """

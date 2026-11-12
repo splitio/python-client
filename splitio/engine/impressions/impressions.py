@@ -1,6 +1,7 @@
 """Split evaluator module."""
 from enum import Enum
 
+
 class ImpressionsMode(Enum):
     """Impressions tracking mode."""
 
@@ -8,12 +9,13 @@ class ImpressionsMode(Enum):
     DEBUG = "DEBUG"
     NONE = "NONE"
 
-class Manager(object):  # pylint:disable=too-few-public-methods
+
+class Manager(object):
     """Impression manager."""
 
     def __init__(self, strategy, none_strategy, telemetry_runtime_producer):
         """
-        Construct a manger to track and forward impressions to the queue.
+        Construct a manager to track and forward impressions to the queue.
 
         :param listener: Optional impressions listener that will capture all seen impressions.
         :type listener: splitio.client.listener.ImpressionListenerWrapper
@@ -44,9 +46,11 @@ class Manager(object):  # pylint:disable=too-few-public-methods
         for_unique_keys_tracker_all = []
         for impression_decorated, att in impressions_decorated:
             if impression_decorated.disabled:
-                for_log, for_listener, for_counter, for_unique_keys_tracker = self._none_strategy.process_impressions([(impression_decorated.Impression, att)])
+                for_log, for_listener, for_counter, for_unique_keys_tracker = self._none_strategy.process_impressions(
+                    [(impression_decorated.Impression, att)])
             else:
-                for_log, for_listener, for_counter, for_unique_keys_tracker = self._strategy.process_impressions([(impression_decorated.Impression, att)])
+                for_log, for_listener, for_counter, for_unique_keys_tracker = self._strategy.process_impressions(
+                    [(impression_decorated.Impression, att)])
             for_listener_all.extend(for_listener)
             for_log_all.extend(for_log)
             for_counter_all.extend(for_counter)

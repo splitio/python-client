@@ -1,5 +1,4 @@
 """Workerpool test module."""
-# pylint: disable=no-self-use,too-few-public-methods,missing-docstring
 import time
 import threading
 import pytest
@@ -7,11 +6,12 @@ import pytest
 from splitio.tasks.util import workerpool
 from splitio.optional.loaders import asyncio
 
+
 class WorkerPoolTests(object):
     """Worker pool test cases."""
 
     def test_normal_operation(self, mocker):
-        """Test normal opeation works properly."""
+        """Test normal operation works properly."""
         worker_func = mocker.Mock()
         wpool = workerpool.WorkerPool(10, worker_func)
         wpool.start()
@@ -29,7 +29,7 @@ class WorkerPoolTests(object):
 
     def test_fail_in_msg_doesnt_break(self):
         """Test that if a message cannot be parsed it is ignored and others are processed."""
-        class Worker(object):  #pylint: disable=
+        class Worker(object):
             def __init__(self):
                 self.worked = set()
 
@@ -80,9 +80,10 @@ class WorkerPoolAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_normal_operation(self, mocker):
-        """Test normal opeation works properly."""
+        """Test normal operation works properly."""
         self.calls = 0
         calls = []
+
         async def worker_func(num):
             self.calls += 1
             calls.append(num)
@@ -102,7 +103,7 @@ class WorkerPoolAsyncTests(object):
     @pytest.mark.asyncio
     async def test_fail_in_msg_doesnt_break(self):
         """Test that if a message cannot be parsed it is ignored and others are processed."""
-        class Worker(object):  #pylint: disable=
+        class Worker(object):
             def __init__(self):
                 self.worked = set()
 

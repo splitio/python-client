@@ -1,11 +1,11 @@
 """Telemetry engine classes."""
+from splitio.models.telemetry import CounterConstants, UpdateFromSSE
 import json
 import os
 
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-from splitio.models.telemetry import CounterConstants, UpdateFromSSE
 
 class TelemetryStorageProducerBase(object):
     """Telemetry storage producer base class."""
@@ -42,6 +42,7 @@ class TelemetryStorageProducerAsync(TelemetryStorageProducerBase):
         self._telemetry_evaluation_producer = TelemetryEvaluationProducerAsync(telemetry_storage)
         self._telemetry_runtime_producer = TelemetryRuntimeProducerAsync(telemetry_storage)
 
+
 class TelemetryInitProducerBase(object):
     """Telemetry init producer base class."""
 
@@ -70,10 +71,11 @@ class TelemetryInitProducer(TelemetryInitProducerBase):
 
     def record_config(self, config, extra_config, total_flag_sets=0, invalid_flag_sets=0):
         """Record configurations."""
-        self._telemetry_storage.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)
+        self._telemetry_storage.record_config(
+            config, extra_config, total_flag_sets, invalid_flag_sets)
         current_app, app_worker_id = self._get_app_worker_id()
-        if  current_app is not None:
-            self.add_config_tag("initilization:" + current_app)
+        if current_app is not None:
+            self.add_config_tag("initialization:" + current_app)
             self.add_config_tag("worker:#" + app_worker_id)
 
     def record_ready_time(self, ready_time):
@@ -98,7 +100,8 @@ class TelemetryInitProducer(TelemetryInitProducerBase):
 
     def record_active_and_redundant_factories(self, active_factory_count, redundant_factory_count):
         """Record active and redundant factories."""
-        self._telemetry_storage.record_active_and_redundant_factories(active_factory_count, redundant_factory_count)
+        self._telemetry_storage.record_active_and_redundant_factories(
+            active_factory_count, redundant_factory_count)
 
     def add_config_tag(self, tag):
         """Record tag string."""
@@ -116,8 +119,8 @@ class TelemetryInitProducerAsync(TelemetryInitProducerBase):
         """Record configurations."""
         await self._telemetry_storage.record_config(config, extra_config, total_flag_sets, invalid_flag_sets)
         current_app, app_worker_id = self._get_app_worker_id()
-        if  current_app is not None:
-            await self.add_config_tag("initilization:" + current_app)
+        if current_app is not None:
+            await self.add_config_tag("initialization:" + current_app)
             await self.add_config_tag("worker:#" + app_worker_id)
 
     async def record_ready_time(self, ready_time):
@@ -232,6 +235,7 @@ class TelemetryRuntimeProducer(object):
         """Record update from sse."""
         self._telemetry_storage.record_update_from_sse(event)
 
+
 class TelemetryRuntimeProducerAsync(object):
     """Telemetry runtime producer async class."""
 
@@ -282,6 +286,7 @@ class TelemetryRuntimeProducerAsync(object):
     async def record_update_from_sse(self, event):
         """Record update from sse."""
         await self._telemetry_storage.record_update_from_sse(event)
+
 
 class TelemetryStorageConsumerBase(object):
     """Telemetry storage consumer base class."""
@@ -386,25 +391,25 @@ class TelemetryEvaluationConsumerBase(object):
         """Return json formatted stats"""
         return {
             'mE': {'t': exceptions['treatment'],
-                    'ts': exceptions['treatments'],
-                    'tc': exceptions['treatment_with_config'],
-                    'tcs': exceptions['treatments_with_config'],
-                    'tf': exceptions['treatments_by_flag_set'],
-                    'tfs': exceptions['treatments_by_flag_sets'],
-                    'tcf': exceptions['treatments_with_config_by_flag_set'],
-                    'tcfs': exceptions['treatments_with_config_by_flag_sets'],
-                    'tr': exceptions['track']
-               },
+                   'ts': exceptions['treatments'],
+                   'tc': exceptions['treatment_with_config'],
+                   'tcs': exceptions['treatments_with_config'],
+                   'tf': exceptions['treatments_by_flag_set'],
+                   'tfs': exceptions['treatments_by_flag_sets'],
+                   'tcf': exceptions['treatments_with_config_by_flag_set'],
+                   'tcfs': exceptions['treatments_with_config_by_flag_sets'],
+                   'tr': exceptions['track']
+                   },
             'mL': {'t': latencies['treatment'],
-                    'ts': latencies['treatments'],
-                    'tc': latencies['treatment_with_config'],
-                    'tcs': latencies['treatments_with_config'],
-                    'tf': latencies['treatments_by_flag_set'],
-                    'tfs': latencies['treatments_by_flag_sets'],
-                    'tcf': latencies['treatments_with_config_by_flag_set'],
-                    'tcfs': latencies['treatments_with_config_by_flag_sets'],
-                    'tr': latencies['track']
-               },
+                   'ts': latencies['treatments'],
+                   'tc': latencies['treatment_with_config'],
+                   'tcs': latencies['treatments_with_config'],
+                   'tf': latencies['treatments_by_flag_set'],
+                   'tfs': latencies['treatments_by_flag_sets'],
+                   'tcf': latencies['treatments_with_config_by_flag_set'],
+                   'tcfs': latencies['treatments_with_config_by_flag_sets'],
+                   'tr': latencies['track']
+                   },
         }
 
 
@@ -473,13 +478,13 @@ class TelemetryRuntimeConsumerBase(object):
         :rtype: Dict
         """
         return {'sp': last_synchronization['split'],
-                      'se': last_synchronization['segment'],
-                      'im': last_synchronization['impression'],
-                      'ic': last_synchronization['impressionCount'],
-                      'ev': last_synchronization['event'],
-                      'te': last_synchronization['telemetry'],
-                      'to': last_synchronization['token']
-               }
+                'se': last_synchronization['segment'],
+                'im': last_synchronization['impression'],
+                'ic': last_synchronization['impressionCount'],
+                'ev': last_synchronization['event'],
+                'te': last_synchronization['telemetry'],
+                'to': last_synchronization['token']
+                }
 
     def _http_errors_to_json(self, http_errors):
         """
@@ -489,12 +494,12 @@ class TelemetryRuntimeConsumerBase(object):
         :rtype: Dict
         """
         return {'sp': http_errors['split'],
-                      'se': http_errors['segment'],
-                      'im': http_errors['impression'],
-                      'ic': http_errors['impressionCount'],
-                      'ev': http_errors['event'],
-                      'te': http_errors['telemetry'],
-                      'to': http_errors['token']
+                'se': http_errors['segment'],
+                'im': http_errors['impression'],
+                'ic': http_errors['impressionCount'],
+                'ev': http_errors['event'],
+                'te': http_errors['telemetry'],
+                'to': http_errors['token']
                 }
 
     def _http_latencies_to_json(self, http_latencies):
@@ -505,13 +510,13 @@ class TelemetryRuntimeConsumerBase(object):
         :rtype: Dict
         """
         return {'sp': http_latencies['split'],
-                      'se': http_latencies['segment'],
-                      'im': http_latencies['impression'],
-                      'ic': http_latencies['impressionCount'],
-                      'ev': http_latencies['event'],
-                      'te': http_latencies['telemetry'],
-                      'to': http_latencies['token']
-        }
+                'se': http_latencies['segment'],
+                'im': http_latencies['impression'],
+                'ic': http_latencies['impressionCount'],
+                'ev': http_latencies['event'],
+                'te': http_latencies['telemetry'],
+                'to': http_latencies['token']
+                }
 
     def _streaming_events_to_json(self, streaming_events):
         """
@@ -521,9 +526,9 @@ class TelemetryRuntimeConsumerBase(object):
         :rtype: Dict
         """
         return [{'e': event['e'],
-                       'd': event['d'],
-                       't': event['t']
-                      } for event in streaming_events['streamingEvents']]
+                 'd': event['d'],
+                 't': event['t']
+                 } for event in streaming_events['streamingEvents']]
 
 
 class TelemetryRuntimeConsumer(TelemetryRuntimeConsumerBase):

@@ -5,6 +5,7 @@ class AuthException(Exception):
         """Constructor."""
         Exception.__init__(self, custom_message)
 
+
 class SplitStorageException(Exception):
     """Exception to raise when an API call fails."""
 

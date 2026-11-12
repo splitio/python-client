@@ -1,7 +1,5 @@
 """Split Worker tests."""
 
-import threading
-import time
 import pytest
 
 from splitio.api.client import HttpResponse
@@ -74,6 +72,7 @@ class EventsSynchronizerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_synchronize_events_error(self, mocker):
         storage = mocker.Mock(spec=EventStorage)
+
         async def pop_many(*args):
             return [
                 Event('key1', 'user', 'purchase', 5.3, 123456, None),
@@ -82,6 +81,7 @@ class EventsSynchronizerAsyncTests(object):
         storage.pop_many = pop_many
 
         api = mocker.Mock()
+
         async def run(x):
             raise APIException("something broke")
 
@@ -93,11 +93,13 @@ class EventsSynchronizerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_synchronize_events_empty(self, mocker):
         storage = mocker.Mock(spec=EventStorage)
+
         async def pop_many(*args):
             return []
         storage.pop_many = pop_many
 
         api = mocker.Mock()
+
         async def run(x):
             run._called += 1
 
@@ -110,6 +112,7 @@ class EventsSynchronizerAsyncTests(object):
     @pytest.mark.asyncio
     async def test_synchronize_impressions(self, mocker):
         storage = mocker.Mock(spec=EventStorage)
+
         async def pop_many(*args):
             return [
                 Event('key1', 'user', 'purchase', 5.3, 123456, None),
@@ -118,6 +121,7 @@ class EventsSynchronizerAsyncTests(object):
         storage.pop_many = pop_many
 
         api = mocker.Mock()
+
         async def run(x):
             run._called += 1
             return HttpResponse(200, '', {})

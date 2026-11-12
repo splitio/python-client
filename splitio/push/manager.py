@@ -9,7 +9,6 @@ from splitio.api import APIException
 from splitio.util.time import get_current_epoch_time_ms
 from splitio.push import AuthException
 from splitio.push.splitsse import SplitSSEClient, SplitSSEClientAsync
-from splitio.push.sse import SSE_EVENT_ERROR
 from splitio.push.parser import parse_incoming_event, EventParsingException, EventType, \
     MessageType
 from splitio.push.processor import MessageProcessor, MessageProcessorAsync
@@ -17,11 +16,12 @@ from splitio.push.status_tracker import PushStatusTracker, Status, PushStatusTra
 from splitio.models.telemetry import StreamingEventTypes
 
 if sys.version_info.major == 3 and sys.version_info.minor < 10:
-  from splitio.optional.loaders import _anext as anext
+    from splitio.optional.loaders import _anext as anext
 
 _TOKEN_REFRESH_GRACE_PERIOD = 10 * 60  # 10 minutes
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class PushManagerBase(object, metaclass=abc.ABCMeta):
     """Worker template."""
@@ -42,8 +42,8 @@ class PushManagerBase(object, metaclass=abc.ABCMeta):
         return (token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD
 
 
-class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attributes
-    """Push notifications susbsytem manager."""
+class PushManager(PushManagerBase):
+    """Push notifications subsystem manager."""
 
     def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy_url=None):
         """
@@ -95,7 +95,6 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         self._stop_requested = Event()  # set by stop() to abort an ongoing connection flow
         self._next_refresh = Timer(0, lambda: 0)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-
 
     def update_workers_status(self, enabled):
         """
@@ -168,7 +167,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
 
         try:
             handle(parsed)
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             _LOGGER.error('something went wrong when processing message of type %s',
                           parsed.event_type)
             _LOGGER.debug(str(parsed), exc_info=True)
@@ -179,7 +178,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         try:
             self._stop_connection(True)
             self._trigger_connection_flow()
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             # This runs in the TokenRefresh timer thread. If it dies here, streaming stays
             # stopped and polling is never started, so the SDK would stop receiving updates.
             _LOGGER.error('unexpected error refreshing streaming token.')
@@ -195,7 +194,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
             _LOGGER.debug('stack trace: ', exc_info=True)
             self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
             return
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             # e.g. a non-JSON 200 response or a malformed token.
             _LOGGER.error('unexpected error performing sse auth request.')
             _LOGGER.debug('stack trace: ', exc_info=True)
@@ -214,7 +213,7 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         self._status_tracker.reset()
         try:
             connected = self._sse_client.start(token)
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             _LOGGER.error('unexpected error connecting to streaming.')
             _LOGGER.debug('stack trace: ', exc_info=True)
             self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
@@ -229,7 +228,8 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
             _LOGGER.debug("connected to streaming, scheduling next refresh")
             self._setup_next_token_refresh(token)
             self._running = True
-            self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
+            self._telemetry_runtime_producer.record_streaming_event(
+                (StreamingEventTypes.CONNECTION_ESTABLISHED, 0,  get_current_epoch_time_ms()))
 
     def _setup_next_token_refresh(self, token):
         """
@@ -243,7 +243,8 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
         self._next_refresh = Timer(self._get_time_period(token), self._token_refresh)
         self._next_refresh.setName('TokenRefresh')
         self._next_refresh.start()
-        self._telemetry_runtime_producer.record_streaming_event((StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
+        self._telemetry_runtime_producer.record_streaming_event(
+            (StreamingEventTypes.TOKEN_REFRESH, 1000 * token.exp,  get_current_epoch_time_ms()))
 
     def _handle_message(self, event):
         """
@@ -323,8 +324,8 @@ class PushManager(PushManagerBase):  # pylint:disable=too-many-instance-attribut
             self._feedback_loop.put(feedback)
 
 
-class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-attributes
-    """Push notifications susbsytem manager."""
+class PushManagerAsync(PushManagerBase):
+    """Push notifications subsystem manager."""
 
     def __init__(self, auth_api, synchronizer, feedback_loop, sdk_metadata, telemetry_runtime_producer, sse_url=None, client_key=None, proxy=None):
         """
@@ -428,13 +429,14 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
             parsed = parse_incoming_event(event)
             handle = self._event_handlers[parsed.event_type]
         except Exception:
-            _LOGGER.error('Parsing exception or no handler for message of type %s', parsed.event_type if parsed else 'unknown')
+            _LOGGER.error('Parsing exception or no handler for message of type %s',
+                          parsed.event_type if parsed else 'unknown')
             _LOGGER.debug(str(event), exc_info=True)
             return
 
         try:
             await handle(parsed)
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             event_type = "unknown" if parsed is None else parsed.event_type
             _LOGGER.error('something went wrong when processing message of type %s', event_type)
             _LOGGER.debug(str(parsed), exc_info=True)
@@ -445,7 +447,8 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         :param current_token: token (parsed) JWT
         :type current_token: splitio.models.token.Token
         """
-        _LOGGER.debug("Next token refresh in " + str(self._get_time_period(current_token)) + " seconds")
+        _LOGGER.debug("Next token refresh in " +
+                      str(self._get_time_period(current_token)) + " seconds")
         await asyncio.sleep(self._get_time_period(current_token))
         # This task is self._token_task. Detach it before closing the current connection,
         # otherwise the connection task's cleanup cancels it and the new connection is never
@@ -461,7 +464,7 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
                 self._trigger_connection_flow())
         except asyncio.CancelledError:  # subclass of Exception in python 3.7
             raise
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             # If this task ends here, streaming stays stopped and polling is never started.
             _LOGGER.error('unexpected error refreshing streaming token.')
             _LOGGER.debug('stack trace: ', exc_info=True)
@@ -513,11 +516,11 @@ class PushManagerAsync(PushManagerBase):  # pylint:disable=too-many-instance-att
         except AuthException as e:
             _LOGGER.error("error getting auth token: " + str(e))
             _LOGGER.debug("trace: ", exc_info=True)
-        except StopAsyncIteration: # will enter here if there was an error
+        except StopAsyncIteration:  # will enter here if there was an error
             await self._feedback_loop.put(Status.PUSH_RETRYABLE_ERROR)
         except asyncio.CancelledError:  # subclass of Exception in python 3.7
             raise
-        except Exception:  # pylint:disable=broad-except
+        except Exception:
             # e.g. a non-JSON 200 auth response, a malformed token or an sse client error.
             # Without this the task ends silently and polling is never started.
             _LOGGER.error('unexpected error in streaming connection flow.')

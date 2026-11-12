@@ -1,4 +1,4 @@
-"""Impressions syncrhonization task."""
+"""Impressions synchronization task."""
 import logging
 
 from splitio.tasks import BaseSynchronizationTask
@@ -39,7 +39,7 @@ class UniqueKeysSyncTaskBase(BaseSynchronizationTask):
 class UniqueKeysSyncTask(UniqueKeysSyncTaskBase):
     """Unique Keys synchronization task uses an asynctask.AsyncTask to send MTKs."""
 
-    def __init__(self, synchronize_unique_keys, period = _UNIQUE_KEYS_SYNC_PERIOD):
+    def __init__(self, synchronize_unique_keys, period=_UNIQUE_KEYS_SYNC_PERIOD):
         """
         Class constructor.
 
@@ -59,7 +59,7 @@ class UniqueKeysSyncTask(UniqueKeysSyncTaskBase):
 class UniqueKeysSyncTaskAsync(UniqueKeysSyncTaskBase):
     """Unique Keys synchronization task uses an asynctask.AsyncTask to send MTKs."""
 
-    def __init__(self, synchronize_unique_keys, period = _UNIQUE_KEYS_SYNC_PERIOD):
+    def __init__(self, synchronize_unique_keys, period=_UNIQUE_KEYS_SYNC_PERIOD):
         """
         Class constructor.
 
@@ -69,7 +69,7 @@ class UniqueKeysSyncTaskAsync(UniqueKeysSyncTaskBase):
         :type period: int
         """
         self._task = AsyncTaskAsync(synchronize_unique_keys, period,
-                               on_stop=synchronize_unique_keys)
+                                    on_stop=synchronize_unique_keys)
 
     async def stop(self):
         """Stop executing the unique keys synchronization task."""
@@ -100,7 +100,7 @@ class ClearFilterSyncTaskBase(BaseSynchronizationTask):
 class ClearFilterSyncTask(ClearFilterSyncTaskBase):
     """Unique Keys synchronization task uses an asynctask.AsyncTask to send MTKs."""
 
-    def __init__(self, clear_filter, period = _CLEAR_FILTER_SYNC_PERIOD):
+    def __init__(self, clear_filter, period=_CLEAR_FILTER_SYNC_PERIOD):
         """
         Class constructor.
 
@@ -120,7 +120,7 @@ class ClearFilterSyncTask(ClearFilterSyncTaskBase):
 class ClearFilterSyncTaskAsync(ClearFilterSyncTaskBase):
     """Unique Keys synchronization task uses an asynctask.AsyncTask to send MTKs."""
 
-    def __init__(self, clear_filter, period = _CLEAR_FILTER_SYNC_PERIOD):
+    def __init__(self, clear_filter, period=_CLEAR_FILTER_SYNC_PERIOD):
         """
         Class constructor.
 
@@ -130,7 +130,7 @@ class ClearFilterSyncTaskAsync(ClearFilterSyncTaskBase):
         :type period: int
         """
         self._task = AsyncTaskAsync(clear_filter, period,
-                               on_stop=clear_filter)
+                                    on_stop=clear_filter)
 
     async def stop(self):
         """Stop executing the unique keys synchronization task."""

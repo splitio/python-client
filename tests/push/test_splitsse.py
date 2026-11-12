@@ -1,5 +1,4 @@
 """SSEClient unit tests."""
-# pylint:disable=no-self-use,line-too-long
 import time
 from queue import Queue
 import pytest
@@ -12,12 +11,14 @@ from tests.helpers.mockserver import SSEMockServer
 from splitio.client.util import SdkMetadata
 from splitio.optional.loaders import asyncio
 
+
 class SSESplitClientTests(object):
     """SSEClient test cases."""
 
     def test_split_sse_success(self):
         """Test correct initialization. Client ends the connection."""
         events = []
+
         def handler(event):
             """Handler."""
             events.append(event)
@@ -77,6 +78,7 @@ class SSESplitClientTests(object):
     def test_split_sse_error(self):
         """Test correct initialization. Client ends the connection."""
         events = []
+
         def handler(event):
             """Handler."""
             events.append(event)
@@ -139,7 +141,7 @@ class SSESplitClientAsyncTests(object):
         server.start()
 
         client = SplitSSEClientAsync(SdkMetadata('1.0', 'some', '1.2.3.4'),
-                                'abcd', base_url='http://localhost:' + str(server.port()))
+                                     'abcd', base_url='http://localhost:' + str(server.port()))
 
         token = Token(True, 'some', {'chan1': ['subscribe'], 'chan2': ['subscribe', 'channel-metadata:publishers']},
                       1, 2)
@@ -152,16 +154,15 @@ class SSESplitClientAsyncTests(object):
         first_event = await events_source.__anext__()
         assert first_event.event != SSE_EVENT_ERROR
 
-
         event2 = await events_source.__anext__()
         event3 = await events_source.__anext__()
 
         # Since generators are meant to be iterated, we need to consume them all until StopIteration occurs
         # to do this, connection must be closed in another coroutine, while the current one is still consuming events.
         shutdown_task = asyncio.get_running_loop().create_task(client.stop())
-        with pytest.raises(StopAsyncIteration): await events_source.__anext__()
+        with pytest.raises(StopAsyncIteration):
+            await events_source.__anext__()
         await shutdown_task
-
 
         request = request_queue.get(1)
         assert request.path == '/event-stream?v=1.1&accessToken=some&channels=chan1,%5B?occupancy=metrics.publishers%5Dchan2'
@@ -180,7 +181,6 @@ class SSESplitClientAsyncTests(object):
 
         assert client.status == SplitSSEClient._Status.IDLE
 
-
     @pytest.mark.asyncio
     async def test_split_sse_error(self):
         """Test correct initialization. Client ends the connection."""
@@ -189,7 +189,7 @@ class SSESplitClientAsyncTests(object):
         server.start()
 
         client = SplitSSEClientAsync(SdkMetadata('1.0', 'some', '1.2.3.4'),
-                                'abcd', base_url='http://localhost:' + str(server.port()))
+                                     'abcd', base_url='http://localhost:' + str(server.port()))
 
         token = Token(True, 'some', {'chan1': ['subscribe'], 'chan2': ['subscribe', 'channel-metadata:publishers']},
                       1, 2)
@@ -204,7 +204,8 @@ class SSESplitClientAsyncTests(object):
         assert error_event.event == SSE_EVENT_ERROR
 
         server.publish(SSEMockServer.VIOLENT_REQUEST_END)
-        with pytest.raises(StopAsyncIteration): await events_source.__anext__()
+        with pytest.raises(StopAsyncIteration):
+            await events_source.__anext__()
 
         assert client.status == SplitSSEClient._Status.IDLE
 

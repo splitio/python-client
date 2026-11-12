@@ -9,7 +9,7 @@ from splitio.models.grammar.matchers.string import ContainsStringMatcher, \
     EndsWithMatcher, RegexMatcher, StartsWithMatcher, WhitelistMatcher
 from splitio.models.grammar.matchers.misc import BooleanMatcher, DependencyMatcher
 from splitio.models.grammar.matchers.semver import EqualToSemverMatcher, GreaterThanOrEqualToSemverMatcher, LessThanOrEqualToSemverMatcher, \
-        BetweenSemverMatcher, InListSemverMatcher
+    BetweenSemverMatcher, InListSemverMatcher
 from splitio.models.grammar.matchers.rule_based_segment import RuleBasedSegmentMatcher
 
 
@@ -63,6 +63,7 @@ _MATCHER_BUILDERS = {
     MATCHER_INLIST_SEMVER: InListSemverMatcher,
     MATCHER_IN_RULE_BASED_SEGMENT: RuleBasedSegmentMatcher
 }
+
 
 def from_raw(raw_matcher):
     """

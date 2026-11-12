@@ -12,7 +12,7 @@ from splitio.models.telemetry import HTTPExceptionsAndLatencies
 _LOGGER = logging.getLogger(__name__)
 
 
-class ImpressionsAPIBase(object):  # pylint: disable=too-few-public-methods
+class ImpressionsAPIBase(object):
     """Base Class that uses an httpClient to communicate with the impressions API."""
 
     @staticmethod
@@ -42,27 +42,27 @@ class ImpressionsAPIBase(object):  # pylint: disable=too-few-public-methods
 
     @staticmethod
     def _filter_out_null_prop(impression):
-        if impression.properties == None:
+        if impression.properties is None:
             return {
-                    'k': impression.matching_key,
-                    't': impression.treatment,
-                    'm': impression.time,
-                    'c': impression.change_number,
-                    'r': impression.label,
-                    'b': impression.bucketing_key,
-                    'pt': impression.previous_time
-                    }
-            
-        return {
                 'k': impression.matching_key,
                 't': impression.treatment,
                 'm': impression.time,
                 'c': impression.change_number,
                 'r': impression.label,
                 'b': impression.bucketing_key,
-                'pt': impression.previous_time,
-                'properties': impression.properties
-                }
+                'pt': impression.previous_time
+            }
+
+        return {
+            'k': impression.matching_key,
+            't': impression.treatment,
+            'm': impression.time,
+            'c': impression.change_number,
+            'r': impression.label,
+            'b': impression.bucketing_key,
+            'pt': impression.previous_time,
+            'properties': impression.properties
+        }
 
     @staticmethod
     def _build_counters(counters):
@@ -86,14 +86,14 @@ class ImpressionsAPIBase(object):  # pylint: disable=too-few-public-methods
         }
 
 
-class ImpressionsAPI(ImpressionsAPIBase):  # pylint: disable=too-few-public-methods
+class ImpressionsAPI(ImpressionsAPIBase):
     """Class that uses an httpClient to communicate with the impressions API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer, mode=ImpressionsMode.OPTIMIZED):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: HttpClient
         :param sdk_key: sdk key.
         :type sdk_key: string
@@ -112,7 +112,8 @@ class ImpressionsAPI(ImpressionsAPIBase):  # pylint: disable=too-few-public-meth
         :type impressions: list
         """
         bulk = self._build_bulk(impressions)
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.IMPRESSION, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.IMPRESSION, self._telemetry_runtime_producer)
         try:
             response = self._client.post(
                 'events',
@@ -138,7 +139,8 @@ class ImpressionsAPI(ImpressionsAPIBase):  # pylint: disable=too-few-public-meth
         :type impressions: list
         """
         bulk = self._build_counters(counters)
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.IMPRESSION_COUNT, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.IMPRESSION_COUNT, self._telemetry_runtime_producer)
         try:
             response = self._client.post(
                 'events',
@@ -158,14 +160,14 @@ class ImpressionsAPI(ImpressionsAPIBase):  # pylint: disable=too-few-public-meth
             raise APIException('Impressions not flushed properly.') from exc
 
 
-class ImpressionsAPIAsync(ImpressionsAPIBase):  # pylint: disable=too-few-public-methods
+class ImpressionsAPIAsync(ImpressionsAPIBase):
     """Async Class that uses an httpClient to communicate with the impressions API."""
 
     def __init__(self, client, sdk_key, sdk_metadata, telemetry_runtime_producer, mode=ImpressionsMode.OPTIMIZED):
         """
         Class constructor.
 
-        :param client: HTTP Client responsble for issuing calls to the backend.
+        :param client: HTTP Client responsible for issuing calls to the backend.
         :type client: HttpClient
         :param sdk_key: sdk key.
         :type sdk_key: string
@@ -184,7 +186,8 @@ class ImpressionsAPIAsync(ImpressionsAPIBase):  # pylint: disable=too-few-public
         :type impressions: list
         """
         bulk = self._build_bulk(impressions)
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.IMPRESSION, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.IMPRESSION, self._telemetry_runtime_producer)
         try:
             response = await self._client.post(
                 'events',
@@ -210,7 +213,8 @@ class ImpressionsAPIAsync(ImpressionsAPIBase):  # pylint: disable=too-few-public
         :type impressions: list
         """
         bulk = self._build_counters(counters)
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.IMPRESSION_COUNT, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.IMPRESSION_COUNT, self._telemetry_runtime_producer)
         try:
             response = await self._client.post(
                 'events',

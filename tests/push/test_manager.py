@@ -1,5 +1,4 @@
 """Push notification manager tests."""
-#pylint:disable=no-self-use,protected-access
 from threading import Thread
 from queue import Queue
 import pytest
@@ -42,7 +41,7 @@ class PushManagerTests(object):
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
 
-        def new_start(*args, **kwargs):  # pylint: disable=unused-argument
+        def new_start(*args, **kwargs):
             """splitsse.start mock."""
             thread = Thread(target=manager._handle_connection_ready, daemon=True)
             thread.start()
@@ -59,8 +58,8 @@ class PushManagerTests(object):
             mocker.call().setName('TokenRefresh'),
             mocker.call().start()
         ]
-        assert(telemetry_storage._streaming_events._streaming_events[0]._type == StreamingEventTypes.TOKEN_REFRESH.value)
-        assert(telemetry_storage._streaming_events._streaming_events[1]._type == StreamingEventTypes.CONNECTION_ESTABLISHED.value)
+        assert (telemetry_storage._streaming_events._streaming_events[0]._type == StreamingEventTypes.TOKEN_REFRESH.value)
+        assert (telemetry_storage._streaming_events._streaming_events[1]._type == StreamingEventTypes.CONNECTION_ESTABLISHED.value)
 
     def test_connection_failure(self, mocker):
         """Test the connection fails to be established."""
@@ -79,7 +78,7 @@ class PushManagerTests(object):
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         manager = PushManager(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
 
-        def new_start(*args, **kwargs):  # pylint: disable=unused-argument
+        def new_start(*args, **kwargs):
             """splitsse.start mock."""
             thread = Thread(target=manager._handle_connection_end, daemon=True)
             thread.start()
@@ -112,7 +111,6 @@ class PushManagerTests(object):
         assert timer_mock.mock_calls == [mocker.call(0, Any())]
         assert sse_mock.mock_calls == []
 
-
     def test_push_disabled(self, mocker):
         """Test the initial status is ok and reset() works as expected."""
         api_mock = mocker.Mock()
@@ -133,7 +131,6 @@ class PushManagerTests(object):
         assert feedback_loop.get() == Status.PUSH_NONRETRYABLE_ERROR
         assert timer_mock.mock_calls == [mocker.call(0, Any())]
         assert sse_mock.mock_calls == []
-
 
     def test_auth_apiexception(self, mocker):
         """Test the initial status is ok and reset() works as expected."""
@@ -187,6 +184,7 @@ class PushManagerTests(object):
         sse_mock = mocker.Mock(spec=SplitSSEClient)
         api_mock = mocker.Mock()
         manager = self._build_manager(mocker, api_mock, sse_mock, mocker.Mock(), feedback_loop)
+
         def authenticate():
             manager.stop()  # destroyed while waiting for the auth response
             return Token(True, 'abc', {}, 2000000, 1000000)
@@ -205,6 +203,7 @@ class PushManagerTests(object):
         api_mock.authenticate.return_value = Token(True, 'abc', {}, 2000000, 1000000)
         timer_mock = mocker.Mock()
         manager = self._build_manager(mocker, api_mock, sse_mock, timer_mock, feedback_loop)
+
         def start(token):
             manager.stop()  # destroyed while opening the SSE connection
             return True
@@ -340,7 +339,7 @@ class PushManagerTests(object):
         ]
 
     def test_control_message(self, mocker):
-        """Test control mesage is forwarded to status tracker."""
+        """Test control message is forwarded to status tracker."""
         sse_event = SSEEvent('1', EventType.MESSAGE, '', '{}')
         control_message = ControlMessage('chan', 123, ControlType.STREAMING_ENABLED)
         parse_event_mock = mocker.Mock(spec=parse_incoming_event)
@@ -356,7 +355,7 @@ class PushManagerTests(object):
         assert status_tracker_mock.mock_calls[1] == mocker.call().handle_control_message(control_message)
 
     def test_occupancy_message(self, mocker):
-        """Test control mesage is forwarded to status tracker."""
+        """Test control message is forwarded to status tracker."""
         sse_event = SSEEvent('1', EventType.MESSAGE, '', '{}')
         occupancy_message = OccupancyMessage('[?occupancy=metrics.publishers]control_pri', 123, 2)
         parse_event_mock = mocker.Mock(spec=parse_incoming_event)
@@ -371,6 +370,7 @@ class PushManagerTests(object):
         assert parse_event_mock.mock_calls == [mocker.call(sse_event)]
         assert status_tracker_mock.mock_calls[1] == mocker.call().handle_occupancy(occupancy_message)
 
+
 class PushManagerAsyncTests(object):
     """Parser tests."""
 
@@ -378,11 +378,13 @@ class PushManagerAsyncTests(object):
     async def test_connection_success(self, mocker):
         """Test the initial status is ok and reset() works as expected."""
         api_mock = mocker.Mock()
+
         async def authenticate():
             return Token(True, 'abc', {}, 2000000, 1000000)
         api_mock.authenticate.side_effect = authenticate
 
         self.token = None
+
         def timer_mock(token):
             self.token = token
             return (token.exp - token.iat) - _TOKEN_REFRESH_GRACE_PERIOD
@@ -399,6 +401,7 @@ class PushManagerAsyncTests(object):
 
         sse_mock = mocker.Mock(spec=SplitSSEClientAsync)
         sse_mock.start.return_value = coro()
+
         async def stop():
             pass
         sse_mock.stop = stop
@@ -428,16 +431,17 @@ class PushManagerAsyncTests(object):
 
         try:
             await shutdown_task
-        except:
+        except Exception:
             pass
         assert not manager._running
-        assert(telemetry_storage._streaming_events._streaming_events[0]._type == StreamingEventTypes.TOKEN_REFRESH.value)
-        assert(telemetry_storage._streaming_events._streaming_events[1]._type == StreamingEventTypes.CONNECTION_ESTABLISHED.value)
+        assert (telemetry_storage._streaming_events._streaming_events[0]._type == StreamingEventTypes.TOKEN_REFRESH.value)
+        assert (telemetry_storage._streaming_events._streaming_events[1]._type == StreamingEventTypes.CONNECTION_ESTABLISHED.value)
 
     @pytest.mark.asyncio
     async def test_connection_failure(self, mocker):
         """Test the connection fails to be established."""
         api_mock = mocker.Mock()
+
         async def authenticate():
             return Token(True, 'abc', {}, 2000000, 1000000)
         api_mock.authenticate.side_effect = authenticate
@@ -451,7 +455,8 @@ class PushManagerAsyncTests(object):
         manager._sse_client = sse_mock
 
         async def coro():
-            if False: yield '' # fit a never-called yield directive to force the func to be an async generator
+            if False:
+                yield ''  # fit a never-called yield directive to force the func to be an async generator
             return
         sse_mock.start.return_value = coro()
 
@@ -465,6 +470,7 @@ class PushManagerAsyncTests(object):
     async def test_push_disabled(self, mocker):
         """Test the initial status is ok and reset() works as expected."""
         api_mock = mocker.Mock()
+
         async def authenticate():
             return Token(False, 'abc', {}, 1, 2)
         api_mock.authenticate.side_effect = authenticate
@@ -511,6 +517,7 @@ class PushManagerAsyncTests(object):
     async def test_auth_unexpected_exception(self, mocker):
         """Test a non-API error during auth (e.g. non-JSON 200 response) is reported as retryable."""
         api_mock = mocker.Mock()
+
         async def authenticate():
             raise ValueError('Expecting value: line 1 column 1 (char 0)')
         api_mock.authenticate.side_effect = authenticate
@@ -532,6 +539,7 @@ class PushManagerAsyncTests(object):
     async def test_sse_start_unexpected_exception(self, mocker):
         """Test an error raised by the sse client is reported as retryable."""
         api_mock = mocker.Mock()
+
         async def authenticate():
             return Token(True, 'abc', {}, 2000000, 1000000)
         api_mock.authenticate.side_effect = authenticate
@@ -554,6 +562,7 @@ class PushManagerAsyncTests(object):
         """Test a token refresh is not cancelled by the cleanup of the connection it closes."""
         api_mock = mocker.Mock()
         auth_calls = []
+
         async def authenticate():
             auth_calls.append(1)
             return Token(True, 'abc', {}, 2000000, 1000000)
@@ -561,12 +570,15 @@ class PushManagerAsyncTests(object):
 
         class FakeSSEClient(object):
             """Ends the event stream on stop() and waits for it, without masking cancellation."""
+
             def __init__(self):
                 self.starts = 0
+
             def start(self, token):
                 self.starts += 1
                 self._shutdown = asyncio.Event()
                 self._ended = asyncio.Event()
+
                 async def events():
                     try:
                         yield SSEEvent('1', EventType.MESSAGE, None, None)
@@ -574,6 +586,7 @@ class PushManagerAsyncTests(object):
                     finally:
                         self._ended.set()
                 return events()
+
             async def stop(self):
                 self._shutdown.set()
                 await self._ended.wait()
@@ -584,6 +597,7 @@ class PushManagerAsyncTests(object):
         telemetry_runtime_producer = telemetry_producer.get_telemetry_runtime_producer()
         manager = PushManagerAsync(api_mock, mocker.Mock(), feedback_loop, mocker.Mock(), telemetry_runtime_producer)
         processor = mocker.Mock()
+
         async def update_workers_status(enabled):
             pass
         processor.update_workers_status = update_workers_status
@@ -619,11 +633,13 @@ class PushManagerAsyncTests(object):
         """Test the refresh reconnects when the connection task is still ending when cancelled."""
         feedback_loop = asyncio.Queue()
         manager = await self._build_refresh_manager(mocker, feedback_loop)
+
         async def ending_connection():  # e.g. still running its cleanup
             await asyncio.sleep(1)
         manager._running_task = asyncio.get_running_loop().create_task(ending_connection())
         await asyncio.sleep(0)
         flows = []
+
         async def connection_flow():
             flows.append(1)
         manager._trigger_connection_flow = connection_flow
@@ -641,6 +657,7 @@ class PushManagerAsyncTests(object):
         """Test an error while closing the connection during a token refresh is reported."""
         feedback_loop = asyncio.Queue()
         manager = await self._build_refresh_manager(mocker, feedback_loop)
+
         async def stop():
             raise OSError('Transport endpoint is not connected')
         manager._sse_client.stop = stop
@@ -655,12 +672,14 @@ class PushManagerAsyncTests(object):
         manager = await self._build_refresh_manager(mocker, feedback_loop)
         manager._running = True
         stop_tasks = []
+
         async def sse_stop():  # stop() arrives while the refresh is closing the connection
             if not stop_tasks:
                 stop_tasks.append(asyncio.get_running_loop().create_task(manager.stop(True)))
             await asyncio.sleep(0)
         manager._sse_client.stop = sse_stop
         flows = []
+
         async def connection_flow():
             flows.append(1)
         manager._trigger_connection_flow = connection_flow
@@ -679,6 +698,7 @@ class PushManagerAsyncTests(object):
         manager = await self._build_refresh_manager(mocker, feedback_loop)
         auth_started = asyncio.Event()
         release_auth = asyncio.Event()
+
         async def get_token():
             auth_started.set()
             await release_auth.wait()
@@ -765,7 +785,7 @@ class PushManagerAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_control_message(self, mocker):
-        """Test control mesage is forwarded to status tracker."""
+        """Test control message is forwarded to status tracker."""
         sse_event = SSEEvent('1', EventType.MESSAGE, '', '{}')
         control_message = ControlMessage('chan', 123, ControlType.STREAMING_ENABLED)
         parse_event_mock = mocker.Mock(spec=parse_incoming_event)
@@ -782,7 +802,7 @@ class PushManagerAsyncTests(object):
 
     @pytest.mark.asyncio
     async def test_occupancy_message(self, mocker):
-        """Test control mesage is forwarded to status tracker."""
+        """Test control message is forwarded to status tracker."""
         sse_event = SSEEvent('1', EventType.MESSAGE, '', '{}')
         occupancy_message = OccupancyMessage('[?occupancy=metrics.publishers]control_pri', 123, 2)
         parse_event_mock = mocker.Mock(spec=parse_incoming_event)

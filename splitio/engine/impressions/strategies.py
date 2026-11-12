@@ -5,6 +5,7 @@ from splitio.util.time import utctime_ms
 
 _IMPRESSION_OBSERVER_CACHE_SIZE = 500000
 
+
 class BaseStrategy(object, metaclass=abc.ABCMeta):
     """Strategy interface."""
 
@@ -15,6 +16,7 @@ class BaseStrategy(object, metaclass=abc.ABCMeta):
 
         """
         pass
+
 
 class StrategyDebugMode(BaseStrategy):
     """Debug mode strategy."""
@@ -43,10 +45,11 @@ class StrategyDebugMode(BaseStrategy):
             if imp.properties is not None:
                 imps.append((imp, attrs))
                 continue
-            
+
             imps.append((self._observer.test_and_set(imp), attrs))
-            
+
         return [i for i, _ in imps], imps, [], []
+
 
 class StrategyNoneMode(BaseStrategy):
     """Debug mode strategy."""
@@ -69,6 +72,7 @@ class StrategyNoneMode(BaseStrategy):
         for i, _ in impressions:
             unique_keys_tracker.append((i.matching_key, i.feature_name))
         return [], impressions, counter_imps, unique_keys_tracker
+
 
 class StrategyOptimizedMode(BaseStrategy):
     """Optimized mode strategy."""
@@ -99,7 +103,7 @@ class StrategyOptimizedMode(BaseStrategy):
                 continue
 
             imps.append((self._observer.test_and_set(imp), attrs))
-        
-        counter_imps = [imp for imp, _ in imps if imp.previous_time != None]
+
+        counter_imps = [imp for imp, _ in imps if imp.previous_time is not None]
         this_hour = truncate_time(utctime_ms())
         return [i for i, _ in imps if i.previous_time is None or i.previous_time < this_hour], imps, counter_imps, []

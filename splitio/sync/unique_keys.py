@@ -1,5 +1,6 @@
 _UNIQUE_KEYS_MAX_BULK_SIZE = 5000
 
+
 class UniqueKeysSynchronizerBase(object):
     """Unique Keys Synchronizer base class."""
 
@@ -7,14 +8,14 @@ class UniqueKeysSynchronizerBase(object):
         """
         Initialize Unique keys synchronizer instance
 
-        :param uniqe_keys_tracker: instance of uniqe keys tracker
+        :param uniqe_keys_tracker: instance of unique keys tracker
         :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
         """
         self._max_bulk_size = _UNIQUE_KEYS_MAX_BULK_SIZE
 
     def _split_cache_to_bulks(self, cache):
         """
-        Split the current unique keys dictionary into seperate dictionaries,
+        Split the current unique keys dictionary into separate dictionaries,
         each with the size of max_bulk_size. Overflow the last feature_flag set() to new unique keys dictionary.
 
         :return: array of unique keys dictionaries
@@ -56,7 +57,7 @@ class UniqueKeysSynchronizer(UniqueKeysSynchronizerBase):
         """
         Initialize Unique keys synchronizer instance
 
-        :param uniqe_keys_tracker: instance of uniqe keys tracker
+        :param uniqe_keys_tracker: instance of unique keys tracker
         :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
         """
         UniqueKeysSynchronizerBase.__init__(self)
@@ -84,7 +85,7 @@ class UniqueKeysSynchronizerAsync(UniqueKeysSynchronizerBase):
         """
         Initialize Unique keys synchronizer instance
 
-        :param uniqe_keys_tracker: instance of uniqe keys tracker
+        :param uniqe_keys_tracker: instance of unique keys tracker
         :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
         """
         UniqueKeysSynchronizerBase.__init__(self)
@@ -112,7 +113,7 @@ class ClearFilterSynchronizer(object):
         """
         Initialize Unique keys synchronizer instance
 
-        :param uniqe_keys_tracker: instance of uniqe keys tracker
+        :param uniqe_keys_tracker: instance of unique keys tracker
         :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
         """
         self._unique_keys_tracker = unique_keys_tracker
@@ -124,6 +125,7 @@ class ClearFilterSynchronizer(object):
         """
         self._unique_keys_tracker.clear_filter()
 
+
 class ClearFilterSynchronizerAsync(object):
     """Clear filter async class."""
 
@@ -131,7 +133,7 @@ class ClearFilterSynchronizerAsync(object):
         """
         Initialize Unique keys synchronizer instance
 
-        :param uniqe_keys_tracker: instance of uniqe keys tracker
+        :param uniqe_keys_tracker: instance of unique keys tracker
         :type uniqe_keys_tracker: splitio.engine.uniqur_key_tracker.UniqueKeysTracker
         """
         self._unique_keys_tracker = unique_keys_tracker

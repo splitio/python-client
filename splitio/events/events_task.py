@@ -7,6 +7,7 @@ from splitio.optional.loaders import asyncio
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class EventsTaskBase(object, metaclass=abc.ABCMeta):
     """task template."""
 
@@ -21,6 +22,7 @@ class EventsTaskBase(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def stop(self):
         """Stop task."""
+
 
 class EventsTask(EventsTaskBase):
     """sdk internal events processing task."""
@@ -52,10 +54,10 @@ class EventsTask(EventsTaskBase):
             event = self._internal_events_queue.get()
             if not self.is_running():
                 break
-            
+
             if event == self._centinel:
                 continue
-            
+
             _LOGGER.debug('Processing sdk internal event: %s', event.internal_event)
             try:
                 self._handler(event.internal_event, event.metadata)
@@ -68,7 +70,7 @@ class EventsTask(EventsTaskBase):
         if self.is_running():
             _LOGGER.debug('SDK Event Worker is already running')
             return
-        
+
         self._running = True
         _LOGGER.debug('Starting SDK Event Task worker')
         self._worker = threading.Thread(target=self._run, name='EventsTaskWorker', daemon=True)
@@ -80,10 +82,11 @@ class EventsTask(EventsTaskBase):
         if not self.is_running():
             _LOGGER.debug('SDK Event Worker is not running. Ignoring.')
             return
-        
+
         self._running = False
         self._internal_events_queue.put(self._centinel)
-        
+
+
 class EventsTaskAsync(EventsTaskBase):
     """sdk internal events processing task."""
 
@@ -114,10 +117,10 @@ class EventsTaskAsync(EventsTaskBase):
             event = await self._internal_events_queue.get()
             if not self.is_running():
                 break
-            
+
             if event == self._centinel:
                 continue
-            
+
             _LOGGER.debug('Processing sdk internal event: %s', event.internal_event)
             try:
                 await self._handler(event.internal_event, event.metadata)
@@ -130,7 +133,7 @@ class EventsTaskAsync(EventsTaskBase):
         if self.is_running():
             _LOGGER.debug('SDK Event Worker is already running')
             return
-        
+
         self._running = True
         _LOGGER.debug('Starting SDK Event Task worker')
         asyncio.get_running_loop().create_task(self._run())
@@ -141,6 +144,6 @@ class EventsTaskAsync(EventsTaskBase):
         if not self.is_running():
             _LOGGER.debug('SDK Event Worker is not running. Ignoring.')
             return
-        
+
         self._running = False
         await self._internal_events_queue.put(self._centinel)

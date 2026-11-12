@@ -9,7 +9,7 @@ from splitio.models.telemetry import HTTPExceptionsAndLatencies
 _LOGGER = logging.getLogger(__name__)
 
 
-class EventsAPIBase(object):  # pylint: disable=too-few-public-methods
+class EventsAPIBase(object):
     """Base Class that uses an httpClient to communicate with the events API."""
 
     @staticmethod
@@ -36,14 +36,14 @@ class EventsAPIBase(object):  # pylint: disable=too-few-public-methods
         ]
 
 
-class EventsAPI(EventsAPIBase):  # pylint: disable=too-few-public-methods
+class EventsAPI(EventsAPIBase):
     """Class that uses an httpClient to communicate with the events API."""
 
     def __init__(self, http_client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
-        :param http_client: HTTP Client responsble for issuing calls to the backend.
+        :param http_client: HTTP Client responsible for issuing calls to the backend.
         :type http_client: HttpClient
         :param sdk_key: sdk key.
         :type sdk_key: string
@@ -54,7 +54,8 @@ class EventsAPI(EventsAPIBase):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.EVENT, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.EVENT, self._telemetry_runtime_producer)
 
     def flush_events(self, events):
         """
@@ -82,14 +83,15 @@ class EventsAPI(EventsAPIBase):  # pylint: disable=too-few-public-methods
             _LOGGER.debug('Error: ', exc_info=True)
             raise APIException('Events not flushed properly.') from exc
 
-class EventsAPIAsync(EventsAPIBase):  # pylint: disable=too-few-public-methods
+
+class EventsAPIAsync(EventsAPIBase):
     """Async Class that uses an httpClient to communicate with the events API."""
 
     def __init__(self, http_client, sdk_key, sdk_metadata, telemetry_runtime_producer):
         """
         Class constructor.
 
-        :param http_client: HTTP Client responsble for issuing calls to the backend.
+        :param http_client: HTTP Client responsible for issuing calls to the backend.
         :type http_client: HttpClient
         :param sdk_key: sdk key.
         :type sdk_key: string
@@ -100,7 +102,8 @@ class EventsAPIAsync(EventsAPIBase):  # pylint: disable=too-few-public-methods
         self._sdk_key = sdk_key
         self._metadata = headers_from_metadata(sdk_metadata)
         self._telemetry_runtime_producer = telemetry_runtime_producer
-        self._client.set_telemetry_data(HTTPExceptionsAndLatencies.EVENT, self._telemetry_runtime_producer)
+        self._client.set_telemetry_data(
+            HTTPExceptionsAndLatencies.EVENT, self._telemetry_runtime_producer)
 
     async def flush_events(self, events):
         """

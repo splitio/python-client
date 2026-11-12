@@ -16,7 +16,7 @@ def _get_ip():
         # doesn't even have to be reachable
         sock.connect(('10.255.255.255', 1))
         ip_address = sock.getsockname()[0]
-    except Exception:  # pylint: disable=broad-except
+    except Exception:
         ip_address = 'unknown'
     finally:
         sock.close()
