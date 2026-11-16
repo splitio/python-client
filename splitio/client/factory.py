@@ -841,8 +841,7 @@ async def _build_push_classes_async(synchronizer, cfg, telemetry_runtime_produce
         await update_event_util.add_update_event(EventUpdateType.SEGMENT_UPDATE, SegmentChangeUpdate, segment_worker.handle_segment_change, segment_worker, segment_worker_queue)
 
         processor = MessageProcessorAsync(update_event_util, EventUpdateType)
-        push_manager = PushManagerAsync(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, None, update_event_util, EventUpdateType, streaming_api_base_url, api_key[-4:],
-                                        auth_provider=auth_provider)
+        push_manager = PushManagerAsync(push_queue, sdk_metadata, telemetry_runtime_producer, processor, auth_provider, update_event_util, EventUpdateType, streaming_api_base_url, api_key[-4:])
 
     return push_manager, push_queue
 
@@ -866,8 +865,7 @@ def _build_push_classes(synchronizer, cfg, telemetry_runtime_producer, apis, sdk
         update_event_util.add_update_event(EventUpdateType.SEGMENT_UPDATE, SegmentChangeUpdate, segment_worker.handle_segment_change, segment_worker, segment_worker_queue)
     
         processor = MessageProcessor(update_event_util, EventUpdateType)
-        push_manager = PushManager(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, None, update_event_util, EventUpdateType, streaming_api_base_url, api_key[-4:],
-                                   auth_provider=auth_provider)
+        push_manager = PushManager(push_queue, sdk_metadata, telemetry_runtime_producer, processor, auth_provider, update_event_util, EventUpdateType, streaming_api_base_url, api_key[-4:])
     
     return push_manager, push_queue
 
