@@ -23,7 +23,7 @@ from splitio_commons.models.events import SdkInternalEvent
 from splitio.events.events_emitter import EventsEmitter
 
 # push
-from splitio.push.manager import PushManagerWithAuthRefresh, PushManagerAsyncWithAuthRefresh
+from splitio_commons.push.manager import PushManager, PushManagerAsync
 from splitio_commons.push.processor import MessageProcessor, MessageProcessorAsync
 from splitio.push.workers import SplitWorker, SplitWorkerAsync
 from splitio_commons.push.update_event_type_util import UpdateEventTypeUtil, UpdateEventTypeUtilAsync
@@ -100,7 +100,7 @@ from splitio_commons.sync.event import EventSynchronizer, EventSynchronizerAsync
 from splitio_commons.sync.telemetry import TelemetrySynchronizer, InMemoryTelemetrySubmitter, \
     LocalhostTelemetrySubmitter, RedisTelemetrySubmitter, LocalhostTelemetrySubmitterAsync, \
     InMemoryTelemetrySubmitterAsync, TelemetrySynchronizerAsync, RedisTelemetrySubmitterAsync
-from splitio_commons.sync.auth import AuthSynchronizer, AuthSynchronizerAsync
+from splitio_commons.api.auth_provider import AuthProvider, AuthProviderAsync
 from splitio_commons.sync.unique_keys import UniqueKeysSynchronizer, ClearFilterSynchronizer, UniqueKeysSynchronizerAsync, ClearFilterSynchronizerAsync
 from splitio_commons.sync.impression import ImpressionsCountSynchronizer, ImpressionsCountSynchronizerAsync
 
@@ -212,7 +212,8 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
             telemetry_init_producer=None,
             telemetry_submitter=None,
             preforked_initialization=False,
-            fallback_treatment_calculator=None
+            fallback_treatment_calculator=None,
+            auth_provider=None
     ):
         """
         Class constructor.
@@ -246,6 +247,7 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
         self._fallback_treatment_calculator = fallback_treatment_calculator
         self._events_emitter = events_emitter
         self._events_manager = events_manager
+        self._auth_provider = auth_provider
         self._start_status_updater()
 
     def _start_status_updater(self):
@@ -334,6 +336,8 @@ class SplitFactory(SplitFactoryBase):  # pylint: disable=too-many-instance-attri
 
         try:
             _LOGGER.info('Factory destroy called, stopping tasks.')
+            if self._auth_provider is not None:
+                self._auth_provider.stop()  # interrupts streaming auth retries
             self._events_manager.destroy()
             if self._sync_manager is not None:
                 if destroyed_event is not None:
@@ -391,7 +395,8 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
             telemetry_submitter=None,
             manager_start_task=None,
             api_client=None,
-            fallback_treatment_calculator=None
+            fallback_treatment_calculator=None,
+            auth_provider=None
     ):
         """
         Class constructor.
@@ -428,6 +433,7 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
         self._ready_task = asyncio.get_running_loop().create_task(self._update_status_when_ready_async())
         self._api_client = api_client
         self._fallback_treatment_calculator = fallback_treatment_calculator
+        self._auth_provider = auth_provider
 
     async def _update_status_when_ready_async(self):
         """Wait until the sdk is ready and update the status for async mode."""
@@ -489,6 +495,8 @@ class SplitFactoryAsync(SplitFactoryBase):  # pylint: disable=too-many-instance-
 
         try:
             _LOGGER.info('Factory destroy called, stopping tasks.')
+            if self._auth_provider is not None:
+                self._auth_provider.stop()  # interrupts streaming auth retries
             if self._manager_start_task is not None and not self._manager_start_task.done():
                 self._manager_start_task.cancel()
 
@@ -813,7 +821,7 @@ def _build_sync_tasks(threading_mode, synchronizers, cfg, internal_events_task):
         internal_events_task
     )
 
-async def _build_push_classes_async(synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key, events_emitter):
+async def _build_push_classes_async(synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key, events_emitter, auth_provider):
     push_queue = None
     push_manager = None
     if cfg['streamingEnabled']:
@@ -832,14 +840,13 @@ async def _build_push_classes_async(synchronizer, cfg, telemetry_runtime_produce
         segment_worker = SegmentWorkerAsync(synchronizer._harness_synchronizers.segment_sync.synchronize_segment, segment_worker_queue)
         await update_event_util.add_update_event(EventUpdateType.SEGMENT_UPDATE, SegmentChangeUpdate, segment_worker.handle_segment_change, segment_worker, segment_worker_queue)
 
-        # The push manager is created after the auth synchronizer, which reconnects SSE on every token refresh
-        auth_synchronizer = AuthSynchronizerAsync(apis['auth'], telemetry_runtime_producer, push_queue, refresh_callback=lambda: push_manager.reconnect())
         processor = MessageProcessorAsync(update_event_util, EventUpdateType)
-        push_manager = PushManagerAsyncWithAuthRefresh(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, auth_synchronizer, update_event_util, EventUpdateType, streaming_api_base_url, api_key[-4:])
+        push_manager = PushManagerAsync(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, None, update_event_util, EventUpdateType, streaming_api_base_url, api_key[-4:],
+                                        auth_provider=auth_provider)
 
     return push_manager, push_queue
 
-def _build_push_classes(synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key, events_emitter):
+def _build_push_classes(synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key, events_emitter, auth_provider):
     push_queue = None
     push_manager = None
     if cfg['streamingEnabled']:
@@ -858,10 +865,9 @@ def _build_push_classes(synchronizer, cfg, telemetry_runtime_producer, apis, sdk
         segment_worker = SegmentWorker(synchronizer._harness_synchronizers.segment_sync.synchronize_segment, segment_worker_queue)
         update_event_util.add_update_event(EventUpdateType.SEGMENT_UPDATE, SegmentChangeUpdate, segment_worker.handle_segment_change, segment_worker, segment_worker_queue)
     
-        # The push manager is created after the auth synchronizer, which reconnects SSE on every token refresh
-        auth_synchronizer = AuthSynchronizer(apis['auth'], telemetry_runtime_producer, push_queue, refresh_callback=lambda: push_manager.reconnect())
         processor = MessageProcessor(update_event_util, EventUpdateType)
-        push_manager = PushManagerWithAuthRefresh(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, auth_synchronizer, update_event_util, EventUpdateType, streaming_api_base_url, api_key[-4:])
+        push_manager = PushManager(apis['auth'], push_queue, sdk_metadata, telemetry_runtime_producer, processor, None, update_event_util, EventUpdateType, streaming_api_base_url, api_key[-4:],
+                                   auth_provider=auth_provider)
     
     return push_manager, push_queue
 
@@ -968,7 +974,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
     sdk_ready_flag = threading.Event() if not preforked_initialization else None
     
-    push_manager, push_queue = _build_push_classes(synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key, events_emitter)
+    auth_provider = AuthProvider(apis['auth'])  # streaming credential
+    push_manager, push_queue = _build_push_classes(synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key, events_emitter, auth_provider)
     manager = Manager(sdk_ready_flag, synchronizer, apis['auth'], cfg['streamingEnabled'],
                       sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:], push_manager, push_queue)
     recorder = _build_recorder(ThreadingMode.THREADED, synchronizer, cfg, imp_manager, storages, telemetry_evaluation_producer, telemetry_runtime_producer, sdk_metadata, imp_counter, unique_keys_tracker)
@@ -982,7 +989,7 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
 
         return SplitFactory(api_key, storages, cfg['labelsEnabled'],
                             recorder, events_emitter, events_manager, manager, None, telemetry_producer, telemetry_init_producer, telemetry_submitter, preforked_initialization=preforked_initialization,
-                            fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']))
+                            fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']), auth_provider=auth_provider)
 
     initialization_thread = threading.Thread(target=manager.start, name="SDKInitializer", daemon=True)
     initialization_thread.start()
@@ -990,7 +997,8 @@ def _build_in_memory_factory(api_key, cfg, sdk_url=None, events_url=None,  # pyl
     return SplitFactory(api_key, storages, cfg['labelsEnabled'],
                         recorder, events_emitter, events_manager, manager, sdk_ready_flag,
                         telemetry_producer, telemetry_init_producer,
-                        telemetry_submitter, fallback_treatment_calculator = FallbackTreatmentCalculator(cfg['fallbackTreatments']))
+                        telemetry_submitter, fallback_treatment_calculator = FallbackTreatmentCalculator(cfg['fallbackTreatments']),
+                        auth_provider=auth_provider)
             
 async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=None,  # pylint:disable=too-many-arguments,too-many-localsa
                              auth_api_base_url=None, streaming_api_base_url=None, telemetry_api_base_url=None,
@@ -1022,7 +1030,8 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
     synchronizer = SynchronizerAsync(synchronizers, tasks, events_emitter)
     synchronizer._harness_tasks._definition_task._task._main = synchronizer.synchronize_definitions
 
-    push_manager, push_queue = await _build_push_classes_async(synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key, events_emitter)
+    auth_provider = AuthProviderAsync(apis['auth'])  # streaming credential
+    push_manager, push_queue = await _build_push_classes_async(synchronizer, cfg, telemetry_runtime_producer, apis, sdk_metadata, streaming_api_base_url, api_key, events_emitter, auth_provider)
     manager = ManagerAsync(synchronizer, apis['auth'], cfg['streamingEnabled'],
                       sdk_metadata, telemetry_runtime_producer, streaming_api_base_url, api_key[-4:], push_manager, push_queue)
 
@@ -1037,7 +1046,8 @@ async def _build_in_memory_factory_async(api_key, cfg, sdk_url=None, events_url=
                         recorder, events_emitter, events_manager, manager,
                         telemetry_producer, telemetry_init_producer,
                         telemetry_submitter, manager_start_task=manager_start_task,
-                        api_client=http_client, fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']))
+                        api_client=http_client, fallback_treatment_calculator=FallbackTreatmentCalculator(cfg['fallbackTreatments']),
+                        auth_provider=auth_provider)
             
 def _build_redis_factory(api_key, cfg):
     """Build and return a split factory with redis-based storage."""
