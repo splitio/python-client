@@ -118,6 +118,7 @@ class SplitFactoryTests(object):
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
             self._streaming_enabled = False
+            self._stopped = threading.Event()
             self._telemetry_runtime_producer = telemetry_runtime_producer
         mocker.patch('splitio_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
 
@@ -223,6 +224,7 @@ class SplitFactoryTests(object):
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
             self._streaming_enabled = False
+            self._stopped = threading.Event()
             self._telemetry_runtime_producer = telemetry_runtime_producer
         mocker.patch('splitio_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
 
@@ -287,6 +289,7 @@ class SplitFactoryTests(object):
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
             self._streaming_enabled = False
+            self._stopped = threading.Event()
             self._telemetry_runtime_producer = telemetry_runtime_producer
 
         mocker.patch('splitio_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
@@ -721,6 +724,7 @@ class SplitFactoryTests(object):
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
             self._streaming_enabled = False
+            self._stopped = threading.Event()
             self._telemetry_runtime_producer = telemetry_runtime_producer
 
         mocker.patch('splitio_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
