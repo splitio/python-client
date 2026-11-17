@@ -18,7 +18,7 @@ class AuthenticateScheme(Enum):
 
 DEFAULT_CONFIG = {
     'operationMode': 'standalone',
-    'connectionTimeout': 1500,
+    'connectionTimeout': 15000,
     'streamingEnabled': True,
     'featuresRefreshRate': 30,
     'segmentsRefreshRate': 30,

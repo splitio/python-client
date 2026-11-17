@@ -118,6 +118,7 @@ class SplitFactoryTests(object):
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
             self._streaming_enabled = False
+            self._stopped = threading.Event()
             self._telemetry_runtime_producer = telemetry_runtime_producer
         mocker.patch('splitio_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
 
@@ -136,10 +137,12 @@ class SplitFactoryTests(object):
         assert factory.ready
         assert factory.destroyed is False
 
+        auth_provider_stop = mocker.spy(factory._auth_provider, 'stop')
         factory.destroy()
         assert len(imp_async_task_mock.stop.mock_calls) == 1
         assert len(evt_async_task_mock.stop.mock_calls) == 1
         assert len(imp_count_async_task_mock.stop.mock_calls) == 1
+        auth_provider_stop.assert_called_once()  # interrupts streaming auth retries
         assert factory.destroyed is True
 
     def test_destroy_with_event(self, mocker):
@@ -223,6 +226,7 @@ class SplitFactoryTests(object):
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
             self._streaming_enabled = False
+            self._stopped = threading.Event()
             self._telemetry_runtime_producer = telemetry_runtime_producer
         mocker.patch('splitio_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
 
@@ -287,6 +291,7 @@ class SplitFactoryTests(object):
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
             self._streaming_enabled = False
+            self._stopped = threading.Event()
             self._telemetry_runtime_producer = telemetry_runtime_producer
 
         mocker.patch('splitio_commons.sync.manager.Manager.__init__', new=_split_synchronizer)
@@ -721,6 +726,7 @@ class SplitFactoryTests(object):
             self._ready_flag = ready_flag
             self._synchronizer = synchronizer
             self._streaming_enabled = False
+            self._stopped = threading.Event()
             self._telemetry_runtime_producer = telemetry_runtime_producer
 
         mocker.patch('splitio_commons.sync.manager.Manager.__init__', new=_split_synchronizer)

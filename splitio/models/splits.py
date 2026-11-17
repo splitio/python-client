@@ -96,19 +96,21 @@ def from_raw(raw_definition):
     :rtype: definition
     """
     try:
-        conditions = [condition.from_raw(c) for c in raw_definition['conditions']] 
+        conditions = []
+        if raw_definition.get('conditions') is not None:
+            conditions = [condition.from_raw(c) for c in raw_definition['conditions']]
     except MatcherNotFoundException as e:
         _LOGGER.error(str(e))
         _LOGGER.debug("Using default conditions template for feature flag: %s", raw_definition['name'])
         conditions = [condition.from_raw(_DEFAULT_CONDITIONS_TEMPLATE)]
     return Split(
         raw_definition['name'],
-        raw_definition['seed'],
-        raw_definition['killed'],
-        raw_definition['defaultTreatment'],
-        raw_definition['trafficTypeName'],
-        raw_definition['status'],
-        raw_definition['changeNumber'],
+        raw_definition['seed'] if raw_definition.get('seed') is not None else 0,
+        raw_definition['killed'] if raw_definition.get('killed') is not None else False,
+        raw_definition.get('defaultTreatment'),
+        raw_definition['trafficTypeName'] if raw_definition.get('trafficTypeName') is not None else 'user',
+        raw_definition['status'] if raw_definition.get('status') is not None else Status.ACTIVE,
+        raw_definition['changeNumber'] if raw_definition.get('changeNumber') is not None else -1,
         conditions,
         raw_definition.get('algo'),
         traffic_allocation=raw_definition.get('trafficAllocation'),
