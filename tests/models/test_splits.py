@@ -68,6 +68,18 @@ class SplitTests(object):
         'impressionsDisabled': False
     }
 
+    def test_from_raw_with_missing_fields(self):
+        """Test split parsing of a minimal payload, using defaults for the missing fields."""
+        parsed = splits.from_raw({'name': 'some_name', 'defaultTreatment': 'off'})
+        assert parsed.name == 'some_name'
+        assert parsed.default_treatment == 'off'
+        assert parsed.conditions == []
+        assert parsed.seed == 0
+        assert parsed.killed is False
+        assert parsed.traffic_type_name == 'user'
+        assert parsed.status == splits.Status.ACTIVE
+        assert parsed.change_number == -1
+
     def test_from_raw(self):
         """Test split model parsing."""
         parsed = splits.from_raw(self.raw)
