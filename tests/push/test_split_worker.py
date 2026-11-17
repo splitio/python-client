@@ -91,6 +91,7 @@ class SplitWorkerTests(object):
             self._feature_flag_deleted = feature_flag_delete           
         split_worker._feature_flag_storage.update = update
         split_worker._feature_flag_storage.config_flag_sets_used = 0
+        split_worker._feature_flag_storage.get = lambda name: None  # no stored flag, so instant updates apply
 
         self._rbs_added = None
         self._rbs_deleted = None
@@ -243,7 +244,7 @@ class SplitWorkerTests(object):
         segment_storage = InMemorySegmentStorage()
 
         self.segment_name = None
-        def segment_handler_sync(segment_name, change_number):
+        def segment_handler_sync(segment_name, change_number, emit_event=True):
             self.segment_name = segment_name
             return
         split_worker = SplitWorker(handler_sync, segment_handler_sync, q, mocker.Mock(), split_storage, segment_storage, mocker.Mock(), mocker.Mock(), mocker.Mock())
@@ -330,6 +331,9 @@ class SplitWorkerAsyncTests(object):
             self.new_change_number = change_number
         split_worker._feature_flag_storage.update = update
         split_worker._feature_flag_storage.config_flag_sets_used = 0
+        async def get_flag(name):
+            return None
+        split_worker._feature_flag_storage.get = get_flag  # no stored flag, so instant updates apply
 
         async def get(segment_name):
             return {}
@@ -338,6 +342,10 @@ class SplitWorkerAsyncTests(object):
         async def record_update_from_sse(xx):
             pass
         split_worker._telemetry_runtime_producer.record_update_from_sse = record_update_from_sse
+
+        async def emit_async(*_):
+            pass
+        split_worker._events_emitter.emit_async = emit_async
 
         self._rbs_added = None
         self._rbs_deleted = None
@@ -483,7 +491,7 @@ class SplitWorkerAsyncTests(object):
         segment_storage = InMemorySegmentStorageAsync()
 
         self.segment_name = None
-        async def segment_handler_sync(segment_name, change_number):
+        async def segment_handler_sync(segment_name, change_number, emit_event=True):
             self.segment_name = segment_name
             return
         split_worker = SplitWorkerAsync(handler_async, segment_handler_sync, q, mocker.Mock(), split_storage, segment_storage, mocker.Mock(), mocker.Mock(), mocker.Mock())

@@ -313,7 +313,7 @@ class SplitFactoryTests(object):
         assert isinstance(factory._sync_manager, Manager)
         assert isinstance(factory._recorder, StandardRecorder)
         assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
-        assert isinstance(factory._recorder._event_sotrage, inmemmory.EventStorage)
+        assert isinstance(factory._recorder._event_storage, inmemmory.EventStorage)
         assert isinstance(factory._recorder._impression_storage, inmemmory.ImpressionStorage)
 
         assert factory._labels_enabled is True
@@ -401,7 +401,7 @@ class SplitFactoryTests(object):
         assert isinstance(factory._recorder, PipelinedRecorder)
         assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
         assert isinstance(factory._recorder._make_pipe(), RedisPipelineAdapter)
-        assert isinstance(factory._recorder._event_sotrage, redis.RedisEventsStorage)
+        assert isinstance(factory._recorder._event_storage, redis.RedisEventsStorage)
         assert isinstance(factory._recorder._impression_storage, redis.RedisImpressionsStorage)
 
         try:
@@ -676,7 +676,7 @@ class SplitFactoryTests(object):
         assert factory._labels_enabled is False
         assert isinstance(factory._recorder, StandardRecorder)
         assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
-        assert isinstance(factory._recorder._event_sotrage, pluggable.PluggableEventsStorage)
+        assert isinstance(factory._recorder._event_storage, pluggable.PluggableEventsStorage)
         assert isinstance(factory._recorder._impression_storage, pluggable.PluggableImpressionsStorage)
 
         try:
@@ -801,7 +801,7 @@ class SplitFactoryTests(object):
 
         assert isinstance(factory._recorder, StandardRecorder)
         assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
-        assert isinstance(factory._recorder._event_sotrage, inmemmory.EventStorage)
+        assert isinstance(factory._recorder._event_storage, inmemmory.EventStorage)
         assert isinstance(factory._recorder._impression_storage, inmemmory.ImpressionStorage)
 
         assert factory._status == Status.WAITING_FORK
@@ -879,7 +879,7 @@ class SplitFactoryAsyncTests(object):
 
         assert isinstance(factory2._recorder, StandardRecorderAsync)
         assert isinstance(factory2._recorder._impressions_manager, ImpressionsManager)
-        assert isinstance(factory2._recorder._event_sotrage, inmemmory.EventStorage)
+        assert isinstance(factory2._recorder._event_storage, inmemmory.EventStorage)
         assert isinstance(factory2._recorder._impression_storage, inmemmory.ImpressionStorage)
 
         assert factory2._labels_enabled is True
@@ -1027,7 +1027,7 @@ class SplitFactoryAsyncTests(object):
         assert factory._labels_enabled is False
         assert isinstance(factory._recorder, StandardRecorderAsync)
         assert isinstance(factory._recorder._impressions_manager, ImpressionsManager)
-        assert isinstance(factory._recorder._event_sotrage, pluggable.PluggableEventsStorageAsync)
+        assert isinstance(factory._recorder._event_storage, pluggable.PluggableEventsStorageAsync)
         assert isinstance(factory._recorder._impression_storage, pluggable.PluggableImpressionsStorageAsync)
         try:
             await factory.block_until_ready(1)
